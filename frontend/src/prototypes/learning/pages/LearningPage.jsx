@@ -1,91 +1,16 @@
 import { useMemo, useState } from 'react'
+import LearningResourceCard from '../components/LearningResourceCard'
+import { LEARNING_RESOURCES, COMBOS, GRADES } from '../data/learningResources'
+import Icon from '../../../shared/components/ui/Icon'
+import { formatVnd } from '../../../shared/utils/formatCurrency'
 
-/* ---------- Dữ liệu mẫu ---------- */
-
-const GRADES = [
-  { id: 'all', label: 'Tất cả' },
-  { id: '1', label: 'Lớp 1' },
-  { id: '2', label: 'Lớp 2' },
-  { id: '3', label: 'Lớp 3' },
-  { id: '4', label: 'Lớp 4' },
-  { id: '5', label: 'Lớp 5' },
-  { id: '6', label: 'Lớp 6' },
-  { id: '7', label: 'Lớp 7' },
-  { id: '8', label: 'Lớp 8' },
-  { id: '9', label: 'Lớp 9' },
-  { id: '10', label: 'Lớp 10' },
-  { id: '11', label: 'Lớp 11' },
-  { id: '12', label: 'Lớp 12' },
-]
-
-const BOOKS = [
-  { id: 1, title: 'Toán 10 – Tập một', series: 'Kết nối tri thức với cuộc sống', grade: '10', subject: 'Toán', price: 32000, oldPrice: 36000, bg: '#1f4d3a', fg: '#f3ead7' },
-  { id: 2, title: 'Ngữ văn 9 – Tập một', series: 'Chân trời sáng tạo', grade: '9', subject: 'Ngữ văn', price: 28000, oldPrice: null, bg: '#a23b2a', fg: '#fbeee0' },
-  { id: 3, title: 'Tiếng Anh 7 – Global Success', series: 'Sách học sinh', grade: '7', subject: 'Tiếng Anh', price: 45000, oldPrice: 50000, bg: '#26435f', fg: '#eef2f5' },
-  { id: 4, title: 'Vật lí 11', series: 'Cánh Diều', grade: '11', subject: 'Vật lí', price: 38000, oldPrice: null, bg: '#d9a441', fg: '#2a2112' },
-  { id: 5, title: 'Tiếng Việt 2 – Tập hai', series: 'Kết nối tri thức với cuộc sống', grade: '2', subject: 'Tiếng Việt', price: 24000, oldPrice: 27000, bg: '#6b7f3a', fg: '#f6f3e4' },
-  { id: 6, title: 'Hóa học 12', series: 'Kết nối tri thức với cuộc sống', grade: '12', subject: 'Hóa học', price: 36000, oldPrice: null, bg: '#3b3a52', fg: '#ecebf3' },
-  { id: 7, title: 'Khoa học tự nhiên 8', series: 'Chân trời sáng tạo', grade: '8', subject: 'KHTN', price: 42000, oldPrice: 46000, bg: '#b5603a', fg: '#fbeee0' },
-  { id: 8, title: 'Toán 5 – Tập một', series: 'Cánh Diều', grade: '5', subject: 'Toán', price: 22000, oldPrice: null, bg: '#2f6f73', fg: '#e8f3f2' },
-]
-
-const COMBOS = [
-  { name: 'Bộ sách lớp 1', count: 9, price: 215000 },
-  { name: 'Bộ sách lớp 6', count: 14, price: 398000 },
-  { name: 'Bộ sách lớp 10', count: 16, price: 472000 },
-]
-
-const vnd = (n) => n.toLocaleString('vi-VN') + 'đ'
-
-/* ---------- Thành phần nhỏ ---------- */
-
-function Cover({ book, className = '' }) {
-  return (
-    <div
-      className={`relative flex aspect-3/4 flex-col justify-between overflow-hidden rounded-[3px] p-4 shadow-[0_1px_0_rgba(0,0,0,0.08),0_12px_24px_-12px_rgba(40,30,10,0.45)] ${className}`}
-      style={{ backgroundColor: book.bg, color: book.fg }}
-    >
-      {/* gáy sách */}
-      <span className="absolute inset-y-0 left-0 w-2 bg-black/15" />
-      <div className="pl-2 text-[10px] font-medium uppercase tracking-[0.18em] opacity-80">
-        {book.series}
-      </div>
-      <div className="pl-2">
-        <div className="font-serif text-xl font-semibold leading-tight">{book.title}</div>
-        <div className="mt-3 h-px w-8" style={{ backgroundColor: book.fg, opacity: 0.6 }} />
-        <div className="mt-2 text-[11px] uppercase tracking-widest opacity-80">
-          Lớp {book.grade}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function Icon({ name, className = 'h-5 w-5' }) {
-  const paths = {
-    search: 'M21 21l-4.3-4.3M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z',
-    cart: 'M3 4h2l2.2 10.2a1 1 0 001 .8h8.6a1 1 0 001-.7L19.5 8H6.2M9 20a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z',
-    truck: 'M3 6h11v10H3zM14 9h4l3 3v4h-7M7 19a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm11 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z',
-    shield: 'M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3zM9 12l2 2 4-4',
-    refresh: 'M20 11a8 8 0 10-2.3 5.7M20 4v7h-7',
-    arrow: 'M5 12h14M13 6l6 6-6 6',
-  }
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d={paths[name]} />
-    </svg>
-  )
-}
-
-/* ---------- Trang chủ ---------- */
-
-function App() {
+export default function LearningPage() {
   const [grade, setGrade] = useState('all')
   const [cart, setCart] = useState(0)
   const [query, setQuery] = useState('')
 
   const visible = useMemo(() => {
-    return BOOKS.filter(
+    return LEARNING_RESOURCES.filter(
       (b) =>
         (grade === 'all' || b.grade === grade) &&
         (query.trim() === '' ||
@@ -120,6 +45,7 @@ function App() {
           </label>
 
           <nav className="ml-auto flex items-center gap-6 text-sm font-medium">
+            <a href="/register" className="hover:text-[#a23b2a]">Đăng ký tài khoản</a>
             <a href="#sach" className="hidden hover:text-[#a23b2a] sm:block">Sách lẻ</a>
             <a href="#combo" className="hidden hover:text-[#a23b2a] sm:block">Trọn bộ</a>
             <a href="#lien-he" className="hidden hover:text-[#a23b2a] sm:block">Liên hệ</a>
@@ -175,9 +101,9 @@ function App() {
 
         {/* Chồng sách */}
         <div className="relative mx-auto h-90 w-full max-w-sm sm:h-105">
-          <Cover book={BOOKS[5]} className="absolute left-0 top-10 w-40 -rotate-6 sm:w-48" />
-          <Cover book={BOOKS[0]} className="absolute right-0 top-0 w-44 rotate-3 sm:w-52" />
-          <Cover book={BOOKS[3]} className="absolute bottom-0 left-16 w-40 -rotate-2 sm:left-20 sm:w-48" />
+          <LearningResourceCard resource={LEARNING_RESOURCES[5]} className="absolute left-0 top-10 w-40 -rotate-6 sm:w-48" />
+          <LearningResourceCard resource={LEARNING_RESOURCES[0]} className="absolute right-0 top-0 w-44 rotate-3 sm:w-52" />
+          <LearningResourceCard resource={LEARNING_RESOURCES[3]} className="absolute bottom-0 left-16 w-40 -rotate-2 sm:left-20 sm:w-48" />
         </div>
       </section>
 
@@ -219,7 +145,7 @@ function App() {
               {visible.map((b) => (
                 <article key={b.id} className="group">
                   <a href="#" className="block transition group-hover:-translate-y-1">
-                    <Cover book={b} />
+                    <LearningResourceCard resource={b} />
                   </a>
                   <div className="mt-4">
                     <p className="text-xs uppercase tracking-wider text-[#7a877f]">
@@ -227,9 +153,9 @@ function App() {
                     </p>
                     <h3 className="mt-1 text-sm font-semibold leading-snug">{b.title}</h3>
                     <div className="mt-2 flex items-baseline gap-2">
-                      <span className="font-semibold text-[#a23b2a]">{vnd(b.price)}</span>
+                      <span className="font-semibold text-[#a23b2a]">{formatVnd(b.price)}</span>
                       {b.oldPrice && (
-                        <span className="text-xs text-[#8a958e] line-through">{vnd(b.oldPrice)}</span>
+                        <span className="text-xs text-[#8a958e] line-through">{formatVnd(b.oldPrice)}</span>
                       )}
                     </div>
                     <button
@@ -264,7 +190,7 @@ function App() {
                   <p className="mt-1 text-sm text-[#5b6a62]">{c.count} quyển</p>
                 </div>
                 <div className="flex items-center gap-5">
-                  <span className="font-semibold text-[#a23b2a]">{vnd(c.price)}</span>
+                  <span className="font-semibold text-[#a23b2a]">{formatVnd(c.price)}</span>
                   <button
                     onClick={() => setCart((n) => n + 1)}
                     className="rounded-full bg-[#1f4d3a] px-4 py-2 text-sm font-medium text-[#faf6ee] transition hover:bg-[#173a2c]"
@@ -350,5 +276,3 @@ function App() {
     </div>
   )
 }
-
-export default App

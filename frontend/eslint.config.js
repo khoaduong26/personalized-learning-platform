@@ -18,4 +18,41 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    files: ['src/shared/**/*.{js,jsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['**/features/**', '**/app/**', '**/prototypes/**'],
+          message: 'shared chỉ chứa mã dùng chung, không phụ thuộc app, features hoặc prototypes.',
+        }],
+      }],
+    },
+  },
+  {
+    files: ['src/app/**/*.{js,jsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['**/prototypes/**'],
+          message: 'Không đưa bản mẫu prototypes vào ứng dụng chính.',
+        }],
+      }],
+    },
+  },
+  {
+    files: ['src/features/**/*.{js,jsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['**/app/**', '**/prototypes/**'],
+          message: 'Feature không phụ thuộc app hoặc prototypes; app chịu trách nhiệm lắp ghép.',
+        }],
+      }],
+    },
+  },
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: { globals: globals.node },
+  },
 ])
