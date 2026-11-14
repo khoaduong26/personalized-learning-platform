@@ -7,7 +7,7 @@ export default function HomeHeader() {
       <header className="home-header">
         <div className="home-container home-header-inner">
           <Link className="home-brand" to="/" aria-label="TLCN — Trang chủ"><span className="brand-symbol" aria-hidden="true">✳</span><span>TLCN<span className="brand-dot">.</span></span></Link>
-          <nav className="home-nav" aria-label="Điều hướng chính"><a href="/#kham-pha">Khám phá</a><a href="/#thu-suc">Thử sức cùng Toán</a><a href="/#giao-vien">Dành cho giáo viên</a></nav>
+          <nav className="home-nav" aria-label="Điều hướng chính"><a href="/#kham-pha">Khám phá</a><a href="/#thu-suc">Thử sức cùng Toán</a><Link to="/academic">Quản lý chương trình</Link></nav>
           <Link className="home-button home-button-small" to="/register">Tạo tài khoản <span aria-hidden="true">↗</span></Link>
         </div>
       </header>

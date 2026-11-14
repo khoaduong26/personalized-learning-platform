@@ -41,6 +41,9 @@ public class AuthController {
     @GetMapping("/registration-session")
     public UserSummary registrationSession(@AuthenticationPrincipal UserSummary user) { return user; }
 
+    @GetMapping("/session")
+    public UserSummary currentSession(@AuthenticationPrincipal UserSummary user) { return user; }
+
     @GetMapping("/google")
     public void google(@RequestParam Role role, HttpServletRequest request, HttpServletResponse response) throws IOException {
         service.requirePublicRole(role);
