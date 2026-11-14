@@ -21,8 +21,13 @@ import org.springframework.stereotype.Component;
 public class GoogleRegistrationSuccessHandler implements AuthenticationSuccessHandler {
     private final AuthService auth;
     private final String frontendUrl;
-    public GoogleRegistrationSuccessHandler(AuthService auth, @Value("${app.frontend-url}") String frontendUrl) {
+    private final LoginService login;
+    private final LoginTokenService tokens;
+    public GoogleRegistrationSuccessHandler(AuthService auth, LoginService login, LoginTokenService tokens,
+            @Value("${app.frontend-url}") String frontendUrl) {
         this.auth = auth;
+        this.login = login;
+        this.tokens = tokens;
         this.frontendUrl = frontendUrl;
     }
 
@@ -30,21 +35,31 @@ public class GoogleRegistrationSuccessHandler implements AuthenticationSuccessHa
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
         String result = "success";
+        HttpSession session = request.getSession(false);
+        boolean signingIn = session != null && "login".equals(session.getAttribute(AuthController.GOOGLE_FLOW));
         try {
-            HttpSession session = request.getSession(false);
             Object role = session == null ? null : session.getAttribute(AuthController.GOOGLE_ROLE);
-            if (!(role instanceof Role selectedRole)) throw new IllegalArgumentException("Missing registration role");
+            if (!signingIn && !(role instanceof Role)) throw new IllegalArgumentException("Missing registration role");
             OidcUser principal = (OidcUser) authentication.getPrincipal();
-            var user = auth.registerGoogle(principal.getSubject(), principal.getEmail(),
-                    principal.getEmailVerified(), principal.getFullName(), selectedRole);
+            var user = signingIn ? login.loginGoogle(principal.getSubject(), principal.getEmailVerified())
+                    : auth.registerGoogle(principal.getSubject(), principal.getEmail(),
+                        principal.getEmailVerified(), principal.getFullName(), (Role) role);
+            boolean remember = Boolean.TRUE.equals(session.getAttribute(AuthController.GOOGLE_REMEMBER));
+            tokens.issue(user, remember, response);
             session.removeAttribute(AuthController.GOOGLE_ROLE);
+            session.removeAttribute(AuthController.GOOGLE_FLOW);
+            session.removeAttribute(AuthController.GOOGLE_REMEMBER);
             var context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(UserSummary.from(user), null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))));
             SecurityContextHolder.setContext(context);
             new HttpSessionSecurityContextRepository().saveContext(context, request, response);
         } catch (AuthException ex) {
-            result = ex.getCode().equals("EMAIL_EXISTS") ? "exists" : "error";
+            result = signingIn ? switch (ex.getCode()) {
+                case "GOOGLE_NOT_REGISTERED" -> "not-registered";
+                case "ACCOUNT_LOCKED" -> "locked";
+                default -> "error";
+            } : ex.getCode().equals("EMAIL_EXISTS") ? "exists" : "error";
         } catch (RuntimeException ex) {
             // A persistence/provider failure must never leave Spring's preliminary OIDC login active.
             result = "error";
@@ -53,6 +68,6 @@ public class GoogleRegistrationSuccessHandler implements AuthenticationSuccessHa
             SecurityContextHolder.clearContext();
             if (request.getSession(false) != null) request.getSession(false).invalidate();
         }
-        response.sendRedirect(frontendUrl + "/register?google=" + result);
+        response.sendRedirect(frontendUrl + (signingIn ? "/login" : "/register") + "?google=" + result);
     }
 }

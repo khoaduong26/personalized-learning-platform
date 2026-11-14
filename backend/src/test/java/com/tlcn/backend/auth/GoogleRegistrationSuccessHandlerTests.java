@@ -17,7 +17,9 @@ import static org.mockito.Mockito.*;
 
 class GoogleRegistrationSuccessHandlerTests {
     private final AuthService auth = mock(AuthService.class);
-    private final GoogleRegistrationSuccessHandler handler = new GoogleRegistrationSuccessHandler(auth, "http://localhost:5173");
+    private final LoginService login = mock(LoginService.class);
+    private final LoginTokenService tokens = mock(LoginTokenService.class);
+    private final GoogleRegistrationSuccessHandler handler = new GoogleRegistrationSuccessHandler(auth, login, tokens, "http://localhost:5173");
     private final MockHttpServletRequest request = new MockHttpServletRequest();
     private final MockHttpServletResponse response = new MockHttpServletResponse();
     private final OidcUser oidcUser = mock(OidcUser.class);
@@ -76,5 +78,30 @@ class GoogleRegistrationSuccessHandlerTests {
         verifyNoInteractions(auth);
         assertEquals("http://localhost:5173/register?google=error", response.getRedirectedUrl());
         assertNull(request.getSession(false));
+    }
+
+    @Test void googleLoginUsesTheExistingAccountAndRememberPreference() throws Exception {
+        request.getSession().setAttribute(AuthController.GOOGLE_FLOW, "login");
+        request.getSession().setAttribute(AuthController.GOOGLE_REMEMBER, true);
+        Teacher teacher = new Teacher();
+        teacher.setFullName("An"); teacher.setEmail("test@example.invalid");
+        when(login.loginGoogle("subject", true)).thenReturn(teacher);
+        complete();
+        verifyNoInteractions(auth);
+        verify(tokens).issue(teacher, true, response);
+        assertEquals("http://localhost:5173/login?google=success", response.getRedirectedUrl());
+        assertEquals(List.of("ROLE_TEACHER"), SecurityContextHolder.getContext().getAuthentication()
+                .getAuthorities().stream().map(Object::toString).toList());
+    }
+
+    @Test void unknownGoogleLoginDoesNotRegisterOrKeepAuthentication() throws Exception {
+        request.getSession().setAttribute(AuthController.GOOGLE_FLOW, "login");
+        when(login.loginGoogle("subject", true)).thenThrow(new AuthException(HttpStatus.UNAUTHORIZED,
+                "GOOGLE_NOT_REGISTERED", "Register first"));
+        complete();
+        verifyNoInteractions(auth, tokens);
+        assertEquals("http://localhost:5173/login?google=not-registered", response.getRedirectedUrl());
+        assertNull(request.getSession(false));
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 }

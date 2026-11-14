@@ -9,6 +9,8 @@
 .home-skip { position: absolute; top: -100px; left: 16px; z-index: 10; background: white; padding: 12px 20px; border: 2px solid var(--purple); border-radius: 8px; }
 .home-skip:focus { top: 12px; }
 .home-header { border-bottom: 1px solid #e8e3db; }
+.home-account-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
+.home-account-actions .home-text-link { max-width: 220px; overflow-wrap: anywhere; }
 .home-header-inner { min-height: 94px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .home-brand { display: inline-flex; align-items: center; gap: 9px; font-size: 30px; font-weight: 850; letter-spacing: -1.5px; }
 .brand-symbol { display: grid; place-items: center; background: #e9e2f3; color: #69518e; width: 38px; height: 38px; border-radius: 12px; font-size: 32px; font-weight: 400; letter-spacing: 0; }

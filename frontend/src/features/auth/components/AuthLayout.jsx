@@ -1,7 +1,7 @@
 import '../styles/registration.css'
 import { Link } from 'react-router-dom'
 
-export default function AuthLayout({ children }) {
+export default function AuthLayout({ children, label = 'Đăng ký tài khoản' }) {
   return (
     <div className="registration">
       <header className="registration-header">
@@ -16,7 +16,7 @@ export default function AuthLayout({ children }) {
           <div className="registration-math" aria-hidden="true"><span>2</span><span>+</span><span>3</span><span>=</span><span>5</span></div>
           <ul><li>Bắt đầu với tài khoản của bạn</li><li>Xác minh email để bảo vệ tài khoản</li><li>Đồng hành trên hành trình học tập</li></ul>
         </aside>
-        <section className="registration-card" aria-label="Đăng ký tài khoản">{children}</section>
+        <section className="registration-card" aria-label={label}>{children}</section>
       </main>
       <footer className="registration-footer">TLCN · Nền tảng học tập cá nhân hóa cho học sinh tiểu học</footer>
     </div>

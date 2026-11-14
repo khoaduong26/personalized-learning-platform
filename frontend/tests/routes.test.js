@@ -22,7 +22,7 @@ const routes = [
   ['/register?google=error', 'Chưa đăng ký được bằng Google', 'role="alert"'],
   ['/register?google=success', 'Đang kiểm tra tài khoản', 'ĐĂNG KÝ VỚI GOOGLE'],
   ['/register/complete', 'Tài khoản đã sẵn sàng!', 'Đến trang đăng nhập'],
-  ['/login', 'Đăng nhập', 'Chức năng đăng nhập bằng email sẽ sớm có mặt'],
+  ['/login', 'Đăng nhập', 'Đăng nhập với Google'],
   ['/does-not-exist', 'Không tìm thấy trang', 'home-header'],
 ]
 

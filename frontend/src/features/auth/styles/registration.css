@@ -54,6 +54,9 @@
 .registration-field > input.registration-otp { font-size: 28px; text-align: center; letter-spacing: .35em; padding-left: 22px; }
 .registration-link { text-align: center; text-decoration: none; margin-top: 25px; }
 .registration-footer { text-align: center; padding: 10px 24px 26px; font-size: 11px; color: #657066; }
+.login-remember { display: flex; align-items: center; gap: 8px; margin: 4px 0 20px; font-size: 12px; color: #59675e; }
+.login-remember input { accent-color: #1f4d3a; }
+.login-logout { margin-top: 15px; }
 @media (max-width: 900px) { .registration-main { gap: 30px; } .registration-card { padding: 26px; } .registration-intro h1 { font-size: 38px; } }
 @media (max-width: 700px) {
   .registration-header { padding: 18px 22px; } .registration-header > span { font-size: 10px; }

@@ -1,10 +1,10 @@
 // Relative URLs keep requests on the frontend origin (Vite proxies /api in dev).
-export async function httpRequest(path, { method = 'GET', body, signal } = {}) {
+export async function httpRequest(path, { method = 'GET', body, signal, headers } = {}) {
   let response
   try {
     response = await fetch(path, {
       method,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal,
     })

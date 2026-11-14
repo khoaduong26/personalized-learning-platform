@@ -9,7 +9,7 @@ Từ thư mục gốc của dự án:
 ```powershell
 cd frontend
 npm.cmd install
-npm.cmd run dev
+npm.cmd run dev -- --port 5173 --strictPort
 ```
 
 Backend mặc định chạy tại `http://localhost:8080`. `vite.config.js` chuyển tiếp `/api`, `/oauth2` và `/login/oauth2` sang backend. Frontend gọi API bằng đường dẫn tương đối, không cần `.env` để chạy với cấu hình này.
@@ -140,7 +140,7 @@ frontend/
 | Feature | Nhiệm vụ và ranh giới |
 | --- | --- |
 | `home` | Giới thiệu nền tảng, minh họa Toán lớp 2 và bài toán trải nghiệm không cần tài khoản. |
-| `auth` | Đăng ký email, xác minh/gửi lại OTP, đăng ký Google; sẽ bổ sung đăng nhập và phiên xác thực khi backend hỗ trợ. |
+| `auth` | Đăng ký email, xác minh/gửi lại OTP, đăng ký và đăng nhập Google, đăng nhập email/mật khẩu, ghi nhớ đăng nhập, tải tài khoản hiện tại và đăng xuất. |
 | `users` | Hồ sơ cá nhân và quản lý tài khoản, vai trò. Không quản lý trạng thái form đăng nhập. |
 | `classrooms` | Lớp học và thành viên lớp. Trang xem năng lực học sinh thuộc `mastery`, dù được mở từ lớp học. |
 | `academic` | Môn học, chủ đề và bài học; dữ liệu học thuật làm nền cho đánh giá và lộ trình. |
@@ -203,7 +203,7 @@ app ────────> features ────────> shared
 - Tránh phụ thuộc vòng giữa hai feature. Nếu cần dùng chung phần hiển thị câu hỏi cho kiểm tra và luyện tập, tách phần giao diện tổng quát sang shared; xử lý nộp bài vẫn do feature sở hữu.
 - ESLint đang kiểm tra chiều phụ thuộc của shared, chặn feature import app và chặn app/features import prototypes. Quy tắc xuất qua `index.js` và tránh vòng giữa feature vẫn cần được kiểm tra khi review.
 - Component/trang/layout dùng PascalCase; hook bắt đầu bằng `use`; service và util dùng camelCase; thư mục feature dùng chữ thường, nhiều từ nối bằng dấu `-`.
-- Dùng state tại component/hook gần nơi sử dụng. Chỉ đưa state vào context khi nhiều phần thực sự cần; chưa có AuthContext vì chưa có luồng phiên đăng nhập hoàn chỉnh.
+- Dùng state tại component/hook gần nơi sử dụng. Chỉ đưa state vào context khi nhiều phần thực sự cần; hiện LoginPage và HomeHeader tải người dùng qua API, chưa có AuthContext toàn cục.
 
 ### 2.7. Định tuyến và vai trò
 
@@ -216,7 +216,9 @@ app ────────> features ────────> shared
 | `/register?google=success` | Kiểm tra phiên đăng ký Google và hiển thị kết quả. |
 | `/register?google=exists` hoặc `google=error` | Thông báo tương ứng trong trang đăng ký. |
 | `/register/complete` | Thông báo sau khi xác minh email thành công. |
-| `/login` | Trang riêng thông báo chức năng đăng nhập email chưa triển khai. |
+| `/login` | Đăng nhập email/mật khẩu hoặc Google, chọn ghi nhớ; khi đã đăng nhập hiển thị tài khoản, vai trò và nút đăng xuất. |
+| `/login?google=success` | Tải tài khoản hiện tại sau callback Google. |
+| `/login?google=not-registered`, `google=locked` hoặc `google=error` | Hiển thị lỗi đăng nhập Google tương ứng. |
 | `/login?registered=1` | Tương thích luồng cũ: chuyển sang `/register/complete`. |
 | URL khác | Trang 404, không tự hiển thị trang chủ. |
 
@@ -224,20 +226,78 @@ Trang hoàn tất chỉ là giao diện phản hồi, không phải bằng chứ
 
 Khi triển khai chức năng sau đăng nhập:
 
-1. Hoàn thiện API phiên đăng nhập và cách tải người dùng hiện tại.
-2. Tạo context/hook phiên đăng nhập trong `auth`, xuất giao diện cần thiết qua `auth/index.js`, ghép provider tại `app/providers`.
+1. Dùng API `/api/auth/me` đã có để tải người dùng hiện tại; `getCurrentUser` được xuất qua `auth/index.js`.
+2. Khi nhiều trang cần chia sẻ trạng thái, tạo context/hook phiên đăng nhập trong `auth`, xuất giao diện cần thiết qua `auth/index.js`, ghép provider tại `app/providers`.
 3. Thêm `ProtectedRoute.jsx` và `RoleRoute.jsx` trong `app/routes`; xử lý đủ trạng thái đang tải, chưa đăng nhập, sai vai trò và lỗi tải phiên.
 4. Thêm `StudentLayout.jsx`, `TeacherLayout.jsx`, `AdminLayout.jsx` trong `app/layouts` khi có trang sử dụng.
 5. Trang nghiệp vụ vẫn ở feature tương ứng, ví dụ `/teacher/classrooms` trỏ đến trang trong `features/classrooms/pages`.
 
-Hiện chưa tạo các guard và layout sau đăng nhập để tránh giả định sai về phiên xác thực. Backend vẫn phải kiểm tra quyền truy cập và quyền sở hữu dữ liệu; route guard chỉ phục vụ trải nghiệm frontend.
-
 ### 2.8. API và dữ liệu
 
-`shared/services/httpClient.js` nhận đường dẫn và tùy chọn `method`, `body`, `signal`. Khi có body, nó gửi JSON; lỗi API giữ `status`, `code`, `fieldErrors` để feature hiển thị đúng thông báo. AbortError được giữ nguyên để component có thể bỏ qua yêu cầu đã hủy.
+`shared/services/httpClient.js` nhận đường dẫn và tùy chọn `method`, `body`, `signal`, `headers`. Khi có body, nó gửi JSON; lỗi API giữ `status`, `code`, `fieldErrors` để feature hiển thị đúng thông báo. AbortError được giữ nguyên để component có thể bỏ qua yêu cầu đã hủy.
 
-`features/auth/services/authApi.js` cung cấp các hàm có tên theo nghiệp vụ: `getRegistrationOptions`, `registerAccount`, `verifyRegistrationOtp`, `resendRegistrationOtp`, `getRegistrationSession`.
+`features/auth/services/authApi.js` cung cấp các hàm có tên theo nghiệp vụ: `getRegistrationOptions`, `registerAccount`, `verifyRegistrationOtp`, `resendRegistrationOtp`, `getRegistrationSession`, `getCurrentUser`, `loginAccount`, `logoutAccount`. Login/logout tự lấy CSRF token rồi gửi header tương ứng; trình duyệt gửi cookie cùng origin qua Vite proxy.
 
 Không lưu mật khẩu, OTP hoặc khóa bí mật trong browser storage. `registrationStorage` chỉ giữ email đang chờ xác minh trong sessionStorage. Biến `VITE_*` là dữ liệu có thể xuất hiện trong mã gửi đến trình duyệt, không dùng để chứa bí mật.
 
 Backend hiện đã có nhiều entity/controller nhưng các API nghiệp vụ còn cần hoàn thiện và phân quyền; cấu hình SecurityConfig đang chặn các request ngoài các đường dẫn cho phép. Không mở rộng client sang các API này rồi coi chức năng đã tích hợp xong.
+
+### 2.9. Cấu hình và sử dụng UC01–UC02
+
+
+`JWT_SECRET` là Base64 của ít nhất 32 byte ngẫu nhiên. Tạo khóa bằng PowerShell rồi điền kết quả vào `backend/.env`:
+
+Giữ khóa ở backend; không commit hoặc đưa vào biến `VITE_*`. Nếu không đặt khóa, backend dùng khóa tạm và phiên đăng nhập mất hiệu lực khi khởi động lại. Môi trường HTTPS dùng `SESSION_COOKIE_SECURE=true`; localhost HTTP dùng `false`.
+
+Chạy từ thư mục gốc trong một terminal riêng:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Backend đọc `.env` theo thư mục chạy nên cần chạy từ `backend`. Cấu hình local `DB_DDL_AUTO=update` tạo bảng `login_sessions` dùng thu hồi phiên. Khi dùng schema validation ở môi trường triển khai, cần migration tạo bảng trước.
+
+#### Đăng ký và đăng nhập bằng email
+
+
+1. Mở `http://localhost:5173/register`, chọn Giáo viên/Học sinh và đăng ký.
+2. Nhập OTP nhận qua email để kích hoạt tài khoản. OTP có hạn 5 phút; gửi lại cách nhau ít nhất 60 giây, tối đa 5 email/giờ; nhập sai tối đa 5 lần cho mỗi mã.
+3. Vào `http://localhost:5173/login`, nhập email và mật khẩu.
+4. Khi thành công, trang hiển thị tên, email, vai trò và nút **Đăng xuất**. Trang chủ hiển thị liên kết tài khoản.
+
+Tài khoản chưa xác minh phải hoàn tất OTP trước khi đăng nhập; tài khoản bị khóa không được đăng nhập. Email/mật khẩu sai trả thông báo chung.
+
+#### Đăng ký và đăng nhập Google
+
+
+- **Đăng ký:** tại `/register`, chọn vai trò rồi nhấn **Tiếp tục với Google**. Tài khoản mới được tạo ở trạng thái `ACTIVE` và đăng nhập ngay.
+- **Đăng nhập:** tại `/login`, nhấn **Đăng nhập với Google** bằng tài khoản Google đã đăng ký. Vai trò lấy từ database, không chọn lại khi đăng nhập.
+- Chưa có tài khoản Google trong hệ thống: nhận thông báo đăng ký trước. Không tự liên kết tài khoản email chỉ vì trùng địa chỉ email; backend nhận diện Google bằng `googleSubject`.
+- Google không cần SMTP/OTP của ứng dụng. Client Secret chỉ nằm ở backend.
+
+#### Phiên đăng nhập và ghi nhớ
+
+| Lựa chọn | Thời hạn JWT | Cookie |
+| --- | --- | --- |
+| Không ghi nhớ | 8 giờ | Cookie phiên trình duyệt |
+| Ghi nhớ đăng nhập | 30 ngày | Cookie có Max-Age 30 ngày |
+
+JWT được lưu trong cookie HttpOnly, SameSite=Lax; frontend không đọc JWT bằng JavaScript và không lưu JWT vào localStorage. Mỗi yêu cầu xác thực kiểm tra phiên, trạng thái và vai trò hiện tại trong database. Đăng xuất thu hồi phiên ngay, kể cả khi JWT cũ được gửi lại. Backend dọn phiên hết hạn khi phát JWT mới.
+
+#### API xác thực được sử dụng
+
+| Method | Endpoint | Chức năng |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Đăng ký email |
+| POST | `/api/auth/verify-otp` | Xác minh OTP |
+| POST | `/api/auth/resend-otp` | Gửi lại OTP |
+| GET | `/api/auth/options` | Kiểm tra Google đã bật |
+| GET | `/api/auth/registration-session` | Tải tài khoản sau đăng ký Google |
+| GET | `/api/auth/csrf` | Lấy `token` và `headerName` cho login/logout |
+| POST | `/api/auth/login` | Gửi `{ email, password, rememberMe }`; nhận tài khoản và cookie JWT |
+| GET | `/api/auth/me` | Tải tài khoản của phiên hiện tại |
+| POST | `/api/auth/logout` | Thu hồi phiên và xóa cookie |
+| GET | `/api/auth/google?role=STUDENT` | Bắt đầu đăng ký Google; cũng nhận `TEACHER` |
+| GET | `/api/auth/google-login?rememberMe=true` | Bắt đầu đăng nhập Google |
+
