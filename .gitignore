@@ -1,4 +1,5 @@
-# Environment variables. Bỏ các file môi trường
+
+# Environment variables
 backend/.env
 frontend/.env
 frontend/.env.local

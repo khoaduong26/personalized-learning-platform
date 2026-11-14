@@ -6,5 +6,5 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "teachers")
 public class Teacher extends User {
-    protected Teacher() { setRole(Role.TEACHER); }
+    public Teacher() { setRole(Role.TEACHER); }
 }
