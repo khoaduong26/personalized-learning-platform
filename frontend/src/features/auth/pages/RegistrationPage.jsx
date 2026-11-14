@@ -17,7 +17,7 @@ function RegistrationFlow({ googleResult }) {
     <AuthLayout>
       <span className="registration-step">{step === 'register' ? 'BƯỚC 1 / 2 · TẠO TÀI KHOẢN' : 'BƯỚC 2 / 2 · XÁC MINH EMAIL'}</span>
       <h2>{step === 'register' ? 'Bắt đầu hành trình mới' : step === 'recover' ? 'Gửi lại mã xác minh' : 'Kiểm tra hộp thư nhé!'}</h2>
-      <p className="registration-description">{step === 'register' ? 'Chọn vai trò và điền thông tin để tham gia TLCN.' : 'Nhập mã gồm 6 chữ số được gửi đến email đăng ký. Mã có hiệu lực trong 5 phút.'}</p>
+      <p className="registration-description">{step === 'register' ? 'Chọn vai trò và điền thông tin để tham gia EduLearn.' : 'Nhập mã gồm 6 chữ số được gửi đến email đăng ký. Mã có hiệu lực trong 5 phút.'}</p>
       {(error || googleError) && <div role="alert" className="registration-notice error">{error || googleError}</div>}
       {message && <div role="status" className="registration-notice success">{message}</div>}
 

@@ -5,7 +5,7 @@ import RegistrationField from '../components/RegistrationField'
 import { getCurrentUser, getRegistrationOptions, loginAccount, logoutAccount } from '../services/authApi'
 
 const googleErrors = {
-  'not-registered': 'Bạn chưa có tài khoản Google trên TLCN. Hãy đăng ký trước.',
+  'not-registered': 'Bạn chưa có tài khoản Google trên EduLearn. Hãy đăng ký trước.',
   locked: 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.',
   error: 'Chưa đăng nhập được bằng Google. Vui lòng thử lại.',
 }
@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [googleDismissed, setGoogleDismissed] = useState(false)
 
   useEffect(() => {
-    document.title = 'Đăng nhập | TLCN'
+    document.title = 'Đăng nhập | EduLearn'
     const controller = new AbortController()
     getCurrentUser(controller.signal).then(setUser).catch(failure => {
       if (failure.name !== 'AbortError' && failure.status !== 401) setError(failure.message)
@@ -59,7 +59,7 @@ export default function LoginPage() {
 
   const displayedError = error || (!googleDismissed && googleErrors[params.get('google')])
   return <AuthLayout label="Đăng nhập tài khoản">
-    <span className="registration-step">TÀI KHOẢN TLCN</span>
+    <span className="registration-step">TÀI KHOẢN EduLearn</span>
     <h2>{user ? `Xin chào, ${user.fullName}!` : 'Đăng nhập'}</h2>
     {displayedError && <p className="registration-notice error" role="alert">{displayedError}</p>}
     {user ? <>

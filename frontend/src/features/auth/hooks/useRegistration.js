@@ -21,7 +21,7 @@ export default function useRegistration() {
   const [googleEnabled, setGoogleEnabled] = useState(false)
 
   useEffect(() => {
-    document.title = 'Đăng ký tài khoản | TLCN'
+    document.title = 'Đăng ký tài khoản | EduLearn'
     const controller = new AbortController()
     getRegistrationOptions(controller.signal)
       .then(data => setGoogleEnabled(data.googleEnabled))

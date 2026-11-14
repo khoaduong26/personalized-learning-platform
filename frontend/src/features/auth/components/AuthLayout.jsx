@@ -5,7 +5,7 @@ export default function AuthLayout({ children, label = 'Đăng ký tài khoản'
   return (
     <div className="registration">
       <header className="registration-header">
-        <Link to="/" className="registration-brand">TLCN<span>.</span></Link>
+        <Link to="/" className="registration-brand">EduLearn<span>.</span></Link>
         <span>Học Toán lớp 2 · Tiến bộ từng ngày</span>
       </header>
       <main className="registration-main">
@@ -18,7 +18,7 @@ export default function AuthLayout({ children, label = 'Đăng ký tài khoản'
         </aside>
         <section className="registration-card" aria-label={label}>{children}</section>
       </main>
-      <footer className="registration-footer">TLCN · Nền tảng học tập cá nhân hóa cho học sinh tiểu học</footer>
+      <footer className="registration-footer">EduLearn · Nền tảng học tập cá nhân hóa cho học sinh tiểu học</footer>
     </div>
   )
 }
