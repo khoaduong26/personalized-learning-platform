@@ -94,7 +94,7 @@ public class TopicService {
 
     private String normalizeName(String name) {
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Tên chủ đề không được để trống.");
+            throw new AcademicBadRequestException("Tên chủ đề không được để trống.");
         }
         return name.strip();
     }
