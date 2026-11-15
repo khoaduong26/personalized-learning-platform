@@ -16,24 +16,30 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ClassroomExceptionHandler {
     @ExceptionHandler(ClassroomNotFoundException.class)
     ResponseEntity<?> notFound(ClassroomNotFoundException error) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("code", "CLASSROOM_NOT_FOUND", "message", error.getMessage()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("code", "CLASSROOM_NOT_FOUND", "message", error.getMessage()));
     }
 
-    @ExceptionHandler({ClassroomConflictException.class, DataIntegrityViolationException.class})
+    @ExceptionHandler({ ClassroomConflictException.class, DataIntegrityViolationException.class })
     ResponseEntity<?> conflict(RuntimeException error) {
-        String message = error instanceof ClassroomConflictException ? error.getMessage() : "Dữ liệu đang được sử dụng hoặc bị trùng.";
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("code", "CLASSROOM_CONFLICT", "message", message));
+        String message = error instanceof ClassroomConflictException ? error.getMessage()
+                : "Dữ liệu đang được sử dụng hoặc bị trùng.";
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("code", "CLASSROOM_CONFLICT", "message", message));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<?> requestError(ResponseStatusException error) {
-        return ResponseEntity.status(error.getStatusCode()).body(Map.of("code", "INVALID_REQUEST", "message", error.getReason() == null ? "Yêu cầu không hợp lệ." : error.getReason()));
+        return ResponseEntity.status(error.getStatusCode()).body(Map.of("code", "INVALID_REQUEST", "message",
+                error.getReason() == null ? "Yêu cầu không hợp lệ." : error.getReason()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<?> validationError(MethodArgumentNotValidException error) {
         Map<String, String> fields = new HashMap<>();
-        error.getBindingResult().getFieldErrors().forEach(field -> fields.putIfAbsent(field.getField(), field.getDefaultMessage()));
-        return ResponseEntity.badRequest().body(Map.of("code", "VALIDATION_ERROR", "message", "Vui lòng kiểm tra thông tin đã nhập.", "fieldErrors", fields));
+        error.getBindingResult().getFieldErrors()
+                .forEach(field -> fields.putIfAbsent(field.getField(), field.getDefaultMessage()));
+        return ResponseEntity.badRequest().body(Map.of("code", "VALIDATION_ERROR", "message",
+                "Vui lòng kiểm tra thông tin đã nhập.", "fieldErrors", fields));
     }
 }

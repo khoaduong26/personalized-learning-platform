@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 public class GoogleRegistrationSuccessHandler implements AuthenticationSuccessHandler {
     private final AuthService auth;
     private final String frontendUrl;
+
     public GoogleRegistrationSuccessHandler(AuthService auth, @Value("${app.frontend-url}") String frontendUrl) {
         this.auth = auth;
         this.frontendUrl = frontendUrl;
@@ -28,12 +29,13 @@ public class GoogleRegistrationSuccessHandler implements AuthenticationSuccessHa
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                        Authentication authentication) throws IOException, ServletException {
+            Authentication authentication) throws IOException, ServletException {
         String result = "success";
         try {
             HttpSession session = request.getSession(false);
             Object role = session == null ? null : session.getAttribute(AuthController.GOOGLE_ROLE);
-            if (!(role instanceof Role selectedRole)) throw new IllegalArgumentException("Missing registration role");
+            if (!(role instanceof Role selectedRole))
+                throw new IllegalArgumentException("Missing registration role");
             OidcUser principal = (OidcUser) authentication.getPrincipal();
             var user = auth.registerGoogle(principal.getSubject(), principal.getEmail(),
                     principal.getEmailVerified(), principal.getFullName(), selectedRole);
@@ -46,12 +48,14 @@ public class GoogleRegistrationSuccessHandler implements AuthenticationSuccessHa
         } catch (AuthException ex) {
             result = ex.getCode().equals("EMAIL_EXISTS") ? "exists" : "error";
         } catch (RuntimeException ex) {
-            // A persistence/provider failure must never leave Spring's preliminary OIDC login active.
+            // A persistence/provider failure must never leave Spring's preliminary OIDC
+            // login active.
             result = "error";
         }
         if (!result.equals("success")) {
             SecurityContextHolder.clearContext();
-            if (request.getSession(false) != null) request.getSession(false).invalidate();
+            if (request.getSession(false) != null)
+                request.getSession(false).invalidate();
         }
         response.sendRedirect(frontendUrl + "/register?google=" + result);
     }

@@ -18,10 +18,14 @@ import org.springframework.validation.annotation.Validated;
 @RequestMapping("/api/students")
 public class StudentController {
     private final ClassroomService service;
-    public StudentController(ClassroomService service) { this.service = service; }
+
+    public StudentController(ClassroomService service) {
+        this.service = service;
+    }
 
     @GetMapping("/candidates")
-    public List<StudentCandidate> candidates(@RequestParam @NotBlank @Email String email, @AuthenticationPrincipal UserSummary actor) {
+    public List<StudentCandidate> candidates(@RequestParam @NotBlank @Email String email,
+            @AuthenticationPrincipal UserSummary actor) {
         return service.findCandidate(email, actor);
     }
 
@@ -32,5 +36,7 @@ public class StudentController {
 
     @PatchMapping("/{studentId}")
     public StudentSummary update(@PathVariable Long studentId, @Valid @RequestBody StudentUpdateRequest request,
-            @AuthenticationPrincipal UserSummary actor) { return service.updateStudent(studentId, request, actor); }
+            @AuthenticationPrincipal UserSummary actor) {
+        return service.updateStudent(studentId, request, actor);
+    }
 }

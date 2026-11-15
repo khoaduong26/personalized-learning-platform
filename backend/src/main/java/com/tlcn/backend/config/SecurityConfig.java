@@ -17,43 +17,56 @@ import org.springframework.web.cors.*;
 
 @Configuration
 public class SecurityConfig {
-    @Bean Clock authClock() { return Clock.systemUTC(); }
-    @Bean PasswordEncoder passwordEncoder() { return Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8(); }
+    @Bean
+    Clock authClock() {
+        return Clock.systemUTC();
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8();
+    }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, GoogleRegistrationSuccessHandler googleSuccessHandler,
             ObjectProvider<ClientRegistrationRepository> clients,
             @Value("${app.frontend-url}") String frontendUrl) throws Exception {
-        http.cors(cors -> {})
-            // These public endpoints do not use cookie-based authentication. Keep CSRF for other routes.
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                .ignoringRequestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp"))
-            .authorizeHttpRequests(rules -> rules
-                .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp",
-                        "/api/auth/options", "/api/auth/google", "/oauth2/authorization/google",
-                        "/login/oauth2/code/google", "/error").permitAll()
-                .requestMatchers("/api/csrf").permitAll()
-                .requestMatchers("/api/auth/registration-session", "/api/auth/session").authenticated()
-                .requestMatchers("/api/subjects/**", "/api/topics/**", "/api/lessons/**").hasAnyRole("ADMIN", "TEACHER")
-                .requestMatchers("/api/classrooms/**", "/api/students/**").hasAnyRole("ADMIN", "TEACHER")
-                // Existing feature stubs have no ownership checks yet. Do not expose student data.
-                .anyRequest().denyAll())
-            .requestCache(cache -> cache.disable())
-            .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, ex) -> {
-                response.setStatus(401);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Bạn cần đăng nhập.\"}");
-            }));
+        http.cors(cors -> {
+        })
+                // These public endpoints do not use cookie-based authentication. Keep CSRF for
+                // other routes.
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        .ignoringRequestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp"))
+                .authorizeHttpRequests(rules -> rules
+                        .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp",
+                                "/api/auth/options", "/api/auth/google", "/oauth2/authorization/google",
+                                "/login/oauth2/code/google", "/error")
+                        .permitAll()
+                        .requestMatchers("/api/csrf").permitAll()
+                        .requestMatchers("/api/auth/registration-session", "/api/auth/session").authenticated()
+                        .requestMatchers("/api/subjects/**", "/api/topics/**", "/api/lessons/**")
+                        .hasAnyRole("ADMIN", "TEACHER")
+                        .requestMatchers("/api/classrooms/**", "/api/students/**").hasAnyRole("ADMIN", "TEACHER")
+                        // Existing feature stubs have no ownership checks yet. Do not expose student
+                        // data.
+                        .anyRequest().denyAll())
+                .requestCache(cache -> cache.disable())
+                .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, ex) -> {
+                    response.setStatus(401);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Bạn cần đăng nhập.\"}");
+                }));
         if (clients.getIfAvailable() != null) {
             http.oauth2Login(oauth -> oauth
-                .successHandler(googleSuccessHandler)
-                .failureHandler((request, response, exception) -> {
-                    SecurityContextHolder.clearContext();
-                    if (request.getSession(false) != null) request.getSession(false).invalidate();
-                    response.sendRedirect(frontendUrl + "/register?google=error");
-                }));
+                    .successHandler(googleSuccessHandler)
+                    .failureHandler((request, response, exception) -> {
+                        SecurityContextHolder.clearContext();
+                        if (request.getSession(false) != null)
+                            request.getSession(false).invalidate();
+                        response.sendRedirect(frontendUrl + "/register?google=error");
+                    }));
         }
         return http.build();
     }

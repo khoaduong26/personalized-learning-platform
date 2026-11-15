@@ -35,7 +35,8 @@ public class AuthService {
     public RegistrationResponse register(RegisterRequest request) {
         requirePublicRole(request.role());
         if (users.findByEmail(request.email()).isPresent()) {
-            throw error(HttpStatus.CONFLICT, "EMAIL_EXISTS", "Email đã được đăng ký. Nếu chưa xác minh, hãy chọn gửi lại OTP.");
+            throw error(HttpStatus.CONFLICT, "EMAIL_EXISTS",
+                    "Email đã được đăng ký. Nếu chưa xác minh, hãy chọn gửi lại OTP.");
         }
         User user = newUser(request.role());
         user.setFullName(request.fullName());
@@ -53,7 +54,8 @@ public class AuthService {
         User user = pendingUser(request.email());
         Instant now = clock.instant();
         if (user.getOtpAttempts() >= 5) {
-            throw error(HttpStatus.TOO_MANY_REQUESTS, "OTP_ATTEMPTS_EXCEEDED", "Bạn đã nhập sai 5 lần. Hãy yêu cầu mã OTP mới.");
+            throw error(HttpStatus.TOO_MANY_REQUESTS, "OTP_ATTEMPTS_EXCEEDED",
+                    "Bạn đã nhập sai 5 lần. Hãy yêu cầu mã OTP mới.");
         }
         if (user.getOtpExpiredAt() == null || !now.isBefore(user.getOtpExpiredAt())) {
             throw error(HttpStatus.BAD_REQUEST, "OTP_EXPIRED", "Mã OTP đã hết hạn. Hãy yêu cầu mã mới.");
@@ -84,7 +86,8 @@ public class AuthService {
                 || email == null || email.length() > 190) {
             throw error(HttpStatus.BAD_REQUEST, "GOOGLE_UNVERIFIED", "Google chưa xác minh email này.");
         }
-        // UC01 only creates accounts; never implicitly link an existing email or change its role/status.
+        // UC01 only creates accounts; never implicitly link an existing email or change
+        // its role/status.
         if (users.findByGoogleSubject(subject).isPresent()
                 || users.findByEmail(email.strip().toLowerCase(Locale.ROOT)).isPresent()) {
             throw error(HttpStatus.CONFLICT, "EMAIL_EXISTS", "Email đã có tài khoản. Hãy chuyển sang đăng nhập.");
@@ -106,11 +109,13 @@ public class AuthService {
         }
     }
 
-    private User newUser(Role role) { return role == Role.TEACHER ? new Teacher() : new Student(); }
+    private User newUser(Role role) {
+        return role == Role.TEACHER ? new Teacher() : new Student();
+    }
 
     private User pendingUser(String email) {
-        User user = users.findByEmailForUpdate(email).orElseThrow(() ->
-                error(HttpStatus.BAD_REQUEST, "REGISTRATION_NOT_PENDING", "Không tìm thấy đăng ký đang chờ xác minh cho email này."));
+        User user = users.findByEmailForUpdate(email).orElseThrow(() -> error(HttpStatus.BAD_REQUEST,
+                "REGISTRATION_NOT_PENDING", "Không tìm thấy đăng ký đang chờ xác minh cho email này."));
         if (user.getStatus() != UserStatus.PENDING_OTP) {
             throw error(HttpStatus.CONFLICT, "REGISTRATION_NOT_PENDING", "Tài khoản không ở trạng thái chờ xác minh.");
         }
@@ -128,7 +133,8 @@ public class AuthService {
             user.setOtpSendCount(0);
         }
         if (user.getOtpSendCount() >= 5) {
-            throw error(HttpStatus.TOO_MANY_REQUESTS, "OTP_SEND_LIMIT", "Đã đạt giới hạn 5 email xác minh mỗi giờ. Vui lòng thử lại sau.");
+            throw error(HttpStatus.TOO_MANY_REQUESTS, "OTP_SEND_LIMIT",
+                    "Đã đạt giới hạn 5 email xác minh mỗi giờ. Vui lòng thử lại sau.");
         }
         String otp;
         do {

@@ -15,26 +15,61 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @RequestMapping("/api/classrooms")
 public class ClassroomController {
-    public record EnrollStudentRequest(@jakarta.validation.constraints.NotNull Long studentId) {}
+        public record EnrollStudentRequest(@jakarta.validation.constraints.NotNull Long studentId) {
+        }
 
-    private final ClassroomService service;
-    public ClassroomController(ClassroomService service) { this.service = service; }
+        private final ClassroomService service;
 
-    @GetMapping public List<ClassroomResponse> list(@AuthenticationPrincipal UserSummary actor) { return service.list(actor); }
-    @GetMapping("/teachers") public List<TeacherOption> teachers(@AuthenticationPrincipal UserSummary actor) { return service.teachers(actor); }
-    @GetMapping("/{id}") public ClassroomResponse get(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) { return service.get(id, actor); }
-    @PostMapping @ResponseStatus(HttpStatus.CREATED)
-    public ClassroomResponse create(@Valid @RequestBody ClassroomRequest request, @AuthenticationPrincipal UserSummary actor) { return service.create(request, actor); }
-    @PutMapping("/{id}")
-    public ClassroomResponse update(@PathVariable Long id, @Valid @RequestBody ClassroomRequest request,
-            @AuthenticationPrincipal UserSummary actor) { return service.update(id, request, actor); }
-    @GetMapping("/{id}/students")
-    public List<StudentSummary> students(@PathVariable Long id, @RequestParam(required = false) @Size(max = 120) String search,
-            @AuthenticationPrincipal UserSummary actor) { return service.students(id, search, actor); }
-    @PostMapping("/{id}/students") @ResponseStatus(HttpStatus.CREATED)
-    public StudentSummary addStudent(@PathVariable Long id, @Valid @RequestBody EnrollStudentRequest request,
-            @AuthenticationPrincipal UserSummary actor) { return service.enroll(id, request.studentId(), actor); }
-    @DeleteMapping("/{id}/students/{studentId}") @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeStudent(@PathVariable Long id, @PathVariable Long studentId,
-            @AuthenticationPrincipal UserSummary actor) { service.removeStudent(id, studentId, actor); }
+        public ClassroomController(ClassroomService service) {
+                this.service = service;
+        }
+
+        @GetMapping
+        public List<ClassroomResponse> list(@AuthenticationPrincipal UserSummary actor) {
+                return service.list(actor);
+        }
+
+        @GetMapping("/teachers")
+        public List<TeacherOption> teachers(@AuthenticationPrincipal UserSummary actor) {
+                return service.teachers(actor);
+        }
+
+        @GetMapping("/{id}")
+        public ClassroomResponse get(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
+                return service.get(id, actor);
+        }
+
+        @PostMapping
+        @ResponseStatus(HttpStatus.CREATED)
+        public ClassroomResponse create(@Valid @RequestBody ClassroomRequest request,
+                        @AuthenticationPrincipal UserSummary actor) {
+                return service.create(request, actor);
+        }
+
+        @PutMapping("/{id}")
+        public ClassroomResponse update(@PathVariable Long id, @Valid @RequestBody ClassroomRequest request,
+                        @AuthenticationPrincipal UserSummary actor) {
+                return service.update(id, request, actor);
+        }
+
+        @GetMapping("/{id}/students")
+        public List<StudentSummary> students(@PathVariable Long id,
+                        @RequestParam(required = false) @Size(max = 120) String search,
+                        @AuthenticationPrincipal UserSummary actor) {
+                return service.students(id, search, actor);
+        }
+
+        @PostMapping("/{id}/students")
+        @ResponseStatus(HttpStatus.CREATED)
+        public StudentSummary addStudent(@PathVariable Long id, @Valid @RequestBody EnrollStudentRequest request,
+                        @AuthenticationPrincipal UserSummary actor) {
+                return service.enroll(id, request.studentId(), actor);
+        }
+
+        @DeleteMapping("/{id}/students/{studentId}")
+        @ResponseStatus(HttpStatus.NO_CONTENT)
+        public void removeStudent(@PathVariable Long id, @PathVariable Long studentId,
+                        @AuthenticationPrincipal UserSummary actor) {
+                service.removeStudent(id, studentId, actor);
+        }
 }
