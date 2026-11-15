@@ -1,6 +1,6 @@
 package com.tlcn.backend.config;
 
-import com.tlcn.backend.auth.service.GoogleRegistrationSuccessHandler;
+import com.tlcn.backend.auth.handler.GoogleRegistrationSuccessHandler;
 import com.tlcn.backend.auth.service.LoginTokenService;
 import com.tlcn.backend.auth.config.LoginTokenFilter;
 import com.tlcn.backend.auth.controller.AuthController;

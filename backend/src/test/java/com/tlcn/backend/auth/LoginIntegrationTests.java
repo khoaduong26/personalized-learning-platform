@@ -1,5 +1,8 @@
 package com.tlcn.backend.auth;
 
+import com.tlcn.backend.auth.util.LoginTokenCookie;
+
+import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.service.*;
 import com.tlcn.backend.user.entity.*;
 import com.tlcn.backend.user.repository.UserRepository;
@@ -60,11 +63,11 @@ class LoginIntegrationTests {
     }
     private Cookie authCookie(MvcResult result) {
         String header = result.getResponse().getHeaders("Set-Cookie").stream()
-                .filter(h -> h.startsWith(LoginTokenService.COOKIE + "=") && !h.contains("Max-Age=0"))
+                .filter(h -> h.startsWith(LoginTokenCookie.NAME + "=") && !h.contains("Max-Age=0"))
                 .findFirst().orElseThrow();
         assertTrue(header.contains("HttpOnly"));
         assertTrue(header.contains("SameSite=Lax"));
-        return new Cookie(LoginTokenService.COOKIE, header.split(";", 2)[0].split("=", 2)[1]);
+        return new Cookie(LoginTokenCookie.NAME, header.split(";", 2)[0].split("=", 2)[1]);
     }
 
     @Test void emailLoginNormalizesEmailAndAuthenticatesWithoutReturningSecrets() throws Exception {
@@ -117,7 +120,7 @@ class LoginIntegrationTests {
 
     @Test void lockedAccountAndTamperedCookieLoseAccessImmediately() throws Exception {
         Cookie cookie = authCookie(attempt(user.getEmail(), "password123", false).andExpect(status().isOk()).andReturn());
-        Cookie tampered = new Cookie(LoginTokenService.COOKIE, cookie.getValue() + "tampered");
+        Cookie tampered = new Cookie(LoginTokenCookie.NAME, cookie.getValue() + "tampered");
         mvc.perform(get("/api/auth/me").cookie(tampered)).andExpect(status().isUnauthorized());
         user.setStatus(UserStatus.LOCKED); users.saveAndFlush(user);
         mvc.perform(get("/api/auth/me").cookie(cookie)).andExpect(status().isUnauthorized());

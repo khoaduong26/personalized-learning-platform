@@ -1,6 +1,8 @@
 package com.tlcn.backend.auth;
 
 import com.tlcn.backend.auth.controller.AuthController;
+import com.tlcn.backend.auth.exception.AuthException;
+import com.tlcn.backend.auth.handler.GoogleRegistrationSuccessHandler;
 import com.tlcn.backend.auth.service.*;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.*;

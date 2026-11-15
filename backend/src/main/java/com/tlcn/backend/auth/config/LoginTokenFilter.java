@@ -1,5 +1,7 @@
 package com.tlcn.backend.auth.config;
 
+import com.tlcn.backend.auth.util.LoginTokenCookie;
+
 import com.tlcn.backend.auth.service.LoginTokenService;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
@@ -19,7 +21,7 @@ public class LoginTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         // App identity always comes from a live JWT, not Spring's preliminary OIDC session.
         SecurityContextHolder.clearContext();
-        LoginTokenService.token(request).flatMap(tokens::authenticate).ifPresent(user -> {
+        LoginTokenCookie.read(request).flatMap(tokens::authenticate).ifPresent(user -> {
             var context = SecurityContextHolder.createEmptyContext();
             context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(user, null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + user.role().name()))));

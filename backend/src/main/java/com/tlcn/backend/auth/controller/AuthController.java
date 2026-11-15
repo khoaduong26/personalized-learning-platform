@@ -1,6 +1,7 @@
 package com.tlcn.backend.auth.controller;
 
 import com.tlcn.backend.auth.dto.*;
+import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.service.*;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.dto.UserSummary;
