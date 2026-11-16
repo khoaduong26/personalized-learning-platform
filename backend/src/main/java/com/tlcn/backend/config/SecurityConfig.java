@@ -6,6 +6,7 @@ import com.tlcn.backend.auth.config.LoginTokenFilter;
 import com.tlcn.backend.auth.controller.AuthController;
 import java.time.Clock;
 import java.util.List;
+import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.*;
@@ -35,6 +36,9 @@ public class SecurityConfig {
                         "/api/auth/login", "/api/auth/logout", "/api/auth/csrf", "/oauth2/authorization/google",
                         "/login/oauth2/code/google", "/error").permitAll()
                 .requestMatchers("/api/auth/registration-session", "/api/auth/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers(HttpMethod.PUT, "/api/users/me", "/api/users/me/password").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers(HttpMethod.POST, "/api/users/me/avatar").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 // Existing feature stubs have no ownership checks yet. Do not expose student data.
                 .anyRequest().denyAll())
             .requestCache(cache -> cache.disable())
@@ -63,7 +67,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(@Value("${app.frontend-url}") String frontendUrl) {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(List.of(frontendUrl));
-        cors.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Content-Type", "X-CSRF-TOKEN"));
         cors.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
