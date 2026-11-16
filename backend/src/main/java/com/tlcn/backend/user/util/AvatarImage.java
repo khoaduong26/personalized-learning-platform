@@ -14,7 +14,7 @@ public record AvatarImage(byte[] bytes, String contentType) {
     public static AvatarImage read(MultipartFile file) {
         if (file == null || file.isEmpty()) throw invalid("Vui lòng chọn một file ảnh.");
         if (file.getSize() > MAX_BYTES) {
-            throw new ProfileException(HttpStatus.PAYLOAD_TOO_LARGE, "AVATAR_TOO_LARGE", "Ảnh đại diện tối đa 2 MB.");
+            throw new ProfileException(HttpStatus.CONTENT_TOO_LARGE, "AVATAR_TOO_LARGE", "Ảnh đại diện tối đa 2 MB.");
         }
         if (!"image/jpeg".equals(file.getContentType()) && !"image/png".equals(file.getContentType())) {
             throw invalid("Chỉ hỗ trợ ảnh JPEG hoặc PNG.");
@@ -41,7 +41,7 @@ public record AvatarImage(byte[] bytes, String contentType) {
                 var output = new ByteArrayOutputStream();
                 if (!ImageIO.write(reader.read(0), format, output)) throw invalid("Không đọc được ảnh.");
                 if (output.size() > MAX_BYTES) {
-                    throw new ProfileException(HttpStatus.PAYLOAD_TOO_LARGE, "AVATAR_TOO_LARGE", "Ảnh đại diện tối đa 2 MB sau xử lý.");
+                    throw new ProfileException(HttpStatus.CONTENT_TOO_LARGE, "AVATAR_TOO_LARGE", "Ảnh đại diện tối đa 2 MB sau xử lý.");
                 }
                 return new AvatarImage(output.toByteArray(), mime);
             } finally { reader.dispose(); }
