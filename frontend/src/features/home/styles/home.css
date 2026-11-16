@@ -1,17 +1,19 @@
-.learning-home { --ink: #302b42; --muted: #635f71; --purple: #68518d; --cream: #fcfaf5; background: var(--cream); color: var(--ink); font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; font-size: 17px; line-height: 1.6; overflow: clip; }
+.learning-home { --ink: #302b42; --muted: #635f71; --purple: #68518d; --cream: #fcfaf5; background: var(--cream); color: var(--ink); font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif; font-size: 17px; line-height: 1.65; font-weight: 400; overflow-wrap: break-word; overflow: clip; }
 .learning-home *, .learning-home *::before, .learning-home *::after { box-sizing: border-box; }
 .learning-home a { color: inherit; text-decoration: none; }
 .learning-home button { font: inherit; cursor: pointer; }
 .learning-home :is(a, button):focus-visible { outline: 3px solid #46336d; outline-offset: 5px; }
 .learning-home h1, .learning-home h2, .learning-home h3, .learning-home p { margin: 0; }
-.learning-home h1, .learning-home h2, .learning-home h3 { font-weight: 750; line-height: 1.2; }
+.learning-home h1, .learning-home h2, .learning-home h3 { font-weight: 700; line-height: 1.2; }
 .home-container { width: min(1180px, calc(100% - 64px)); margin-inline: auto; }
 .home-skip { position: absolute; top: -100px; left: 16px; z-index: 10; background: white; padding: 12px 20px; border: 2px solid var(--purple); border-radius: 8px; }
 .home-skip:focus { top: 12px; }
 .home-header { border-bottom: 1px solid #e8e3db; }
+.home-account-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
+.home-account-actions .home-text-link { max-width: 220px; overflow-wrap: anywhere; }
 .home-header-inner { min-height: 94px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.home-brand { display: inline-flex; align-items: center; gap: 9px; font-size: 30px; font-weight: 850; letter-spacing: -1.5px; }
-.brand-symbol { display: grid; place-items: center; background: #e9e2f3; color: #69518e; width: 38px; height: 38px; border-radius: 12px; font-size: 32px; font-weight: 400; letter-spacing: 0; }
+.home-brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; white-space: nowrap; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.4; }
+.brand-symbol { display: block; flex-shrink: 0; width: 44px; height: 44px; }
 .brand-dot { color: #957644; }
 .home-nav { display: flex; gap: 30px; font-size: 15px; font-weight: 600; }
 .home-nav a { padding-block: 12px; }
@@ -20,9 +22,9 @@
 .learning-home .home-button:hover { background: #53406f; transform: translateY(-2px); }
 .learning-home .home-button-small { min-height: 46px; padding: 10px 18px; font-size: 14px; gap: 18px; }
 .home-hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 25px; align-items: center; padding-block: 65px 70px; }
-.home-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 1.7px; color: #65507f; display: flex; align-items: center; gap: 9px; }
+.home-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #65507f; display: flex; align-items: center; gap: 9px; }
 .eyebrow-dot { width: 8px; height: 8px; border-radius: 50%; background: #81955d; }
-.home-hero h1 { font-size: clamp(39px, 4vw, 56px); letter-spacing: -2px; margin-top: 23px; line-height: 1.25; }
+.home-hero h1 { font-size: clamp(39px, 4vw, 56px); letter-spacing: -1px; margin-top: 23px; line-height: 1.35; }
 .home-hero h1 > span { color: var(--purple); position: relative; display: inline-block; }
 .home-hero h1 svg { position: absolute; left: 0; bottom: -7px; width: 100%; height: 15px; fill: none; stroke: #dbb858; stroke-width: 3; stroke-linecap: round; }
 .home-lead { color: var(--muted); max-width: 470px; margin-top: 26px !important; font-size: 18px; line-height: 1.85; }
@@ -41,7 +43,7 @@
 .home-values span > span { font-size: 23px; margin-right: 12px; color: #736387; vertical-align: middle; }
 .home-explore, .home-teachers { padding-block: 80px; scroll-margin-top: 24px; }
 .home-section-heading { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin-bottom: 32px; }
-.learning-home h2 { font-size: clamp(28px, 3vw, 37px); letter-spacing: -1.1px; }
+.learning-home h2 { font-size: clamp(28px, 3vw, 37px); letter-spacing: -0.5px; line-height: 1.35; }
 .home-section-heading h2 { margin-top: 13px; }
 .home-section-heading > p { color: var(--muted); font-size: 15px; }
 .home-topics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -49,7 +51,7 @@
 .topic-card:hover { transform: translateY(-5px); box-shadow: 0 12px 25px #302b420d; }
 .peach { background: #f8e6d8; }.lavender { background: #ebe5f5; }.mint { background: #e6eddc; }
 .topic-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
-.topic-symbol { height: 62px; min-width: 70px; padding: 5px 10px; border: 1px solid #ffffff90; border-radius: 17px; background: #ffffff65; font-size: 30px; letter-spacing: -2px; font-weight: 750; display: grid; place-items: center; }
+.topic-symbol { height: 62px; min-width: 70px; padding: 5px 10px; border: 1px solid #ffffff90; border-radius: 17px; background: #ffffff65; font-size: 30px; letter-spacing: -2px; font-weight: 700; display: grid; place-items: center; }
 .topic-number { font-size: 13px; color: #665d71; font-weight: 600; }
 .topic-card h3 { font-size: 23px; margin-bottom: 10px; letter-spacing: -.5px; }
 .topic-card p { color: #5f5967; font-size: 15px; }
@@ -65,12 +67,12 @@
 .practice-encouragement { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #645372; margin-top: 30px; }
 .practice-encouragement span { font-size: 24px; }
 .practice-card { padding: 30px; border: 1px solid #ded6eb; border-radius: 24px; background: #fffefa; box-shadow: 0 13px 0 -6px #dcd4e9; }
-.practice-topline { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; font-weight: 800; letter-spacing: 1px; color: #736181; margin-bottom: 23px; }
+.practice-topline { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #736181; margin-bottom: 23px; }
 .practice-topline > span:last-child { background: #f1edf6; border-radius: 8px; padding: 3px 9px; letter-spacing: 0; }
 .practice-card h3 { font-size: 19px; text-align: center; line-height: 1.5; }
-.practice-expression { font-size: clamp(30px, 4vw, 44px); text-align: center; font-weight: 800; letter-spacing: 2px; padding-block: 20px; }
+.practice-expression { font-size: clamp(30px, 4vw, 44px); text-align: center; font-weight: 700; letter-spacing: 2px; padding-block: 20px; }
 .practice-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
-.practice-options button { position: relative; min-height: 72px; border: 2px solid #ddd4e8; border-bottom-width: 5px; border-radius: 15px; background: #fbf8ff; color: var(--ink); font-size: 27px; font-weight: 750; }
+.practice-options button { position: relative; min-height: 72px; border: 2px solid #ddd4e8; border-bottom-width: 5px; border-radius: 15px; background: #fbf8ff; color: var(--ink); font-size: 27px; font-weight: 700; }
 .practice-options button:hover:not(:disabled) { background: #eee7f8; border-color: #a18bb9; }
 .practice-options button.is-correct { background: #e4f1d9; border-color: #779858; color: #355426; }
 .practice-options button.try-again { background: #fff0d4; border-color: #caa15c; }
@@ -91,9 +93,39 @@
 .teacher-invite strong { font-size: 18px; }.teacher-invite p { color: var(--muted); font-size: 14px; margin-top: 5px; }.teacher-invite .home-button { flex-shrink: 0; }
 .home-closing { text-align: center; background: #e8eddf; padding-block: 50px 60px; }
 .closing-star { display: block; font-size: 44px; color: #71815e; margin-bottom: 7px; }.home-closing h2 { line-height: 1.35; }.home-closing p { margin-block: 18px 25px; color: #5f6756; font-size: 16px; }
-.home-footer { display: flex; align-items: center; justify-content: space-between; gap: 25px; padding-block: 32px; }.home-footer .home-brand { font-size: 25px; }.home-footer p, .home-footer > span, .home-footer > a { font-size: 12px; color: var(--muted); }.home-footer p { margin-top: 4px; }
+
 @media (min-width: 1600px) { .home-hero { padding-block: 90px; } }
-@media (max-width: 1000px) { .home-nav { gap: 18px; font-size: 13px; }.home-hero h1 { font-size: 43px; }.home-hero-actions { gap: 18px; }.home-practice-grid { gap: 35px; }.topic-card { padding: 22px; }.topic-card h3 { font-size: 20px; }.home-values > div { font-size: 12px; }.teacher-invite { align-items: start; }.home-footer > span { display: none; } }
-@media (max-width: 760px) { .home-container { width: calc(100% - 40px); }.home-header-inner { min-height: 80px; flex-wrap: wrap; column-gap: 15px; row-gap: 0; padding-top: 14px; }.home-brand { font-size: 27px; }.home-nav { order: 3; width: 100%; justify-content: space-between; gap: 12px; padding-block: 6px; font-size: 12px; }.home-header .home-button-small { font-size: 13px; min-height: 44px; padding: 9px 12px; }.home-hero { grid-template-columns: 1fr; padding-block: 40px 36px; gap: 30px; }.home-hero h1 { font-size: clamp(36px, 7vw, 51px); letter-spacing: -1.5px; }.home-lead { font-size: 17px; max-width: 100%; }.home-eyebrow { font-size: 10px; letter-spacing: 1.1px; }.home-hero-art { width: 100%; max-width: 480px; justify-self: center; }.garden-label { left: 45px; font-size: 12px; }.garden-caption { right: 0; bottom: -4px; font-size: 12px; }.home-values > div { flex-wrap: wrap; justify-content: center; gap: 8px 20px; padding-block: 14px; }.home-values span > span { margin-right: 5px; font-size: 18px; }.home-section-heading { align-items: start; flex-direction: column; gap: 16px; }.home-section-heading > p br { display: none; }.home-explore, .home-teachers { padding-block: 50px; }.home-topics { grid-template-columns: 1fr; gap: 16px; }.topic-card { padding: 22px; position: relative; }.topic-top { margin-bottom: 18px; }.topic-card h3 { font-size: 23px; }.topic-symbol { height: 55px; font-size: 27px; }.topic-link { margin-top: 19px; padding-top: 10px; }.home-practice-section { padding-block: 45px; }.home-practice-grid { grid-template-columns: 1fr; gap: 30px; }.home-practice-copy h2 { font-size: 30px; }.practice-encouragement { margin-top: 20px; }.practice-card { padding: 25px 20px; }.teacher-steps { grid-template-columns: 1fr; gap: 25px; }.teacher-steps h3 { margin-block: 8px; }.teacher-invite { flex-direction: column; padding: 22px; gap: 20px; }.teacher-invite .home-button { width: 100%; }.home-footer { flex-direction: column; align-items: start; gap: 15px; }.home-closing { padding-block: 35px 45px; }.home-closing h2 { font-size: 30px; } }
+@media (max-width: 1100px) { .home-header-inner { flex-wrap: wrap; padding-block: 16px; row-gap: 10px; }.home-nav { order: 3; width: 100%; justify-content: center; } }
+@media (max-width: 1000px) { .home-nav { gap: 18px; font-size: 13px; }.home-hero h1 { font-size: 43px; }.home-hero-actions { gap: 18px; }.home-practice-grid { gap: 35px; }.topic-card { padding: 22px; }.topic-card h3 { font-size: 20px; }.home-values > div { font-size: 12px; }.teacher-invite { align-items: start; } }
+@media (max-width: 760px) { .home-container { width: calc(100% - 40px); }.home-header-inner { min-height: 80px; flex-wrap: wrap; column-gap: 15px; row-gap: 0; padding-top: 14px; }.home-brand { font-size: 27px; }.home-nav { order: 3; width: 100%; justify-content: space-between; gap: 12px; padding-block: 6px; font-size: 12px; }.home-header .home-button-small { font-size: 13px; min-height: 44px; padding: 9px 12px; }.home-hero { grid-template-columns: 1fr; padding-block: 40px 36px; gap: 30px; }.home-hero h1 { font-size: clamp(36px, 7vw, 51px); letter-spacing: -0.75px; }.home-lead { font-size: 17px; max-width: 100%; }.home-eyebrow { font-size: 10px; letter-spacing: 1.1px; }.home-hero-art { width: 100%; max-width: 480px; justify-self: center; }.garden-label { left: 45px; font-size: 12px; }.garden-caption { right: 0; bottom: -4px; font-size: 12px; }.home-values > div { flex-wrap: wrap; justify-content: center; gap: 8px 20px; padding-block: 14px; }.home-values span > span { margin-right: 5px; font-size: 18px; }.home-section-heading { align-items: start; flex-direction: column; gap: 16px; }.home-section-heading > p br { display: none; }.home-explore, .home-teachers { padding-block: 50px; }.home-topics { grid-template-columns: 1fr; gap: 16px; }.topic-card { padding: 22px; position: relative; }.topic-top { margin-bottom: 18px; }.topic-card h3 { font-size: 23px; }.topic-symbol { height: 55px; font-size: 27px; }.topic-link { margin-top: 19px; padding-top: 10px; }.home-practice-section { padding-block: 45px; }.home-practice-grid { grid-template-columns: 1fr; gap: 30px; }.home-practice-copy h2 { font-size: 30px; }.practice-encouragement { margin-top: 20px; }.practice-card { padding: 25px 20px; }.teacher-steps { grid-template-columns: 1fr; gap: 25px; }.teacher-steps h3 { margin-block: 8px; }.teacher-invite { flex-direction: column; padding: 22px; gap: 20px; }.teacher-invite .home-button { width: 100%; }.home-closing { padding-block: 35px 45px; }.home-closing h2 { font-size: 30px; } }
+@media (max-width: 480px) { .home-header-inner { justify-content: center; }.home-account-actions { width: 100%; justify-content: center; gap: 12px; }.home-nav { flex-wrap: wrap; justify-content: center; column-gap: 16px; row-gap: 0; }.home-brand { font-size: 26px; } }
 @media (max-width: 370px) { .home-container { width: calc(100% - 32px); }.home-hero h1 { font-size: 34px; }.home-nav { font-size: 11px; }.practice-actions { flex-direction: column; align-items: stretch; }.home-hero-actions { align-items: start; flex-direction: column; gap: 8px; }.practice-options { gap: 8px; } }
+.home-footer { padding-block: 32px 0; background: #f2f6fb; border-top: 1px solid #dce4ef; color: var(--ink); }
+.footer-grid { display: grid; grid-template-columns: 1.3fr 1fr .95fr 1.1fr; gap: 28px; padding-bottom: 20px; }
+.footer-grid > section { min-width: 0; }
+.home-footer .home-brand { font-size: 27px; }
+.home-footer .footer-about-title { margin-block: 19px 10px; font-size: 17px; line-height: 1.5; letter-spacing: 0; }
+.footer-about > p { color: #596579; font-size: 13px; line-height: 1.8; }
+.home-footer .footer-group h2 { display: flex; align-items: flex-start; gap: 9px; min-height: 44px; margin-bottom: 16px; padding-top: 9px; font-size: 15px; line-height: 1.5; letter-spacing: 0; }
+.footer-icon { width: 21px; height: 21px; flex-shrink: 0; color: #60799f; }
+.footer-details-list { display: grid; gap: 3px; }
+.footer-detail { min-width: 0; font-size: 13px; color: #4d5c70; }
+.footer-detail summary { cursor: pointer; padding-block: 9px; line-height: 1.6; border-radius: 4px; transition: color .15s; }
+.footer-detail summary::marker { color: #879bc0; font-size: 10px; }
+.footer-detail summary:hover, .home-footer a:hover { color: #405e90; }
+.home-footer a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.home-footer .home-brand:hover { text-decoration: none; }
+.home-footer summary:focus-visible { outline: 3px solid #46336d; outline-offset: 3px; }
+.footer-detail > p { margin-block: 3px 12px; padding: 12px; background: #fff; border: 1px solid #dce4ef; border-radius: 10px; line-height: 1.8; color: #596579; scroll-margin-top: 24px; }
+.footer-detail[open] > summary { color: #405e90; font-weight: 600; }
+.footer-link { display: inline-flex; align-items: center; gap: 8px; padding-block: 10px; font-size: 13px; font-weight: 600; }
+.footer-group > .footer-link { margin-top: 10px; color: #526b91; }
+.footer-support-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; font-size: 13px; color: #4d5c70; }
+.footer-support-list li { display: grid; gap: 2px; }
+.footer-support-list small { font-size: 11px; color: #657187; }
+.footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; margin-top: 0; padding-block: 16px; border-top: 1px solid #dce4ef; font-size: 12px; color: #596579; }
+.footer-bottom nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.footer-bottom a { display: inline-block; padding-block: 8px; transition: color .15s; }
+@media (max-width: 1050px) { .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 40px; }.home-footer .footer-group h2 { min-height: auto; padding-top: 0; }.footer-bottom { align-items: flex-start; flex-direction: column; gap: 6px; } }
+@media (max-width: 600px) { .home-footer { padding-top: 34px; }.footer-grid { grid-template-columns: 1fr; gap: 28px; padding-bottom: 26px; }.footer-about { padding-bottom: 24px; border-bottom: 1px solid #dce4ef; }.home-footer .footer-group h2 { margin-bottom: 10px; }.footer-bottom { margin-top: 24px; padding-block: 18px; }.footer-bottom nav { gap: 4px 20px; } }
 @media (prefers-reduced-motion: reduce) { .learning-home *, .learning-home *::before, .learning-home *::after { transition: none !important; scroll-behavior: auto !important; } }

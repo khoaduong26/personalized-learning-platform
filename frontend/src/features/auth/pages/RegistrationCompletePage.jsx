@@ -3,7 +3,8 @@ import AuthLayout from '../components/AuthLayout'
 
 export default function RegistrationCompletePage() {
   return (
-    <AuthLayout>
+    <AuthLayout label="Hoàn tất đăng ký">
+      <div className="registration-status-icon" aria-hidden="true">✓</div>
       <span className="registration-step">HOÀN TẤT ĐĂNG KÝ</span>
       <h2>Tài khoản đã sẵn sàng!</h2>
       <p className="registration-notice success" role="status">Đăng ký và xác minh tài khoản thành công.</p>
