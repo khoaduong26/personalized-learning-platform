@@ -18,7 +18,10 @@ export default function AppRoutes() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="profile" element={<ProfilePage />} />
+        <Route path="profile" element={<ProfilePage key="profile" />} />
+        <Route path="profile/teacher" element={<ProfilePage key="teacher-profile" teacherOnly />} />
+        <Route path="profile/student" element={<ProfilePage key="student-profile" />} />
+        <Route path="teacher/profile" element={<Navigate to="/profile/teacher" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route path="register" element={<RegistrationPage />} />

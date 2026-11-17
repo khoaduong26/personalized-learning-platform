@@ -4,6 +4,7 @@ import AuthLayout from '../components/AuthLayout'
 import RegistrationField from '../components/RegistrationField'
 import { getCurrentUser, getRegistrationOptions, loginAccount, logoutAccount } from '../services/authApi'
 import { notifyAccountChanged } from '../../../shared/services/accountEvents'
+import { profilePathFor } from '../../../shared/utils/profilePath'
 
 const googleErrors = {
   'not-registered': 'Bạn chưa có tài khoản Google trên EduLearn. Hãy đăng ký trước.',
@@ -45,9 +46,12 @@ export default function LoginPage() {
     event.preventDefault()
     setBusy(true); setError(''); setCode(''); setFields({}); setGoogleDismissed(true)
     try {
-      setUser(await loginAccount(form))
+      const signedIn = await loginAccount(form)
+      setUser(signedIn)
       notifyAccountChanged()
-      if (params.get('next') === 'profile') navigate('/profile', { replace: true })
+      if (params.get('next') === 'profile') {
+        navigate(profilePathFor(signedIn.role), { replace: true })
+      }
       setForm(current => ({ ...current, password: '' }))
     } catch (failure) {
       setError(failure.message); setCode(failure.code); setFields(failure.fieldErrors || {})
@@ -70,7 +74,9 @@ export default function LoginPage() {
     {user ? <>
       <p className="registration-notice success" role="status">Bạn đã đăng nhập với vai trò {roleNames[user.role]}.</p>
       <p className="registration-email">{user.email}</p>
-      <Link className="registration-primary registration-link" to="/profile">Quản lý tài khoản</Link>
+      <Link className="registration-primary registration-link" to={profilePathFor(user.role)}>
+        {user.role === 'TEACHER' ? 'Mở hồ sơ giáo viên' : 'Quản lý tài khoản'}
+      </Link>
       <Link className="registration-text-link" to="/">Về trang chủ</Link>
       <button className="registration-secondary login-logout" disabled={busy} onClick={logout}>{busy ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
     </> : <>
