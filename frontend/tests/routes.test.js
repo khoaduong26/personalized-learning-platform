@@ -56,3 +56,14 @@ test('Google profiles show Google security settings instead of a local password 
   assert.ok(html.includes('https://myaccount.google.com/security'))
   assert.ok(!html.includes('id="profile-currentPassword"'))
 })
+
+test('profile address controls keep unmatched legacy text visible and disable wards until a province is selected', () => {
+  const html = renderToString(createElement(ProfileForm, {
+    user: { fullName: 'Tên mẫu', email: 'sample@example.invalid', role: 'TEACHER', city: 'Tỉnh cũ', address: 'Số 12, Xã cũ, Huyện cũ' },
+    busy: false,
+  }))
+  assert.equal((html.match(/role="combobox"/g) || []).length, 2)
+  assert.ok(html.includes('value="Tỉnh cũ"'))
+  assert.ok(html.includes('value="Số 12, Xã cũ, Huyện cũ"'))
+  assert.match(html, /id="profile-ward"[^>]*disabled/)
+})
