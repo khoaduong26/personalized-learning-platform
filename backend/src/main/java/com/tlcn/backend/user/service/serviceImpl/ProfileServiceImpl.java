@@ -39,6 +39,9 @@ public class ProfileServiceImpl implements ProfileService {
             throw new ProfileException(HttpStatus.BAD_REQUEST, "STUDENT_FIELDS_NOT_ALLOWED",
                     "Giới tính và ngày sinh chỉ áp dụng cho học sinh.");
         }
+        if (user instanceof Student student && "OTHER".equals(request.sex()) && !"OTHER".equals(student.getSex())) {
+            throw invalid("SEX_INVALID", "sex", "Vui lòng chọn giới tính Nam hoặc Nữ.");
+        }
         user.setFullName(request.fullName());
         user.setPhone(request.phone());
         user.setAddress(request.address());

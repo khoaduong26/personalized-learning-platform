@@ -185,6 +185,51 @@ class ProfileIntegrationTests {
         assertEquals("Tên ban đầu", users.findById(user.getId()).orElseThrow().getFullName());
     }
 
+    @Test void phoneMustContainExactlyTenDigitsWithoutSigns() throws Exception {
+        for (String phone : new String[]{"-901234567", "090123456", "09012345678", "+0901234567", "09012a4567", "090 123456", "090123.567"}) {
+            putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"phone\":\"" + phone + "\"}", cookie)
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.phone").exists());
+            assertEquals("Tên ban đầu", users.findById(user.getId()).orElseThrow().getFullName());
+        }
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"phone\":\"0901234567\"}", cookie)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.phone").value("0901234567"));
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"phone\":\"\"}", cookie)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.phone").isEmpty());
+    }
+
+    @Test void profileTextLengthLimitsAreEnforcedBeforeSaving() throws Exception {
+        for (String fullName : new String[]{"A", "A".repeat(121), "   "}) {
+            putJson("/api/users/me", "{\"fullName\":\"" + fullName + "\"}", cookie)
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.fullName").exists());
+        }
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"address\":\"" + "A".repeat(256) + "\"}", cookie)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.address").exists());
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"city\":\"" + "A".repeat(101) + "\"}", cookie)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.city").exists());
+        assertEquals("Tên ban đầu", users.findById(user.getId()).orElseThrow().getFullName());
+    }
+
+    @Test void onlyMaleOrFemaleCanBeSelectedForANewGenderValue() throws Exception {
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"sex\":\"OTHER\"}", cookie)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.sex").exists());
+        assertEquals("Tên ban đầu", users.findById(user.getId()).orElseThrow().getFullName());
+        for (String sex : new String[]{"MALE", "FEMALE"}) {
+            putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"sex\":\"" + sex + "\"}", cookie)
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.sex").value(sex));
+        }
+    }
+
+    @Test void legacyOtherGenderCanBeRetainedWhenUpdatingUnrelatedInformation() throws Exception {
+        Student student = (Student) user;
+        student.setSex("OTHER"); users.saveAndFlush(student);
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"sex\":\"OTHER\"}", cookie)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.sex").value("OTHER"));
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"sex\":\"FEMALE\"}", cookie)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.sex").value("FEMALE"));
+        putJson("/api/users/me", "{\"fullName\":\"Tên mới\",\"sex\":\"OTHER\"}", cookie)
+                .andExpect(status().isBadRequest());
+    }
+
     @Test void missingOrInactiveAuthenticationAndMissingCsrfCannotModifyProfile() throws Exception {
         mvc.perform(get("/api/users/me")).andExpect(status().isUnauthorized());
         var csrf = csrf();

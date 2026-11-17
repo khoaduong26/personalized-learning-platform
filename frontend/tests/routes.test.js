@@ -48,6 +48,9 @@ test('only student profiles expose gender and date of birth controls', () => {
     assert.equal(html.includes('id="profile-dateOfBirth"'), role === 'STUDENT')
     assert.ok(html.includes('id="profile-email"'))
     assert.ok(html.includes('readOnly'))
+    assert.ok(!html.includes('>Khác</option>'))
+    assert.ok(html.includes('pattern="[0-9]{10}"'))
+    assert.ok(html.includes('maxLength="10"'))
   }
 })
 

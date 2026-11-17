@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { httpRequest } from '../src/shared/services/httpClient.js'
 import { uploadAvatar, changePassword } from '../src/features/profile/services/profileApi.js'
-import { avatarError, profilePayload, validatePassword } from '../src/features/profile/utils/profile.js'
+import { avatarError, profilePayload, validatePassword, validateProfile } from '../src/features/profile/utils/profile.js'
 
 test('avatar upload sends FormData with a fresh CSRF token and browser-managed content type', async t => {
   const requests = []
@@ -52,4 +52,33 @@ test('password confirmation and avatar limits give actionable errors', () => {
 test('expired profile sessions preserve HTTP 401 for the sign-in redirect', async t => {
   t.mock.method(globalThis, 'fetch', async () => Response.json({ code: 'UNAUTHORIZED', message: 'Bạn cần đăng nhập.' }, { status: 401 }))
   await assert.rejects(httpRequest('/api/users/me'), error => error.status === 401 && error.code === 'UNAUTHORIZED')
+})
+
+test('profile phone rejects signs, letters, decimals and any length other than ten digits', () => {
+  const form = { fullName: 'Tên mẫu', phone: '', address: '', city: '', sex: '', dateOfBirth: '' }
+  for (const phone of ['-901234567', '090123456', '09012345678', '+0901234567', '09012a4567', '090 123456', '090123.567']) {
+    assert.ok(validateProfile({ ...form, phone }, 'STUDENT').phone, phone)
+  }
+  assert.deepEqual(validateProfile({ ...form, phone: '0901234567' }, 'STUDENT'), {})
+  assert.deepEqual(validateProfile(form, 'STUDENT'), {})
+})
+
+test('profile validation checks trimmed names, combined address length, valid dates and allowed genders', () => {
+  const form = { fullName: 'Tên mẫu', phone: '', address: '', city: '', sex: '', dateOfBirth: '' }
+  assert.ok(validateProfile({ ...form, fullName: '  ' }, 'STUDENT').fullName)
+  assert.ok(validateProfile({ ...form, fullName: 'A'.repeat(121) }, 'STUDENT').fullName)
+  assert.ok(validateProfile({ ...form, address: 'A'.repeat(256), city: 'A'.repeat(101) }, 'STUDENT').address)
+  assert.ok(validateProfile({ ...form, city: 'A'.repeat(101) }, 'STUDENT').city)
+  for (const dateOfBirth of ['2026-02-31', 'bad-date', '2026-11-18']) {
+    assert.ok(validateProfile({ ...form, dateOfBirth }, 'STUDENT', '', '2026-11-17').dateOfBirth)
+  }
+  assert.deepEqual(validateProfile({ ...form, dateOfBirth: '2026-11-17' }, 'STUDENT', '', '2026-11-17'), {})
+  assert.ok(validateProfile({ ...form, sex: 'OTHER' }, 'STUDENT').sex)
+  assert.deepEqual(validateProfile({ ...form, sex: 'OTHER' }, 'STUDENT', 'OTHER'), {})
+})
+
+test('blank-only passwords are rejected without trimming valid password contents', () => {
+  assert.ok(validatePassword({ currentPassword: ' ', newPassword: '        ', confirmPassword: '        ' }).currentPassword)
+  assert.ok(validatePassword({ currentPassword: 'password123', newPassword: '        ', confirmPassword: '        ' }).newPassword)
+  assert.deepEqual(validatePassword({ currentPassword: ' password123 ', newPassword: ' newPassword123 ', confirmPassword: ' newPassword123 ' }), {})
 })

@@ -5,10 +5,11 @@ import java.time.LocalDate;
 
 public record UpdateProfileRequest(
         @NotBlank @Size(min = 2, max = 120) String fullName,
-        @Pattern(regexp = "\\+?[0-9]{9,15}", message = "Số điện thoại phải gồm 9–15 chữ số, có thể bắt đầu bằng +.") String phone,
+        @Pattern(regexp = "[0-9]{10}", message = "Số điện thoại phải gồm đúng 10 chữ số, không có dấu hoặc ký tự khác.") String phone,
         @Size(max = 255) String address,
         @Size(max = 100) String city,
-        @Pattern(regexp = "MALE|FEMALE|OTHER", message = "Giới tính phải là MALE, FEMALE hoặc OTHER.") String sex,
+        // OTHER may only be retained on an existing profile; the service rejects new selections.
+        @Pattern(regexp = "MALE|FEMALE|OTHER", message = "Vui lòng chọn giới tính Nam hoặc Nữ.") String sex,
         @PastOrPresent(message = "Ngày sinh không được ở tương lai.") LocalDate dateOfBirth) {
     public UpdateProfileRequest {
         fullName = fullName == null ? null : fullName.strip();

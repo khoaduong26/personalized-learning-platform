@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { profileForm, profilePayload } from '../utils/profile'
+import { profileForm, profilePayload, todayDate, validateProfile } from '../utils/profile'
 import { addressPayload, provinces, readAddress, writeAddress } from '../utils/address'
 import AddressSelect from './AddressSelect'
 
@@ -30,12 +30,14 @@ export default function ProfileForm({ user, busy, onSave, onFailure }) {
     event.preventDefault()
     setFields({})
     const address = addressPayload(form, location)
-    if ((address.address || '').trim().length > 255) {
-      setFields({ address: 'Địa chỉ chi tiết và tên phường/xã gộp lại tối đa 255 ký tự.' })
+    const updatedForm = { ...form, ...address }
+    const errors = validateProfile(updatedForm, user.role, user.sex)
+    if (Object.keys(errors).length) {
+      setFields(errors)
       return
     }
     try {
-      const saved = await onSave(profilePayload({ ...form, ...address }, user.role))
+      const saved = await onSave(profilePayload(updatedForm, user.role))
       setForm(profileForm(saved))
       setLocation(readAddress(saved))
     } catch (failure) {
@@ -57,7 +59,7 @@ export default function ProfileForm({ user, busy, onSave, onFailure }) {
     <fieldset disabled={busy}>
       <div className="profile-form-grid">
         {field('fullName', 'Họ và tên', { required: true, minLength: 2, maxLength: 120, autoComplete: 'name' })}
-        {field('phone', 'Số điện thoại', { type: 'tel', maxLength: 16, autoComplete: 'tel', pattern: '\\+?[0-9]{9,15}', title: 'Nhập 9–15 chữ số, có thể bắt đầu bằng +.', placeholder: 'Thêm số điện thoại' })}
+        {field('phone', 'Số điện thoại', { type: 'tel', inputMode: 'numeric', maxLength: 10, autoComplete: 'tel', pattern: '[0-9]{10}', title: 'Số điện thoại phải gồm đúng 10 chữ số, không có dấu hoặc ký tự khác.', placeholder: 'Nhập số điện thoại 10 chữ số' })}
         <label className="profile-field profile-field-wide" htmlFor="profile-email"><span>Email đăng nhập</span>
           <input id="profile-email" value={user.email} readOnly aria-describedby="profile-email-hint" />
           <small id="profile-email-hint" className="profile-hint">Email được dùng để đăng nhập và không thể thay đổi tại đây.</small>
@@ -65,11 +67,12 @@ export default function ProfileForm({ user, busy, onSave, onFailure }) {
         {user.role === 'STUDENT' && <>
           <label className="profile-field" htmlFor="profile-sex"><span>Giới tính</span>
             <select id="profile-sex" name="sex" value={form.sex} onChange={update} aria-invalid={!!fields.sex} aria-describedby={fields.sex ? 'profile-sex-error' : undefined}>
-              <option value="">Chưa chọn</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option><option value="OTHER">Khác</option>
+              {user.sex === 'OTHER' && <option value="OTHER" hidden disabled>Chưa cập nhật</option>}
+              <option value="">Chưa chọn</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option>
             </select>
             {fields.sex && <small id="profile-sex-error" className="profile-field-error">{fields.sex}</small>}
           </label>
-          {field('dateOfBirth', 'Ngày sinh', { type: 'date', autoComplete: 'bday', max: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) })}
+          {field('dateOfBirth', 'Ngày sinh', { type: 'date', autoComplete: 'bday', max: todayDate() })}
         </>}
         <div className="profile-field-wide profile-address-section">
           <div className="profile-address-grid">
