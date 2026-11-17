@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { logoutAccount } from '../../auth/services/authApi'
 import { notifyAccountChanged } from '../../../shared/services/accountEvents'
+import { profilePathFor } from '../../../shared/utils/profilePath'
 import { changePassword, getProfile, updateProfile, uploadAvatar } from '../services/profileApi'
 import { roleNames } from '../utils/profile'
 import AvatarEditor from '../components/AvatarEditor'
@@ -10,8 +11,9 @@ import ProfileForm from '../components/ProfileForm'
 import ProfileIcon from '../components/ProfileIcon'
 import '../styles/profile.css'
 
-export default function ProfilePage() {
+export default function ProfilePage({ teacherOnly = false }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reload, setReload] = useState(0)
@@ -20,15 +22,23 @@ export default function ProfilePage() {
   const [notice, setNotice] = useState(null)
 
   useEffect(() => {
-    document.title = 'Tài khoản của bạn | EduLearn'
+    document.title = teacherOnly ? 'Hồ sơ giáo viên | EduLearn' : 'Tài khoản của bạn | EduLearn'
     const controller = new AbortController()
-    getProfile(controller.signal).then(data => { setUser(data); setNotice(null) }).catch(failure => {
+    getProfile(controller.signal).then(data => {
+      const destination = profilePathFor(data.role)
+      if (pathname !== destination) {
+        navigate(destination, { replace: true })
+        return
+      }
+      setUser(data)
+      setNotice(null)
+    }).catch(failure => {
       if (failure.name === 'AbortError') return
       if (failure.status === 401) navigate('/login?next=profile', { replace: true })
       else setNotice({ type: 'error', text: failure.message })
     }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [navigate, reload])
+  }, [navigate, pathname, reload, teacherOnly])
 
   function failure(error) {
     if (error.status === 401) { notifyAccountChanged(); navigate('/login?next=profile', { replace: true }); return }
@@ -73,8 +83,9 @@ export default function ProfilePage() {
 
   return <main id="noi-dung" className="profile-page home-container">
     <Link className="profile-back" to="/"><ProfileIcon name="arrow" />Về trang chủ</Link>
-    <div className="profile-heading"><p className="home-eyebrow"><span className="eyebrow-dot" />GÓC NHỎ CỦA BẠN</p>
-      <h1>Tài khoản của bạn<span>.</span></h1><p>Quản lý thông tin cá nhân và giữ tài khoản luôn an toàn.</p>
+    <div className="profile-heading"><p className="home-eyebrow"><span className="eyebrow-dot" />{teacherOnly ? 'TÀI KHOẢN GIÁO VIÊN' : 'GÓC NHỎ CỦA BẠN'}</p>
+      <h1>{teacherOnly ? 'Hồ sơ giáo viên' : 'Tài khoản của bạn'}<span>.</span></h1>
+      <p>{teacherOnly ? 'Cập nhật thông tin liên hệ và quản lý bảo mật tài khoản của thầy cô.' : 'Quản lý thông tin cá nhân và giữ tài khoản luôn an toàn.'}</p>
     </div>
     {notice && <div className={`profile-notice ${notice.type}`} role={notice.type === 'error' ? 'alert' : 'status'}>
       {notice.type === 'success' && <ProfileIcon name="check" />}<span>{notice.text}</span>
@@ -87,16 +98,18 @@ export default function ProfilePage() {
             <h2>{user.fullName}</h2><span className="profile-role">{roleNames[user.role]}</span>
           </div>
           <nav className="profile-settings-nav" aria-label="Cài đặt tài khoản">
-            <button type="button" aria-current={section === 'personal' ? 'page' : undefined} disabled={!!busy} onClick={() => switchSection('personal')}><ProfileIcon name="user" />Thông tin cá nhân<span aria-hidden="true">›</span></button>
+            <button type="button" aria-current={section === 'personal' ? 'page' : undefined} disabled={!!busy} onClick={() => switchSection('personal')}><ProfileIcon name="user" />{teacherOnly ? 'Thông tin liên hệ' : 'Thông tin cá nhân'}<span aria-hidden="true">›</span></button>
             <button type="button" aria-current={section === 'password' ? 'page' : undefined} disabled={!!busy} onClick={() => switchSection('password')}><ProfileIcon name="lock" />Đổi mật khẩu<span aria-hidden="true">›</span></button>
           </nav>
           <button className="profile-logout" type="button" disabled={!!busy} onClick={logout}><ProfileIcon name="logout" />{busy === 'logout' ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
-          <div className="profile-sidebar-note"><img src="/math-bunny.svg" width="44" height="44" alt="" /><p>Mỗi ngày một chút,<br />cùng nhau tiến bộ.</p></div>
+          <div className="profile-sidebar-note"><img src="/math-bunny.svg" width="44" height="44" alt="" />
+            <p>{teacherOnly ? 'Cùng thầy cô, hiểu từng em.' : <>Mỗi ngày một chút,<br />cùng nhau tiến bộ.</>}</p>
+          </div>
         </aside>
         <section className="profile-card" aria-labelledby="profile-section-title">
           <div className="profile-card-heading"><span className="profile-section-icon"><ProfileIcon name={section === 'personal' ? 'user' : 'lock'} /></span><div>
-            <h2 id="profile-section-title">{section === 'personal' ? 'Thông tin cá nhân' : 'Đổi mật khẩu'}</h2>
-            <p>{section === 'personal' ? 'Một vài thông tin để EduLearn hiểu bạn hơn.' : 'Bảo vệ tài khoản bằng một mật khẩu riêng của bạn.'}</p>
+            <h2 id="profile-section-title">{section === 'personal' ? (teacherOnly ? 'Thông tin liên hệ' : 'Thông tin cá nhân') : 'Đổi mật khẩu'}</h2>
+            <p>{section === 'personal' ? (teacherOnly ? 'Họ tên, số điện thoại và địa chỉ của thầy cô.' : 'Một vài thông tin để EduLearn hiểu bạn hơn.') : 'Bảo vệ tài khoản bằng một mật khẩu riêng của bạn.'}</p>
           </div></div>
           {section === 'personal' ? <ProfileForm user={user} busy={!!busy} onSave={saveProfile} onFailure={failure} /> :
             <PasswordForm busy={!!busy} allowed={user.passwordChangeAllowed} onSave={savePassword} onFailure={failure} />}

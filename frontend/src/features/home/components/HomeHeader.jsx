@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { getProfile } from '../../profile/services/profileApi'
 import { initials } from '../../profile/utils/profile'
 import { ACCOUNT_CHANGED } from '../../../shared/services/accountEvents'
+import { profilePathFor } from '../../../shared/utils/profilePath'
 import '../../profile/styles/profile.css'
 
 export default function HomeHeader() {
@@ -26,7 +27,12 @@ export default function HomeHeader() {
           <div className="home-account-actions">
             {user ? <details className="home-account-menu">
               <summary aria-label={`Tài khoản của ${user.fullName}`}><span className="home-account-avatar"><span>{initials(user.fullName)}</span>{user.avatarUrl && <img key={user.avatarUrl} src={user.avatarUrl} alt="" onError={event => { event.currentTarget.style.display = 'none' }} />}</span><span className="home-account-name">{user.fullName}</span><span aria-hidden="true">⌄</span></summary>
-              <div className="home-account-dropdown"><Link to="/profile" onClick={event => event.currentTarget.closest('details').removeAttribute('open')}>Tài khoản của tôi</Link><Link to="/" onClick={event => event.currentTarget.closest('details').removeAttribute('open')}>Về trang chủ</Link></div>
+              <div className="home-account-dropdown">
+                <Link to={profilePathFor(user.role)} onClick={event => event.currentTarget.closest('details').removeAttribute('open')}>
+                  {user.role === 'TEACHER' ? 'Hồ sơ giáo viên' : 'Tài khoản của tôi'}
+                </Link>
+                <Link to="/" onClick={event => event.currentTarget.closest('details').removeAttribute('open')}>Về trang chủ</Link>
+              </div>
             </details> : <Link className="home-text-link" to="/login">Đăng nhập</Link>}
             {!user && <Link className="home-button home-button-small" to="/register">Tạo tài khoản <span aria-hidden="true">↗</span></Link>}
           </div>
