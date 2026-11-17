@@ -28,6 +28,8 @@ const routes = [
   ['/register/complete', 'Tài khoản đã sẵn sàng!', 'Đến trang đăng nhập'],
   ['/login', 'Đăng nhập', 'Đăng nhập với Google'],
   ['/profile', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
+  ['/profile/teacher', 'Hồ sơ giáo viên', 'TÀI KHOẢN GIÁO VIÊN'],
+  ['/profile/student', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
   ['/does-not-exist', 'Không tìm thấy trang', 'home-header'],
 ]
 

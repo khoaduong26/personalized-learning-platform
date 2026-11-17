@@ -3,6 +3,13 @@ import test from 'node:test'
 import { httpRequest } from '../src/shared/services/httpClient.js'
 import { uploadAvatar, changePassword } from '../src/features/profile/services/profileApi.js'
 import { avatarError, profilePayload, validatePassword, validateProfile } from '../src/features/profile/utils/profile.js'
+import { profilePathFor } from '../src/shared/utils/profilePath.js'
+
+test('profile navigation resolves the canonical route for each role', () => {
+  assert.equal(profilePathFor('TEACHER'), '/profile/teacher')
+  assert.equal(profilePathFor('STUDENT'), '/profile/student')
+  assert.equal(profilePathFor('ADMIN'), '/profile')
+})
 
 test('avatar upload sends FormData with a fresh CSRF token and browser-managed content type', async t => {
   const requests = []
