@@ -7,10 +7,14 @@ import { createServer } from 'vite'
 
 let server
 let AppRoutes
+let ProfileForm
+let PasswordForm
 
 before(async () => {
   server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
   AppRoutes = (await server.ssrLoadModule('/src/app/routes/AppRoutes.jsx')).default
+  ProfileForm = (await server.ssrLoadModule('/src/features/profile/components/ProfileForm.jsx')).default
+  PasswordForm = (await server.ssrLoadModule('/src/features/profile/components/PasswordForm.jsx')).default
 })
 
 after(async () => { await server?.close() })
@@ -23,6 +27,7 @@ const routes = [
   ['/register?google=success', 'Đang kiểm tra tài khoản', 'ĐĂNG KÝ VỚI GOOGLE'],
   ['/register/complete', 'Tài khoản đã sẵn sàng!', 'Đến trang đăng nhập'],
   ['/login', 'Đăng nhập', 'Đăng nhập với Google'],
+  ['/profile', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
   ['/does-not-exist', 'Không tìm thấy trang', 'home-header'],
 ]
 
@@ -35,3 +40,19 @@ for (const [url, heading, content] of routes) {
     if (url === '/does-not-exist') assert.ok(!html.includes('home-hero-copy'))
   })
 }
+
+test('only student profiles expose gender and date of birth controls', () => {
+  for (const role of ['STUDENT', 'TEACHER', 'ADMIN']) {
+    const html = renderToString(createElement(ProfileForm, { user: { fullName: 'Tên mẫu', email: 'sample@example.invalid', role }, busy: false }))
+    assert.equal(html.includes('id="profile-sex"'), role === 'STUDENT')
+    assert.equal(html.includes('id="profile-dateOfBirth"'), role === 'STUDENT')
+    assert.ok(html.includes('id="profile-email"'))
+    assert.ok(html.includes('readOnly'))
+  }
+})
+
+test('Google profiles show Google security settings instead of a local password form', () => {
+  const html = renderToString(createElement(PasswordForm, { allowed: false, busy: false }))
+  assert.ok(html.includes('https://myaccount.google.com/security'))
+  assert.ok(!html.includes('id="profile-currentPassword"'))
+})

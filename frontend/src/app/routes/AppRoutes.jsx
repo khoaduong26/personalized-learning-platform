@@ -3,6 +3,7 @@ import { LoginPage, RegistrationPage, RegistrationCompletePage } from '../../fea
 import { HomePage } from '../../features/home'
 import PublicLayout from '../layouts/PublicLayout'
 import NotFoundPage from '../pages/NotFoundPage'
+import ProfilePage from '../../features/profile/pages/ProfilePage'
 
 function LoginRoute() {
   const [params] = useSearchParams()
@@ -17,6 +18,7 @@ export default function AppRoutes() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route path="register" element={<RegistrationPage />} />
