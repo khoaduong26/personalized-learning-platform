@@ -65,25 +65,30 @@ export default function ProfileForm({ user, busy, onSave, onFailure }) {
           <small id="profile-email-hint" className="profile-hint">Email được dùng để đăng nhập và không thể thay đổi tại đây.</small>
         </label>
         {user.role === 'STUDENT' && <>
-          <label className="profile-field" htmlFor="profile-sex"><span>Giới tính</span>
-            <select id="profile-sex" name="sex" value={form.sex} onChange={update} aria-invalid={!!fields.sex} aria-describedby={fields.sex ? 'profile-sex-error' : undefined}>
-              {user.sex === 'OTHER' && <option value="OTHER" hidden disabled>Chưa cập nhật</option>}
-              <option value="">Chưa chọn</option><option value="MALE">Nam</option><option value="FEMALE">Nữ</option>
-            </select>
+          <fieldset className="profile-gender-field" id="profile-sex" aria-invalid={!!fields.sex} aria-describedby={fields.sex ? 'profile-sex-error' : undefined}>
+            <legend>Giới tính</legend>
+            <div className="profile-gender-options">
+              {[['MALE', 'Nam'], ['FEMALE', 'Nữ']].map(([value, label]) => <label key={value}>
+                <input type="radio" name="sex" value={value} checked={form.sex === value} onChange={update} /><span>{label}</span>
+              </label>)}
+            </div>
+            <div className="profile-gender-status"><span>{!form.sex ? 'Chưa chọn' : form.sex === 'OTHER' ? 'Chưa cập nhật' : ''}</span>
+              {form.sex && <button type="button" onClick={() => { setForm(current => ({ ...current, sex: '' })); setFields(current => ({ ...current, sex: undefined })) }}>Bỏ chọn</button>}
+            </div>
             {fields.sex && <small id="profile-sex-error" className="profile-field-error">{fields.sex}</small>}
-          </label>
+          </fieldset>
           {field('dateOfBirth', 'Ngày sinh', { type: 'date', autoComplete: 'bday', max: todayDate() })}
         </>}
         <div className="profile-field-wide profile-address-section">
           <div className="profile-address-grid">
             <AddressSelect id="profile-city" label="Tỉnh / Thành phố" options={provinceOptions}
-              value={location.legacyCity ? 'legacy' : location.provinceCode} placeholder="Tìm tỉnh / thành phố"
+              value={location.legacyCity ? 'legacy' : location.provinceCode} placeholder="Chọn tỉnh / thành phố"
               onChange={code => {
                 if (code === 'legacy' || (!location.legacyCity && code === location.provinceCode)) return
                 updateLocation({ provinceCode: code, wardCode: '', legacyCity: '' })
               }} />
             <AddressSelect id="profile-ward" label="Phường / Xã / Đặc khu" options={province?.wards || []}
-              value={location.wardCode} disabled={!province} placeholder={province ? 'Tìm phường / xã' : 'Chọn tỉnh / thành phố trước'}
+              value={location.wardCode} disabled={!province} placeholder="Chọn phường / xã"
               onChange={code => updateLocation({ wardCode: code })} />
           </div>
           {location.legacyCity && <p className="profile-hint">Tỉnh/thành phố đã lưu là “{location.legacyCity}”. Bạn có thể giữ nguyên hoặc chọn lại trong danh sách.</p>}
