@@ -48,6 +48,7 @@ test('only student profiles expose gender and date of birth controls', () => {
     const html = renderToString(createElement(ProfileForm, { user: { fullName: 'Tên mẫu', email: 'sample@example.invalid', role }, busy: false }))
     assert.equal(html.includes('id="profile-sex"'), role === 'STUDENT')
     assert.equal(html.includes('id="profile-dateOfBirth"'), role === 'STUDENT')
+    assert.equal((html.match(/type="radio"/g) || []).length, role === 'STUDENT' ? 2 : 0)
     assert.ok(html.includes('id="profile-email"'))
     assert.ok(html.includes('readOnly'))
     assert.ok(!html.includes('>Khác</option>'))
@@ -68,7 +69,7 @@ test('profile address controls keep unmatched legacy text visible and disable wa
     busy: false,
   }))
   assert.equal((html.match(/role="combobox"/g) || []).length, 2)
-  assert.ok(html.includes('value="Tỉnh cũ"'))
+  assert.ok(html.includes('>Tỉnh cũ</span>'))
   assert.ok(html.includes('value="Số 12, Xã cũ, Huyện cũ"'))
   assert.match(html, /id="profile-ward"[^>]*disabled/)
 })
