@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface MasteryHistoryRepository extends JpaRepository<MasteryHistory, Long> {
     List<MasteryHistory> findByMasteryIdOrderByRecordedAtAsc(Long masteryId);
+
+    long countByMasteryId(Long masteryId);
 }

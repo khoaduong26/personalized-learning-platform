@@ -5,6 +5,7 @@ import com.tlcn.backend.assessment.entity.*;
 import com.tlcn.backend.assessment.repository.*;
 import com.tlcn.backend.assessment.service.AssessmentService;
 import com.tlcn.backend.assessment.service.AttemptService;
+import com.tlcn.backend.mastery.service.MasteryService;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.repository.StudentRepository;
@@ -24,10 +25,12 @@ public class AttemptServiceImpl implements AttemptService {
     private final ShortAnswerAnswerRepository shortAnswers;
     private final StudentRepository students;
     private final AssessmentService assessments;
+    private final MasteryService mastery;
 
     public AttemptServiceImpl(AssessmentAttemptRepository attempts, StudentAnswerRepository answers,
             MultipleChoiceAnswerRepository multipleAnswers, FillBlankAnswerRepository fillAnswers,
-            ShortAnswerAnswerRepository shortAnswers, StudentRepository students, AssessmentService assessments) {
+            ShortAnswerAnswerRepository shortAnswers, StudentRepository students, AssessmentService assessments,
+            MasteryService mastery) {
         this.attempts = attempts;
         this.answers = answers;
         this.multipleAnswers = multipleAnswers;
@@ -35,6 +38,7 @@ public class AttemptServiceImpl implements AttemptService {
         this.shortAnswers = shortAnswers;
         this.students = students;
         this.assessments = assessments;
+        this.mastery = mastery;
     }
 
     @Transactional(readOnly = true)
@@ -116,7 +120,9 @@ public class AttemptServiceImpl implements AttemptService {
             grade(answer);
         attempt.setSubmittedAt(Instant.now());
         attempt.setStatus(AttemptStatus.SUBMITTED);
-        return attempts.save(attempt);
+        AssessmentAttempt submitted = attempts.save(attempt);
+        mastery.analyze(submitted);
+        return submitted;
     }
 
     private void grade(StudentAnswer answer) {

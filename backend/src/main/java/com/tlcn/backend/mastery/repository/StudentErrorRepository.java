@@ -6,4 +6,8 @@ import java.util.List;
 
 public interface StudentErrorRepository extends JpaRepository<StudentError, Long> {
     List<StudentError> findByStudentIdOrderByCreatedAtDesc(Long studentId);
+
+    boolean existsByAnswerId(Long answerId);
+
+    long countByStudentIdAndLessonId(Long studentId, Long lessonId);
 }

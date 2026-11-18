@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface KnowledgeGapRepository extends JpaRepository<KnowledgeGap, Long> {
     List<KnowledgeGap> findByStudentId(Long studentId);
+
+    java.util.Optional<KnowledgeGap> findByStudentIdAndLessonId(Long studentId, Long lessonId);
 }

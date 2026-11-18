@@ -48,6 +48,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/registration-session", "/api/auth/session").authenticated()
                         .requestMatchers("/api/subjects/**", "/api/topics/**", "/api/lessons/**")
                         .hasAnyRole("ADMIN", "TEACHER")
+                        .requestMatchers("/api/students/*/mastery/**", "/api/mastery/**")
+                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                         .requestMatchers("/api/classrooms/**", "/api/students/**").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers("/api/assessments/**", "/api/attempts/**")
                         .hasAnyRole("ADMIN", "TEACHER", "STUDENT")

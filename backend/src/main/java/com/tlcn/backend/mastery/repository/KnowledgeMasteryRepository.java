@@ -8,5 +8,7 @@ import java.util.Optional;
 public interface KnowledgeMasteryRepository extends JpaRepository<KnowledgeMastery, Long> {
     List<KnowledgeMastery> findByStudentId(Long studentId);
 
+    List<KnowledgeMastery> findByStudentClassroomId(Long classroomId);
+
     Optional<KnowledgeMastery> findByStudentIdAndLessonId(Long studentId, Long lessonId);
 }
