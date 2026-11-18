@@ -28,7 +28,7 @@ public class KnowledgeGap {
     @Column(nullable = false)
     private Instant identifiedAt = Instant.now();
 
-    protected KnowledgeGap() {
+    public KnowledgeGap() {
     }
 
     public Long getId() {

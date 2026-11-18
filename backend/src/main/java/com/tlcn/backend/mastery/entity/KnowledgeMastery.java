@@ -27,7 +27,7 @@ public class KnowledgeMastery {
     @Column(nullable = false)
     private Instant lastUpdated = Instant.now();
 
-    protected KnowledgeMastery() {
+    public KnowledgeMastery() {
     }
 
     public Long getId() {

@@ -28,7 +28,7 @@ public class StudentError {
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 
-    protected StudentError() {
+    public StudentError() {
     }
 
     public Long getId() {

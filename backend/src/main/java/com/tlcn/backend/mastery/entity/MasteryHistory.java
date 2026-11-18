@@ -20,7 +20,7 @@ public class MasteryHistory {
     @Column(nullable = false, length = 120)
     private String triggerSource;
 
-    protected MasteryHistory() {
+    public MasteryHistory() {
     }
 
     public Long getId() {
