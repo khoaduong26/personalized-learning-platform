@@ -8,7 +8,7 @@ import com.tlcn.backend.auth.controller.AuthController;
 
 import java.time.Clock;
 import java.util.List;
-
+import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -49,100 +49,28 @@ public class SecurityConfig {
             LoginTokenService tokens,
             ObjectProvider<ClientRegistrationRepository> clients,
             @Value("${app.frontend-url}") String frontendUrl) throws Exception {
-
-        http
-                .cors(cors -> {
-                })
-
-                // CSRF protection
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(
-                                CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(
-                                new CsrfTokenRequestAttributeHandler())
-                        .ignoringRequestMatchers(
-                                "/api/auth/register",
-                                "/api/auth/verify-otp",
-                                "/api/auth/resend-otp"))
-
-                // Authorization rules
-                .authorizeHttpRequests(rules -> rules
-
-                        // Public authentication endpoints
-                        .requestMatchers(
-                                "/api/auth/register",
-                                "/api/auth/verify-otp",
-                                "/api/auth/resend-otp",
-                                "/api/auth/options",
-                                "/api/auth/google",
-                                "/api/auth/google-login",
-                                "/api/auth/login",
-                                "/api/auth/logout",
-                                "/api/auth/csrf",
-                                "/api/csrf",
-                                "/oauth2/authorization/google",
-                                "/login/oauth2/code/google",
-                                "/error")
-                        .permitAll()
-
-                        // Authenticated endpoints
-                        .requestMatchers(
-                                "/api/auth/registration-session",
-                                "/api/auth/session",
-                                "/api/auth/me")
-                        .authenticated()
-
-                        // Academic management
-                        .requestMatchers(
-                                "/api/subjects/**",
-                                "/api/topics/**",
-                                "/api/lessons/**")
-                        .hasAnyRole("ADMIN", "TEACHER")
-
-                        // Mastery dashboards and student-specific progress
-                        .requestMatchers(
-                                "/api/students/*/mastery/**",
-                                "/api/mastery/**")
-                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
-
-                        // Classroom and student management
-                        .requestMatchers(
-                                "/api/classrooms/**",
-                                "/api/students/**")
-                        .hasAnyRole("ADMIN", "TEACHER")
-
-                        // Assessment and attempt management
-                        .requestMatchers(
-                                "/api/assessments/**",
-                                "/api/attempts/**")
-                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
-
-                        // Deny requests that are not explicitly permitted
-                        .anyRequest().denyAll())
-
-                .requestCache(cache -> cache.disable())
-
-                // Custom logout via LoginTokenService
-                .logout(logout -> logout.disable())
-
-                // Authentication using login token
-                .addFilterBefore(
-                        new LoginTokenFilter(tokens),
-                        UsernamePasswordAuthenticationFilter.class)
-
-                // JSON response for unauthenticated requests
-                .exceptionHandling(errors -> errors
-                        .authenticationEntryPoint(
-                                (request, response, ex) -> {
-                                    response.setStatus(401);
-                                    response.setContentType(
-                                            "application/json;charset=UTF-8");
-                                    response.getWriter().write(
-                                            "{\"code\":\"UNAUTHORIZED\","
-                                                    + "\"message\":\"Bạn cần đăng nhập.\"}");
-                                }));
-
-        // Configure Google OAuth2 if available
+        http.cors(cors -> {})
+            // These public endpoints do not use cookie-based authentication. Keep CSRF for other routes.
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp"))
+            .authorizeHttpRequests(rules -> rules
+                .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp",
+                        "/api/auth/options", "/api/auth/google", "/api/auth/google-login",
+                        "/api/auth/login", "/api/auth/logout", "/api/auth/csrf", "/oauth2/authorization/google",
+                        "/login/oauth2/code/google", "/error").permitAll()
+                .requestMatchers("/api/auth/registration-session", "/api/auth/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers(HttpMethod.PUT, "/api/users/me", "/api/users/me/password").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers(HttpMethod.POST, "/api/users/me/avatar").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                // Existing feature stubs have no ownership checks yet. Do not expose student data.
+                .anyRequest().denyAll())
+            .requestCache(cache -> cache.disable())
+            .logout(logout -> logout.disable())
+            .addFilterBefore(new LoginTokenFilter(tokens), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+            .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, ex) -> {
+                response.setStatus(401);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Bạn cần đăng nhập.\"}");
+            }));
         if (clients.getIfAvailable() != null) {
             http.oauth2Login(oauth -> oauth
                     .successHandler(googleSuccessHandler)
@@ -175,20 +103,8 @@ public class SecurityConfig {
         CorsConfiguration cors = new CorsConfiguration();
 
         cors.setAllowedOrigins(List.of(frontendUrl));
-
-        cors.setAllowedMethods(List.of(
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "DELETE",
-                "OPTIONS"));
-
-        cors.setAllowedHeaders(List.of(
-                "Content-Type",
-                "X-XSRF-TOKEN",
-                "X-CSRF-TOKEN"));
-
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
+        cors.setAllowedHeaders(List.of("Content-Type", "X-CSRF-TOKEN"));
         cors.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

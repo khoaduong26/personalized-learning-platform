@@ -4,8 +4,7 @@ import { HomePage } from '../../features/home'
 import ClassroomsPage from '../../features/classrooms/pages/ClassroomsPage'
 import PublicLayout from '../layouts/PublicLayout'
 import NotFoundPage from '../pages/NotFoundPage'
-import AcademicPage from '../../features/academic/pages/AcademicPage'
-import AssessmentsPage from '../../features/assessments/pages/AssessmentsPage'
+import ProfilePage from '../../features/profile/pages/ProfilePage'
 
 function LoginRoute() {
   const [params] = useSearchParams()
@@ -21,6 +20,10 @@ export default function AppRoutes() {
       <Route path="classrooms" element={<ClassroomsPage />} />
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="profile" element={<ProfilePage key="profile" />} />
+        <Route path="profile/teacher" element={<ProfilePage key="teacher-profile" teacherOnly />} />
+        <Route path="profile/student" element={<ProfilePage key="student-profile" />} />
+        <Route path="teacher/profile" element={<Navigate to="/profile/teacher" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
       <Route path="register" element={<RegistrationPage />} />

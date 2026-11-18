@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import RegistrationField from '../components/RegistrationField'
 import { getCurrentUser, getRegistrationOptions, loginAccount, logoutAccount } from '../services/authApi'
+import { notifyAccountChanged } from '../../../shared/services/accountEvents'
+import { profilePathFor } from '../../../shared/utils/profilePath'
 
 const googleErrors = {
   'not-registered': 'Bạn chưa có tài khoản Google trên EduLearn. Hãy đăng ký trước.',
@@ -13,6 +15,7 @@ const roleNames = { ADMIN: 'Quản trị viên', TEACHER: 'Giáo viên', STUDENT
 
 export default function LoginPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [checking, setChecking] = useState(true)
   const [form, setForm] = useState({ email: '', password: '', rememberMe: false })
@@ -43,7 +46,12 @@ export default function LoginPage() {
     event.preventDefault()
     setBusy(true); setError(''); setCode(''); setFields({}); setGoogleDismissed(true)
     try {
-      setUser(await loginAccount(form))
+      const signedIn = await loginAccount(form)
+      setUser(signedIn)
+      notifyAccountChanged()
+      if (params.get('next') === 'profile') {
+        navigate(profilePathFor(signedIn.role), { replace: true })
+      }
       setForm(current => ({ ...current, password: '' }))
     } catch (failure) {
       setError(failure.message); setCode(failure.code); setFields(failure.fieldErrors || {})
@@ -52,7 +60,7 @@ export default function LoginPage() {
 
   async function logout() {
     setBusy(true); setError('')
-    try { await logoutAccount(); setUser(null); setGoogleDismissed(true) }
+    try { await logoutAccount(); setUser(null); setGoogleDismissed(true); notifyAccountChanged() }
     catch (failure) { setError(failure.message) }
     finally { setBusy(false) }
   }
@@ -62,10 +70,14 @@ export default function LoginPage() {
     <span className="registration-step">TÀI KHOẢN EduLearn</span>
     <h2>{user ? `Xin chào, ${user.fullName}!` : 'Đăng nhập'}</h2>
     {displayedError && <p className="registration-notice error" role="alert">{displayedError}</p>}
+    {!user && params.get('password') === 'changed' && <p className="registration-notice success" role="status">Đổi mật khẩu thành công. Bạn hãy đăng nhập bằng mật khẩu mới.</p>}
     {user ? <>
       <p className="registration-notice success" role="status">Bạn đã đăng nhập với vai trò {roleNames[user.role]}.</p>
       <p className="registration-email">{user.email}</p>
-      <Link className="registration-primary registration-link" to="/">Về trang chủ</Link>
+      <Link className="registration-primary registration-link" to={profilePathFor(user.role)}>
+        {user.role === 'TEACHER' ? 'Mở hồ sơ giáo viên' : 'Quản lý tài khoản'}
+      </Link>
+      <Link className="registration-text-link" to="/">Về trang chủ</Link>
       <button className="registration-secondary login-logout" disabled={busy} onClick={logout}>{busy ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
     </> : <>
       <p className="registration-description">Chào mừng bạn quay lại! Đăng nhập để tiếp tục hành trình học tập.</p>
