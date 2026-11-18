@@ -1,3 +1,4 @@
+
 // Relative URLs keep requests on the frontend origin (Vite proxies /api in dev).
 export async function httpRequest(path, { method = 'GET', body, signal, headers = {} } = {}) {
   let response
@@ -5,7 +6,10 @@ export async function httpRequest(path, { method = 'GET', body, signal, headers 
     response = await fetch(path, {
       method,
       credentials: 'same-origin',
-      headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...headers },
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal,
     })
@@ -16,11 +20,14 @@ export async function httpRequest(path, { method = 'GET', body, signal, headers 
 
   const data = await response.json().catch(() => null)
   if (!response.ok) {
-    const error = new Error(data?.message || 'Chưa thực hiện được yêu cầu. Vui lòng thử lại.')
+    const error = new Error(
+      data?.message || 'Chưa thực hiện được yêu cầu. Vui lòng thử lại.'
+    )
     error.status = response.status
     error.code = data?.code
     error.fieldErrors = data?.fieldErrors || {}
     throw error
   }
+
   return data
 }

@@ -1,0 +1,154 @@
+
+package com.tlcn.backend.auth.handler;
+
+import com.tlcn.backend.auth.controller.AuthController;
+import com.tlcn.backend.auth.exception.AuthException;
+import com.tlcn.backend.auth.service.AuthService;
+import com.tlcn.backend.auth.service.LoginService;
+import com.tlcn.backend.auth.service.LoginTokenService;
+import com.tlcn.backend.user.dto.UserSummary;
+import com.tlcn.backend.user.entity.Role;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.*;
+
+import java.io.IOException;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.stereotype.Component;
+
+@Component
+public class GoogleRegistrationSuccessHandler implements AuthenticationSuccessHandler {
+
+    private final AuthService auth;
+    private final LoginService login;
+    private final LoginTokenService tokens;
+    private final String frontendUrl;
+
+    public GoogleRegistrationSuccessHandler(
+            AuthService auth,
+            LoginService login,
+            LoginTokenService tokens,
+            @Value("${app.frontend-url}") String frontendUrl) {
+
+        this.auth = auth;
+        this.login = login;
+        this.tokens = tokens;
+        this.frontendUrl = frontendUrl;
+    }
+
+    @Override
+    public void onAuthenticationSuccess(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication) throws IOException, ServletException {
+
+        String result = "success";
+        HttpSession session = request.getSession(false);
+
+        boolean signingIn = session != null
+                && "login".equals(
+                    session.getAttribute(AuthController.GOOGLE_FLOW)
+                );
+
+        try {
+            if (session == null) {
+                throw new IllegalArgumentException("Missing Google session");
+            }
+
+            Object flow = session.getAttribute(AuthController.GOOGLE_FLOW);
+
+            if (!"login".equals(flow) && !"register".equals(flow)) {
+                throw new IllegalArgumentException("Invalid Google flow");
+            }
+
+            Object role = session.getAttribute(AuthController.GOOGLE_ROLE);
+
+            // Only registration requires a selected role.
+            if (!signingIn && !(role instanceof Role)) {
+                throw new IllegalArgumentException("Missing registration role");
+            }
+
+            OidcUser principal = (OidcUser) authentication.getPrincipal();
+
+            var user = signingIn
+                    ? login.loginGoogle(
+                            principal.getSubject(),
+                            principal.getEmailVerified())
+                    : auth.registerGoogle(
+                            principal.getSubject(),
+                            principal.getEmail(),
+                            principal.getEmailVerified(),
+                            principal.getFullName(),
+                            (Role) role);
+
+            boolean remember = Boolean.TRUE.equals(
+                    session.getAttribute(AuthController.GOOGLE_REMEMBER)
+            );
+
+            tokens.issue(user, remember, response);
+
+            session.removeAttribute(AuthController.GOOGLE_ROLE);
+            session.removeAttribute(AuthController.GOOGLE_FLOW);
+            session.removeAttribute(AuthController.GOOGLE_REMEMBER);
+
+            var context = SecurityContextHolder.createEmptyContext();
+
+            context.setAuthentication(
+                    UsernamePasswordAuthenticationToken.authenticated(
+                            UserSummary.from(user),
+                            null,
+                            List.of(
+                                    new SimpleGrantedAuthority(
+                                            "ROLE_" + user.getRole().name()
+                                    )
+                            )
+                    )
+            );
+
+            SecurityContextHolder.setContext(context);
+
+            new HttpSessionSecurityContextRepository()
+                    .saveContext(context, request, response);
+
+        } catch (AuthException ex) {
+
+            result = signingIn
+                    ? switch (ex.getCode()) {
+                        case "GOOGLE_NOT_REGISTERED" -> "not-registered";
+                        case "ACCOUNT_LOCKED" -> "locked";
+                        default -> "error";
+                    }
+                    : "EMAIL_EXISTS".equals(ex.getCode())
+                            ? "exists"
+                            : "error";
+
+        } catch (RuntimeException ex) {
+            // Prevent preliminary OIDC authentication from remaining active.
+            result = "error";
+        }
+
+        if (!"success".equals(result)) {
+            SecurityContextHolder.clearContext();
+
+            HttpSession currentSession = request.getSession(false);
+            if (currentSession != null) {
+                currentSession.invalidate();
+            }
+        }
+
+        response.sendRedirect(
+                frontendUrl
+                        + (signingIn ? "/login" : "/register")
+                        + "?google=" + result
+        );
+    }
+}

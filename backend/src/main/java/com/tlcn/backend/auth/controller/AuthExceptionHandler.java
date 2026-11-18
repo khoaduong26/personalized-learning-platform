@@ -1,6 +1,6 @@
 package com.tlcn.backend.auth.controller;
 
-import com.tlcn.backend.auth.service.AuthException;
+import com.tlcn.backend.auth.exception.AuthException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
