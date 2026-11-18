@@ -20,11 +20,14 @@ export async function httpRequest(path, { method = 'GET', body, signal, headers 
 
   const data = await response.json().catch(() => null)
   if (!response.ok) {
-    const error = new Error(data?.message || 'Chưa thực hiện được yêu cầu. Vui lòng thử lại.')
+    const error = new Error(
+      data?.message || 'Chưa thực hiện được yêu cầu. Vui lòng thử lại.'
+    )
     error.status = response.status
     error.code = data?.code
     error.fieldErrors = data?.fieldErrors || {}
     throw error
   }
+
   return data
 }

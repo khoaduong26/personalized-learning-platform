@@ -45,6 +45,10 @@ export default function HomeHeader() {
             <a href="/#kham-pha">Khám phá</a>
             <a href="/#thu-suc">Thử sức cùng Toán</a>
             <a href="/#giao-vien">Dành cho giáo viên</a>
+
+            <Link to="/academic">
+              Quản lý chương trình
+            </Link>
           </nav>
 
           <div className="home-header-actions home-account-actions">

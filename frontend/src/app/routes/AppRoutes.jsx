@@ -4,6 +4,7 @@ import { HomePage } from '../../features/home'
 import ClassroomsPage from '../../features/classrooms/pages/ClassroomsPage'
 import PublicLayout from '../layouts/PublicLayout'
 import NotFoundPage from '../pages/NotFoundPage'
+import AcademicPage from '../../features/academic/pages/AcademicPage'
 
 function LoginRoute() {
   const [params] = useSearchParams()
@@ -24,6 +25,7 @@ export default function AppRoutes() {
       <Route path="register" element={<RegistrationPage />} />
       <Route path="register/complete" element={<RegistrationCompletePage />} />
       <Route path="login" element={<LoginRoute />} />
+      <Route path="academic" element={<AcademicPage />} />
     </Routes>
   )
 }

@@ -61,6 +61,8 @@ public class AuthController {
         return user;
     }
 
+    @GetMapping("/session")
+    public UserSummary currentSession(@AuthenticationPrincipal UserSummary user) { return user; }
     @GetMapping("/csrf")
     public Map<String, String> csrf(org.springframework.security.web.csrf.CsrfToken csrf) {
         return Map.of("token", csrf.getToken(), "headerName", csrf.getHeaderName());

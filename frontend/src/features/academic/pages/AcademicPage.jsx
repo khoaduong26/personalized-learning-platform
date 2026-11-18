@@ -18,6 +18,7 @@ export default function AcademicPage() {
   const [topicId, setTopicId] = useState(null)
   const [forms, setForms] = useState({ subject: emptyForm, topic: emptyForm, lesson: emptyForm })
   const [editing, setEditing] = useState(null)
+  const [catalogRevision, setCatalogRevision] = useState(0)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -48,16 +49,16 @@ export default function AcademicPage() {
       setTopics(items)
       setTopicId(current => items.some(item => item.id === current) ? current : (items[0]?.id ?? null))
     }).catch(error => setNotice(error.message))
-  }, [subjectId, access])
+  }, [subjectId, access, catalogRevision])
 
   useEffect(() => {
     if (!topicId || access !== 'allowed') { setLessons([]); return }
     getLessons(topicId).then(setLessons).catch(error => setNotice(error.message))
-  }, [topicId, access])
+  }, [topicId, access, catalogRevision])
 
   const mutate = async (action, success) => {
     setBusy(true); setNotice('')
-    try { await action(); await loadSubjects(); setNotice(success); setEditing(null) }
+    try { await action(); await loadSubjects(); setCatalogRevision(current => current + 1); setNotice(success); setEditing(null) }
     catch (error) { setNotice(error.message) }
     finally { setBusy(false) }
   }
@@ -107,12 +108,12 @@ export default function AcademicPage() {
     <section className="academic-columns" aria-label="Cấu trúc chương trình học">
       <AcademicColumn title="Môn học" count={subjects.length} hint="Cấp 1 · Toán, Tiếng Việt…">
         <ItemForm kind="subject" label="Tên môn học" form={forms.subject} editing={editing?.kind === 'subject'} busy={busy} onChange={value => setForms(current => ({ ...current, subject: value }))} onSubmit={value => save('subject', value)} onCancel={() => { setEditing(null); setForms(current => ({ ...current, subject: emptyForm })) }} />
-        <div className="academic-list">{subjects.map(item => <AcademicItem key={item.id} item={item} selected={subjectId === item.id} meta={`${item.topicCount} chủ đề`} onSelect={() => { setSubjectId(item.id); setEditing(null) }} onEdit={() => beginEdit('subject', item)} onDelete={() => remove('subject', item)} />)}</div>
+        <div className="academic-list">{subjects.map(item => <AcademicItem key={item.id} item={item} selected={subjectId === item.id} meta={`${item.topicCount} chủ đề`} onSelect={() => { setSubjectId(item.id); setEditing(null); setForms({ subject: emptyForm, topic: emptyForm, lesson: emptyForm }) }} onEdit={() => beginEdit('subject', item)} onDelete={() => remove('subject', item)} />)}</div>
         {!subjects.length && <EmptyState text="Chưa có môn học. Thêm môn học đầu tiên để bắt đầu." />}
       </AcademicColumn>
       <AcademicColumn title="Chủ đề" count={topics.length} hint={subjectId ? 'Cấp 2 · nhóm kiến thức' : 'Chọn môn học trước'}>
         {subjectId ? <ItemForm kind="topic" label="Tên chủ đề" form={forms.topic} editing={editing?.kind === 'topic'} busy={busy} onChange={value => setForms(current => ({ ...current, topic: value }))} onSubmit={value => save('topic', value)} onCancel={() => { setEditing(null); setForms(current => ({ ...current, topic: emptyForm })) }} /> : <p className="academic-inline-hint">Hãy chọn một môn học để quản lý chủ đề.</p>}
-        <div className="academic-list">{topics.map(item => <AcademicItem key={item.id} item={item} selected={topicId === item.id} meta={`${item.lessonCount} bài học`} onSelect={() => { setTopicId(item.id); setEditing(null) }} onEdit={() => beginEdit('topic', item)} onDelete={() => remove('topic', item)} />)}</div>
+        <div className="academic-list">{topics.map(item => <AcademicItem key={item.id} item={item} selected={topicId === item.id} meta={`${item.lessonCount} bài học`} onSelect={() => { setTopicId(item.id); setEditing(null); setForms(current => ({ ...current, topic: emptyForm, lesson: emptyForm })) }} onEdit={() => beginEdit('topic', item)} onDelete={() => remove('topic', item)} />)}</div>
         {subjectId && !topics.length && <EmptyState text="Môn học này chưa có chủ đề." />}
       </AcademicColumn>
       <AcademicColumn title="Bài học" count={lessons.length} hint={topicId ? 'Cấp 3 · đơn vị kiến thức' : 'Chọn chủ đề trước'}>
