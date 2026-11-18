@@ -14,7 +14,8 @@ export default function GoogleRegistrationCompletePage() {
       .catch(failure => { if (failure.name !== 'AbortError') setError(failure.message) })
     return () => controller.abort()
   }, [])
-  return <AuthLayout>
+  return <AuthLayout label="Đăng ký với Google">
+    <div className="registration-status-icon" aria-hidden="true">{user ? '✓' : 'G'}</div>
     <span className="registration-step">ĐĂNG KÝ VỚI GOOGLE</span>
     <h2>{user ? `Xin chào, ${user.fullName}!` : 'Đang kiểm tra tài khoản…'}</h2>
     {user && <><p className="registration-notice success" role="status">Tài khoản {user.role === 'TEACHER' ? 'giáo viên' : 'học sinh'} đã được tạo và đăng nhập bằng Google.</p>

@@ -1,4 +1,4 @@
-package com.tlcn.backend.auth.service;
+package com.tlcn.backend.auth.exception;
 
 import org.springframework.http.HttpStatus;
 
