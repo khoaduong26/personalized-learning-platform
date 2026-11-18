@@ -60,3 +60,13 @@ test('empty successful responses are accepted', async t => {
   t.mock.method(globalThis, 'fetch', async () => new Response(null, { status: 204 }))
   assert.equal(await httpRequest('/api/example'), null)
 })
+
+test('CSRF headers are preserved alongside the JSON content type', async t => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => Response.json({ id: 1 }))
+  await httpRequest('/api/auth/login', {
+    method: 'POST', body: { email: 'student@example.com' }, headers: { 'X-CSRF-TOKEN': 'csrf-token' },
+  })
+  const options = fetchMock.mock.calls[0].arguments[1]
+  assert.equal(options.headers['X-CSRF-TOKEN'], 'csrf-token')
+  assert.equal(options.headers['Content-Type'], 'application/json')
+})
