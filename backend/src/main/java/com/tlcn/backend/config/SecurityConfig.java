@@ -99,6 +99,12 @@ public class SecurityConfig {
                                 "/api/lessons/**")
                         .hasAnyRole("ADMIN", "TEACHER")
 
+                        // Mastery dashboards and student-specific progress
+                        .requestMatchers(
+                                "/api/students/*/mastery/**",
+                                "/api/mastery/**")
+                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+
                         // Classroom and student management
                         .requestMatchers(
                                 "/api/classrooms/**",

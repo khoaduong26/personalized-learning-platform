@@ -2,6 +2,8 @@ package com.tlcn.backend.mastery.controller;
 
 import com.tlcn.backend.mastery.entity.MasteryHistory;
 import com.tlcn.backend.mastery.service.MasteryService;
+import com.tlcn.backend.user.dto.UserSummary;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.List;
@@ -23,7 +25,8 @@ public class MasteryHistoryController {
     }
 
     @GetMapping
-    public List<HistoryView> list(@PathVariable Long masteryId) {
+    public List<HistoryView> list(@PathVariable Long masteryId, @AuthenticationPrincipal UserSummary actor) {
+        service.requireCanViewMastery(masteryId, actor);
         return service.history(masteryId).stream().map(HistoryView::from).toList();
     }
 }
