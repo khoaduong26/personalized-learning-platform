@@ -117,6 +117,10 @@ public class SecurityConfig {
                                 "/api/attempts/**")
                         .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
 
+                        // Personalized exercise generation, review, and practice
+                        .requestMatchers("/api/exercises/**")
+                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+
                         // Deny requests that are not explicitly permitted
                         .anyRequest().denyAll())
 

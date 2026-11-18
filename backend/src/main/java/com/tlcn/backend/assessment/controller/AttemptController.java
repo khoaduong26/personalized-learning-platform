@@ -16,12 +16,14 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api")
 public class AttemptController {
-    public record AttemptResult(Long id, Long assessmentId, String assessmentTitle, Long studentId,
+    public record AttemptResult(Long id, Long assessmentId, String assessmentTitle, Long learningStepId, Long studentId,
             String studentName, String status, Instant startedAt, Instant submittedAt,
             double totalScore, double maxScore) {
-        static AttemptResult from(AssessmentAttempt a) {
-            double max = a.getAssessment().getQuestions().stream().mapToDouble(Question::getScore).sum();
-            return new AttemptResult(a.getId(), a.getAssessment().getId(), a.getAssessment().getTitle(),
+        static AttemptResult from(AssessmentAttempt a, List<Question> questions) {
+            double max = questions.stream().mapToDouble(Question::getScore).sum();
+            return new AttemptResult(a.getId(), a.getAssessment() == null ? null : a.getAssessment().getId(),
+                    a.getAssessment() == null ? null : a.getAssessment().getTitle(),
+                    a.getLearningStep() == null ? null : a.getLearningStep().getId(),
                     a.getStudent().getId(), a.getStudent().getFullName(), a.getStatus().name(), a.getStartedAt(),
                     a.getSubmittedAt(), a.getStatus() == AttemptStatus.SUBMITTED ? a.totalScore() : 0, max);
         }
@@ -49,7 +51,15 @@ public class AttemptController {
     @PostMapping("/assessments/{assessmentId}/attempts")
     @ResponseStatus(HttpStatus.CREATED)
     public AttemptResult start(@PathVariable Long assessmentId, @AuthenticationPrincipal UserSummary actor) {
-        return AttemptResult.from(attempts.start(assessmentId, actor));
+        AssessmentAttempt attempt = attempts.start(assessmentId, actor);
+        return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
+    }
+
+    @PostMapping("/exercises/steps/{stepId}/attempts")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AttemptResult startExercise(@PathVariable Long stepId, @AuthenticationPrincipal UserSummary actor) {
+        AssessmentAttempt attempt = attempts.startExercise(stepId, actor);
+        return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
     }
 
     @PutMapping("/attempts/{id}/answers")
@@ -61,12 +71,14 @@ public class AttemptController {
 
     @GetMapping("/attempts/student/{studentId}")
     public List<AttemptResult> byStudent(@PathVariable Long studentId, @AuthenticationPrincipal UserSummary actor) {
-        return assessments.attemptsForStudent(studentId, actor).stream().map(AttemptResult::from).toList();
+        return assessments.attemptsForStudent(studentId, actor).stream()
+                .map(attempt -> AttemptResult.from(attempt, attempts.questionsForAttempt(attempt))).toList();
     }
 
     @GetMapping("/attempts/{id}")
     public AttemptResult get(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
-        return AttemptResult.from(attempts.get(id, actor));
+        AssessmentAttempt attempt = attempts.get(id, actor);
+        return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
     }
 
     @GetMapping("/attempts/{id}/draft")
@@ -92,7 +104,8 @@ public class AttemptController {
 
     @PostMapping("/attempts/{id}/submit")
     public AttemptResult submit(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
-        return AttemptResult.from(attempts.submit(id, actor));
+        AssessmentAttempt attempt = attempts.submit(id, actor);
+        return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
     }
 
     @GetMapping("/attempts/{id}/result")
@@ -102,7 +115,7 @@ public class AttemptController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Kết quả sẽ hiển thị sau khi nộp bài.");
         Map<Long, StudentAnswer> saved = new HashMap<>();
         attempt.getAnswers().forEach(answer -> saved.put(answer.getQuestion().getId(), answer));
-        List<AnswerDetail> details = attempt.getAssessment().getQuestions().stream().map(question -> {
+        List<AnswerDetail> details = attempts.questionsForAttempt(attempt).stream().map(question -> {
             StudentAnswer answer = saved.get(question.getId());
             List<String> submitted = new ArrayList<>();
             List<String> expected = new ArrayList<>();
@@ -133,6 +146,6 @@ public class AttemptController {
                     question.getScore(), answer == null ? 0 : answer.score(), submitted, expected,
                     question.getExplanation());
         }).toList();
-        return new AssessmentResult(AttemptResult.from(attempt), details);
+        return new AssessmentResult(AttemptResult.from(attempt, attempts.questionsForAttempt(attempt)), details);
     }
 }

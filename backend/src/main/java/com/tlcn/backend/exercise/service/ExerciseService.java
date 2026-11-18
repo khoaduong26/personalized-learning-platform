@@ -2,16 +2,22 @@ package com.tlcn.backend.exercise.service;
 
 import com.tlcn.backend.assessment.entity.ApprovalStatus;
 import com.tlcn.backend.assessment.entity.Question;
+import com.tlcn.backend.assessment.dto.QuestionRequest;
 import com.tlcn.backend.exercise.entity.StepExercise;
+import com.tlcn.backend.user.dto.UserSummary;
 
 import java.util.List;
 
 public interface ExerciseService {
-    List<StepExercise> forStep(Long stepId);
+    List<StepExercise> forStep(Long stepId, UserSummary actor);
 
-    List<Question> pendingReview();
+    List<Question> pendingReview(UserSummary actor);
 
-    Question review(Long questionId, ApprovalStatus decision);
+    Question createGenerated(Long stepId, QuestionRequest request, UserSummary actor);
+
+    Question updateGenerated(Long questionId, QuestionRequest request, UserSummary actor);
+
+    Question review(Long questionId, ApprovalStatus decision, UserSummary actor);
 
     StepExercise attach(StepExercise exercise);
 }
