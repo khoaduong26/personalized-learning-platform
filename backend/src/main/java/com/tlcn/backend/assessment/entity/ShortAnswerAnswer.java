@@ -8,7 +8,7 @@ public class ShortAnswerAnswer extends StudentAnswer {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    protected ShortAnswerAnswer() {
+    public ShortAnswerAnswer() {
     }
 
     public String getContent() {

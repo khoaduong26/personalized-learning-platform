@@ -9,6 +9,7 @@ export default function HomeHeader() {
           <Link className="home-brand" to="/" aria-label="TLCN — Trang chủ"><span className="brand-symbol" aria-hidden="true">✳</span><span>TLCN<span className="brand-dot">.</span></span></Link>
           <nav className="home-nav" aria-label="Điều hướng chính"><a href="/#kham-pha">Khám phá</a><a href="/#thu-suc">Thử sức cùng Toán</a><a href="/#giao-vien">Dành cho giáo viên</a></nav>
           <div className="home-header-actions">
+            <Link className="home-classrooms-link" to="/assessments">Kiểm tra</Link>
             <Link className="home-classrooms-link" to="/classrooms">Lớp học</Link>
             <Link className="home-button home-button-small" to="/register">Tạo tài khoản <span aria-hidden="true">↗</span></Link>
           </div>

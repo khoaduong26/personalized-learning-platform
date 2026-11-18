@@ -17,7 +17,7 @@ public class StudentBlankAnswer {
     @JoinColumn(name = "answer_id")
     private FillBlankAnswer answer;
 
-    protected StudentBlankAnswer() {
+    public StudentBlankAnswer() {
     }
 
     public Long getId() {

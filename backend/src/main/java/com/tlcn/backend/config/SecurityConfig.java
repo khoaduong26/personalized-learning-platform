@@ -49,6 +49,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/subjects/**", "/api/topics/**", "/api/lessons/**")
                         .hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers("/api/classrooms/**", "/api/students/**").hasAnyRole("ADMIN", "TEACHER")
+                        .requestMatchers("/api/assessments/**", "/api/attempts/**")
+                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                         // Existing feature stubs have no ownership checks yet. Do not expose student
                         // data.
                         .anyRequest().denyAll())

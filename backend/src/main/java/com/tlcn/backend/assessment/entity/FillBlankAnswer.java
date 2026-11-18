@@ -10,10 +10,18 @@ public class FillBlankAnswer extends StudentAnswer {
     @OneToMany(mappedBy = "answer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudentBlankAnswer> answers = new ArrayList<>();
 
-    protected FillBlankAnswer() {
+    public FillBlankAnswer() {
     }
 
     public List<StudentBlankAnswer> getAnswers() {
         return answers;
+    }
+
+    public void setAnswers(List<StudentBlankAnswer> values) {
+        answers.clear();
+        values.forEach(value -> {
+            value.setAnswer(this);
+            answers.add(value);
+        });
     }
 }

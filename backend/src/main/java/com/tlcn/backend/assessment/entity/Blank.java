@@ -16,7 +16,7 @@ public class Blank {
     @JoinColumn(name = "question_id")
     private FillBlankQuestion question;
 
-    protected Blank() {
+    public Blank() {
     }
 
     public Long getId() {

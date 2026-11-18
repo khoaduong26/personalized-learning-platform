@@ -10,7 +10,7 @@ public class ShortAnswerQuestion extends Question {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String correctAnswer;
 
-    protected ShortAnswerQuestion() {
+    public ShortAnswerQuestion() {
     }
 
     public boolean isCaseSensitive() {
