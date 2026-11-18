@@ -1,2 +1,5 @@
 package com.tlcn.backend.assessment.entity;
-public enum AssessmentType { DIAGNOSTIC, PERIODIC, PRACTICE }
+
+public enum AssessmentType {
+    DIAGNOSTIC, PERIODIC, PRACTICE
+}

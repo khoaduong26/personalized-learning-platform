@@ -8,7 +8,7 @@ export default function HomePage() {
   const [topicId, setTopicId] = useState('operations')
   const topic = practiceTopics.find((item) => item.id === topicId)
 
-  useEffect(() => { document.title = 'TLCN · Cùng em khám phá Toán lớp 2' }, [])
+  useEffect(() => { document.title = 'EduLearn · Cùng em khám phá Toán lớp 2' }, [])
 
   return (
     <main id="noi-dung">
@@ -35,7 +35,7 @@ export default function HomePage() {
         <PracticePreview key={topic.id} topic={topic} />
       </div></section>
 
-      <section id="giao-vien" className="home-container home-teachers" aria-labelledby="teacher-title"><div className="home-section-heading"><div><p className="home-eyebrow">GÓC DÀNH CHO THẦY CÔ</p><h2 id="teacher-title">Hiểu từng em.<br />Đồng hành từng bước.</h2></div><p>Mỗi học sinh có một nhịp học riêng.<br />TLCN hướng đến việc hỗ trợ thầy cô<br />tìm ra bước tiếp theo phù hợp.</p></div><p className="teacher-roadmap-label">Các chức năng đang được phát triển</p><div className="teacher-steps"><article><span>01</span><h3>Nhìn rõ năng lực</h3><p>Đánh giá theo từng đơn vị kiến thức để nhận biết điều học sinh đã hiểu và phần cần củng cố.</p></article><article><span>02</span><h3>Chọn đúng bước học</h3><p>Đề xuất lộ trình học tập dựa trên kết quả và những kiến thức mỗi em cần luyện thêm.</p></article><article><span>03</span><h3>Thầy cô luôn đồng hành</h3><p>Giáo viên xem xét, duyệt bài tập được đề xuất trước khi giao cho học sinh luyện tập.</p></article></div><div className="teacher-invite"><div><strong>Bắt đầu bằng một tài khoản TLCN</strong><p>Đăng ký và xác minh email để chuẩn bị cho hành trình cùng học sinh.</p></div><a className="home-button" href="/register">Đăng ký tài khoản <span aria-hidden="true">→</span></a></div></section>
+      <section id="giao-vien" className="home-container home-teachers" aria-labelledby="teacher-title"><div className="home-section-heading"><div><p className="home-eyebrow">GÓC DÀNH CHO THẦY CÔ</p><h2 id="teacher-title">Hiểu từng em.<br />Đồng hành từng bước.</h2></div><p>Mỗi học sinh có một nhịp học riêng.<br />EduLearn hướng đến việc hỗ trợ thầy cô<br />tìm ra bước tiếp theo phù hợp.</p></div><p className="teacher-roadmap-label">Các chức năng đang được phát triển</p><div className="teacher-steps"><article><span>01</span><h3>Nhìn rõ năng lực</h3><p>Đánh giá theo từng đơn vị kiến thức để nhận biết điều học sinh đã hiểu và phần cần củng cố.</p></article><article><span>02</span><h3>Chọn đúng bước học</h3><p>Đề xuất lộ trình học tập dựa trên kết quả và những kiến thức mỗi em cần luyện thêm.</p></article><article><span>03</span><h3>Thầy cô luôn đồng hành</h3><p>Giáo viên xem xét, duyệt bài tập được đề xuất trước khi giao cho học sinh luyện tập.</p></article></div><div className="teacher-invite"><div><strong>Bắt đầu bằng một tài khoản EduLearn</strong><p>Đăng ký và xác minh email để chuẩn bị cho hành trình cùng học sinh.</p></div><a className="home-button" href="/register">Đăng ký tài khoản <span aria-hidden="true">→</span></a></div></section>
 
       <section className="home-closing"><div className="home-container"><span className="closing-star" aria-hidden="true">✳</span><h2>Không cần giỏi ngay.<br />Chỉ cần vui học mỗi ngày.</h2><p>Hành trình khám phá Toán học bắt đầu từ một bước nhỏ.</p><a className="home-button" href="#thu-suc">Cùng thử một bài toán <span aria-hidden="true">→</span></a></div></section>
     </main>

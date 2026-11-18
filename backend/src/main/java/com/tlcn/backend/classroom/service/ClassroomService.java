@@ -1,13 +1,30 @@
 package com.tlcn.backend.classroom.service;
-import com.tlcn.backend.classroom.entity.Classroom;
-import com.tlcn.backend.classroom.repository.ClassroomRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import com.tlcn.backend.classroom.dto.*;
+import com.tlcn.backend.user.dto.UserSummary;
 import java.util.List;
-@Service public class ClassroomService {
-    private final ClassroomRepository repository;
-    public ClassroomService(ClassroomRepository repository) { this.repository = repository; }
-    @Transactional(readOnly = true) public List<Classroom> findAll() { return repository.findAll(); }
-    @Transactional(readOnly = true) public List<Classroom> findByTeacher(Long teacherId) { return repository.findByTeacherId(teacherId); }
-    @Transactional public Classroom save(Classroom classroom) { return repository.save(classroom); }
+
+public interface ClassroomService {
+    List<ClassroomResponse> list(UserSummary actor);
+
+    ClassroomResponse get(Long id, UserSummary actor);
+
+    ClassroomResponse create(ClassroomRequest request, UserSummary actor);
+
+    ClassroomResponse update(Long id, ClassroomRequest request, UserSummary actor);
+
+    List<StudentSummary> students(Long classroomId, String search, UserSummary actor);
+
+    List<TeacherOption> teachers(UserSummary actor);
+
+    List<StudentCandidate> findCandidate(String email, UserSummary actor);
+
+    StudentSummary enroll(Long classroomId, Long studentId, UserSummary actor);
+
+    StudentSummary getStudent(Long studentId, UserSummary actor);
+
+    void removeStudent(Long classroomId, Long studentId, UserSummary actor);
+
+    StudentSummary updateStudent(Long studentId, StudentUpdateRequest request, UserSummary actor);
+
 }
