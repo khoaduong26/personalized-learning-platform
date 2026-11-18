@@ -18,7 +18,7 @@ public class Option {
     @JoinColumn(name = "question_id")
     private MultipleChoiceQuestion question;
 
-    protected Option() {
+    public Option() {
     }
 
     public Long getId() {

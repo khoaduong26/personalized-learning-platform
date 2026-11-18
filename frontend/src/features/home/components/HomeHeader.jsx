@@ -49,6 +49,9 @@ export default function HomeHeader() {
             <Link to="/academic">
               Quản lý chương trình
             </Link>
+            <Link to="/assessments">
+              Kiểm tra
+            </Link>
           </nav>
 
           <div className="home-header-actions home-account-actions">

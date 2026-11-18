@@ -105,6 +105,12 @@ public class SecurityConfig {
                                 "/api/students/**")
                         .hasAnyRole("ADMIN", "TEACHER")
 
+                        // Assessment and attempt management
+                        .requestMatchers(
+                                "/api/assessments/**",
+                                "/api/attempts/**")
+                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+
                         // Deny requests that are not explicitly permitted
                         .anyRequest().denyAll())
 

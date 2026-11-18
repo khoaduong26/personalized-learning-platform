@@ -1,6 +1,7 @@
 package com.tlcn.backend.assessment.entity;
 
 import com.tlcn.backend.user.entity.Teacher;
+import com.tlcn.backend.classroom.entity.Classroom;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,11 +27,14 @@ public class Assessment {
     @JoinColumn(name = "teacher_id")
     private Teacher teacher;
     @ManyToMany
+    @JoinTable(name = "assessment_classrooms", joinColumns = @JoinColumn(name = "assessment_id"), inverseJoinColumns = @JoinColumn(name = "classroom_id"))
+    private List<Classroom> classrooms = new ArrayList<>();
+    @ManyToMany
     @JoinTable(name = "assessment_questions", joinColumns = @JoinColumn(name = "assessment_id"), inverseJoinColumns = @JoinColumn(name = "question_id"))
     @OrderColumn(name = "display_order")
     private List<Question> questions = new ArrayList<>();
 
-    protected Assessment() {
+    public Assessment() {
     }
 
     public Long getId() {
@@ -79,6 +83,20 @@ public class Assessment {
 
     public void setTeacher(Teacher teacher) {
         this.teacher = teacher;
+    }
+
+    public void setQuestions(List<Question> questions) {
+        this.questions.clear();
+        this.questions.addAll(questions);
+    }
+
+    public List<Classroom> getClassrooms() {
+        return classrooms;
+    }
+
+    public void setClassrooms(List<Classroom> values) {
+        classrooms.clear();
+        classrooms.addAll(values);
     }
 
     public List<Question> getQuestions() {

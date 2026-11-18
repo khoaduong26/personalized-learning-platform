@@ -30,7 +30,7 @@ public class AssessmentAttempt {
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudentAnswer> answers = new ArrayList<>();
 
-    protected AssessmentAttempt() {
+    public AssessmentAttempt() {
     }
 
     public Long getId() {
@@ -55,6 +55,11 @@ public class AssessmentAttempt {
 
     public void setStatus(AttemptStatus value) {
         status = value;
+    }
+
+    public void addAnswer(StudentAnswer answer) {
+        answer.setAttempt(this);
+        answers.add(answer);
     }
 
     public Assessment getAssessment() {

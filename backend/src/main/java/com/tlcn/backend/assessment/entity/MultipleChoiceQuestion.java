@@ -13,7 +13,7 @@ public class MultipleChoiceQuestion extends Question {
     @OrderBy("displayOrder ASC")
     private List<Option> options = new ArrayList<>();
 
-    protected MultipleChoiceQuestion() {
+    public MultipleChoiceQuestion() {
     }
 
     public boolean isAllowMultiple() {
@@ -26,5 +26,13 @@ public class MultipleChoiceQuestion extends Question {
 
     public List<Option> getOptions() {
         return options;
+    }
+
+    public void setOptions(List<Option> values) {
+        options.clear();
+        values.forEach(value -> {
+            value.setQuestion(this);
+            options.add(value);
+        });
     }
 }

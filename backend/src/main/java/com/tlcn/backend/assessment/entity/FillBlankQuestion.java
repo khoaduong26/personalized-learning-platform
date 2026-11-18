@@ -13,7 +13,7 @@ public class FillBlankQuestion extends Question {
     @OrderBy("position ASC")
     private List<Blank> blanks = new ArrayList<>();
 
-    protected FillBlankQuestion() {
+    public FillBlankQuestion() {
     }
 
     public boolean isCaseSensitive() {
@@ -26,5 +26,13 @@ public class FillBlankQuestion extends Question {
 
     public List<Blank> getBlanks() {
         return blanks;
+    }
+
+    public void setBlanks(List<Blank> values) {
+        blanks.clear();
+        values.forEach(value -> {
+            value.setQuestion(this);
+            blanks.add(value);
+        });
     }
 }
