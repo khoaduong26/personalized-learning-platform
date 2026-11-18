@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
 import { LoginPage, RegistrationPage, RegistrationCompletePage } from '../../features/auth'
 import { HomePage } from '../../features/home'
+import AcademicPage from '../../features/academic/pages/AcademicPage'
+import AssessmentsPage from '../../features/assessments/pages/AssessmentsPage'
 import ClassroomsPage from '../../features/classrooms/pages/ClassroomsPage'
 import PublicLayout from '../layouts/PublicLayout'
 import NotFoundPage from '../pages/NotFoundPage'

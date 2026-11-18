@@ -117,8 +117,14 @@ export default function ClassroomsPage() {
 
   if (access === 'loading') return <main className="classrooms-shell"><p className="classrooms-state">Đang kiểm tra phiên đăng nhập…</p></main>
   if (access === 'signed-out') return <Gate title="Đăng nhập để quản lý lớp học" description="Trang này dành cho tài khoản giáo viên hoặc quản trị viên." />
-  if (access === 'forbidden') return <Gate title="Trang này dành cho giáo viên và quản trị viên" description={`${user?.fullName ? `Xin chào ${user.fullName}, ` : ''}tài khoản hiện tại không thể quản lý lớp học.`} ` />
+  if (access === 'forbidden') return (
+    <Gate
+      title="Trang này dành cho giáo viên và quản trị viên"
+      description={`${user?.fullName ? `Xin chào ${user.fullName}, ` : ''}tài khoản hiện tại không thể quản lý lớp học.`}
+    />
+  )
 
+  
   const selected = classes.find(item => item.id === selectedId)
 
   return <main className="classrooms-shell">
