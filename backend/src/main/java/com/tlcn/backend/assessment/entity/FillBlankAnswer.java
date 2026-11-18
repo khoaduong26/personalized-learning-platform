@@ -1,10 +1,27 @@
 package com.tlcn.backend.assessment.entity;
+
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
-@Entity @Table(name = "fill_blank_answers")
+
+@Entity
+@Table(name = "fill_blank_answers")
 public class FillBlankAnswer extends StudentAnswer {
-    @OneToMany(mappedBy = "answer", cascade = CascadeType.ALL, orphanRemoval = true) private List<StudentBlankAnswer> answers = new ArrayList<>();
-    protected FillBlankAnswer() {}
-    public List<StudentBlankAnswer> getAnswers() { return answers; }
+    @OneToMany(mappedBy = "answer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StudentBlankAnswer> answers = new ArrayList<>();
+
+    public FillBlankAnswer() {
+    }
+
+    public List<StudentBlankAnswer> getAnswers() {
+        return answers;
+    }
+
+    public void setAnswers(List<StudentBlankAnswer> values) {
+        answers.clear();
+        values.forEach(value -> {
+            value.setAnswer(this);
+            answers.add(value);
+        });
+    }
 }

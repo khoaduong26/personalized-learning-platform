@@ -1,5 +1,6 @@
-// Relative URLs keep requests on the frontend origin (Vite proxies /api in dev).
-export async function httpRequest(path, { method = 'GET', body, signal, headers } = {}) {
+
+ // Relative URLs keep requests on the frontend origin (Vite proxies /api in dev).
+export async function httpRequest(path, { method = 'GET', body, signal, headers = {} } = {}) {
   let response
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
   try {
@@ -17,11 +18,14 @@ export async function httpRequest(path, { method = 'GET', body, signal, headers 
 
   const data = await response.json().catch(() => null)
   if (!response.ok) {
-    const error = new Error(data?.message || 'Chưa thực hiện được yêu cầu. Vui lòng thử lại.')
+    const error = new Error(
+      data?.message || 'Chưa thực hiện được yêu cầu. Vui lòng thử lại.'
+    )
     error.status = response.status
     error.code = data?.code
     error.fieldErrors = data?.fieldErrors || {}
     throw error
   }
+
   return data
 }

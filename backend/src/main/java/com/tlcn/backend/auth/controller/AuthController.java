@@ -26,6 +26,7 @@ public class AuthController {
     private final LoginService login;
     private final LoginTokenService tokens;
     private final ObjectProvider<ClientRegistrationRepository> clients;
+
     public AuthController(AuthService service, ObjectProvider<ClientRegistrationRepository> clients,
             LoginService login, LoginTokenService tokens) {
         this.service = service;
@@ -33,29 +34,43 @@ public class AuthController {
         this.login = login;
         this.tokens = tokens;
     }
+
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public RegistrationResponse register(@Valid @RequestBody RegisterRequest request) { return service.register(request); }
+    public RegistrationResponse register(@Valid @RequestBody RegisterRequest request) {
+        return service.register(request);
+    }
 
     @PostMapping("/verify-otp")
-    public RegistrationResponse verify(@Valid @RequestBody VerifyOtpRequest request) { return service.verify(request); }
+    public RegistrationResponse verify(@Valid @RequestBody VerifyOtpRequest request) {
+        return service.verify(request);
+    }
 
     @PostMapping("/resend-otp")
-    public RegistrationResponse resend(@Valid @RequestBody EmailRequest request) { return service.resend(request); }
+    public RegistrationResponse resend(@Valid @RequestBody EmailRequest request) {
+        return service.resend(request);
+    }
 
     @GetMapping("/options")
-    public Map<String, Boolean> options() { return Map.of("googleEnabled", clients.getIfAvailable() != null); }
+    public Map<String, Boolean> options() {
+        return Map.of("googleEnabled", clients.getIfAvailable() != null);
+    }
 
     @GetMapping("/registration-session")
-    public UserSummary registrationSession(@AuthenticationPrincipal UserSummary user) { return user; }
+    public UserSummary registrationSession(@AuthenticationPrincipal UserSummary user) {
+        return user;
+    }
 
+    @GetMapping("/session")
+    public UserSummary currentSession(@AuthenticationPrincipal UserSummary user) { return user; }
     @GetMapping("/csrf")
     public Map<String, String> csrf(org.springframework.security.web.csrf.CsrfToken csrf) {
         return Map.of("token", csrf.getToken(), "headerName", csrf.getHeaderName());
     }
 
     @PostMapping("/login")
-    public UserSummary login(@Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
+    public UserSummary login(@Valid @RequestBody LoginRequest body, HttpServletRequest request,
+            HttpServletResponse response) {
         var user = login.login(body);
         // Revoke an existing login when switching accounts and rotate the CSRF session.
         tokens.logout(request, response);
@@ -64,11 +79,15 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public UserSummary me(@AuthenticationPrincipal UserSummary user) { return user; }
+    public UserSummary me(@AuthenticationPrincipal UserSummary user) {
+        return user;
+    }
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(HttpServletRequest request, HttpServletResponse response) { tokens.logout(request, response); }
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        tokens.logout(request, response);
+    }
 
     @GetMapping("/google-login")
     public void googleLogin(@RequestParam(defaultValue = "false") boolean rememberMe,
@@ -81,7 +100,8 @@ public class AuthController {
     }
 
     @GetMapping("/google")
-    public void google(@RequestParam Role role, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void google(@RequestParam Role role, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
         service.requirePublicRole(role);
         requireGoogle();
         request.getSession().setAttribute(GOOGLE_FLOW, "register");

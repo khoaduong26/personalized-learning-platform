@@ -68,7 +68,10 @@ export default function HomeHeader() {
   }
   return (
     <>
-      <a className="home-skip" href="#noi-dung">Đến nội dung chính</a>
+      <a className="home-skip" href="#noi-dung">
+        Đến nội dung chính
+      </a>
+
       <header className="home-header">
         <div className="home-container home-header-inner">
           <Link className="home-brand" to="/" aria-label="EduLearn — Trang chủ"><img className="brand-symbol" src="/math-bunny.svg" width="44" height="44" alt="" /><span>EduLearn<span className="brand-dot">.</span></span></Link>

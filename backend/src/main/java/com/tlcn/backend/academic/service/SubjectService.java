@@ -1,12 +1,13 @@
 package com.tlcn.backend.academic.service;
-import com.tlcn.backend.academic.entity.Subject;
-import com.tlcn.backend.academic.repository.SubjectRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import com.tlcn.backend.academic.dto.SubjectRequest;
+import com.tlcn.backend.academic.dto.SubjectResponse;
 import java.util.List;
-@Service public class SubjectService {
-    private final SubjectRepository repository;
-    public SubjectService(SubjectRepository repository) { this.repository = repository; }
-    @Transactional(readOnly = true) public List<Subject> findAll() { return repository.findAll(); }
-    @Transactional public Subject save(Subject subject) { return repository.save(subject); }
+
+public interface SubjectService {
+    List<SubjectResponse> findAll();
+    SubjectResponse get(Long id);
+    SubjectResponse create(SubjectRequest request);
+    SubjectResponse update(Long id, SubjectRequest request);
+    void delete(Long id);
 }
