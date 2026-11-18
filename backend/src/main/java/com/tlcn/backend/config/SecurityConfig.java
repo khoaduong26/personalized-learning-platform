@@ -14,6 +14,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.*;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.*;
 
 @Configuration
@@ -28,13 +30,20 @@ public class SecurityConfig {
             @Value("${app.frontend-url}") String frontendUrl) throws Exception {
         http.cors(cors -> {})
             // These public endpoints do not use cookie-based authentication. Keep CSRF for other routes.
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp"))
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                .ignoringRequestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp"))
             .authorizeHttpRequests(rules -> rules
                 .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp",
                         "/api/auth/options", "/api/auth/google", "/api/auth/google-login",
                         "/api/auth/login", "/api/auth/logout", "/api/auth/csrf", "/oauth2/authorization/google",
                         "/login/oauth2/code/google", "/error").permitAll()
-                .requestMatchers("/api/auth/registration-session", "/api/auth/me").authenticated()
+                .requestMatchers("/api/csrf").permitAll()
+                .requestMatchers("/api/auth/registration-session", "/api/auth/session", "/api/auth/me")
+                    .authenticated()
+                .requestMatchers("/api/subjects/**", "/api/topics/**", "/api/lessons/**")
+                    .hasAnyRole("ADMIN", "TEACHER")
                 // Existing feature stubs have no ownership checks yet. Do not expose student data.
                 .anyRequest().denyAll())
             .requestCache(cache -> cache.disable())
@@ -63,8 +72,8 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(@Value("${app.frontend-url}") String frontendUrl) {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(List.of(frontendUrl));
-        cors.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Content-Type", "X-CSRF-TOKEN"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        cors.setAllowedHeaders(List.of("Content-Type", "X-XSRF-TOKEN"));
         cors.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cors);
