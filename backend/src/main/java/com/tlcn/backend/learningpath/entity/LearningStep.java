@@ -26,7 +26,7 @@ public class LearningStep {
     @OneToMany(mappedBy = "step")
     private List<com.tlcn.backend.exercise.entity.StepExercise> exercises = new ArrayList<>();
 
-    protected LearningStep() {
+    public LearningStep() {
     }
 
     public Long getId() {

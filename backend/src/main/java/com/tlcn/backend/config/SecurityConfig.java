@@ -105,6 +105,11 @@ public class SecurityConfig {
                                 "/api/mastery/**")
                         .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
 
+                        // Learning paths are visible to their student and the student's teacher;
+                        // ownership and classroom checks are enforced by LearningPathService.
+                        .requestMatchers("/api/students/*/learning-paths/**")
+                        .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+
                         // Classroom and student management
                         .requestMatchers(
                                 "/api/classrooms/**",

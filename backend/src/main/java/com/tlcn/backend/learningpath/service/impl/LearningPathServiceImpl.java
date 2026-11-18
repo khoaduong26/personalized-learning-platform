@@ -1,46 +1,182 @@
 package com.tlcn.backend.learningpath.service.impl;
 
 import com.tlcn.backend.learningpath.entity.LearningPath;
+import com.tlcn.backend.learningpath.entity.LearningPathStatus;
 import com.tlcn.backend.learningpath.entity.LearningStep;
+import com.tlcn.backend.learningpath.entity.LearningStepStatus;
 import com.tlcn.backend.learningpath.repository.LearningPathRepository;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.learningpath.service.LearningPathService;
+import com.tlcn.backend.mastery.entity.GapPriority;
+import com.tlcn.backend.mastery.entity.GapStatus;
+import com.tlcn.backend.mastery.entity.KnowledgeGap;
+import com.tlcn.backend.mastery.repository.KnowledgeGapRepository;
+import com.tlcn.backend.user.dto.UserSummary;
+import com.tlcn.backend.user.entity.Role;
+import com.tlcn.backend.user.repository.StudentRepository;
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class LearningPathServiceImpl implements LearningPathService {
+    private static final double TARGET_SCORE = 70.0;
+
     private final LearningPathRepository paths;
     private final LearningStepRepository steps;
+    private final KnowledgeGapRepository gaps;
+    private final StudentRepository students;
 
-    public LearningPathServiceImpl(LearningPathRepository paths, LearningStepRepository steps) {
+    public LearningPathServiceImpl(LearningPathRepository paths, LearningStepRepository steps,
+            KnowledgeGapRepository gaps, StudentRepository students) {
         this.paths = paths;
         this.steps = steps;
+        this.gaps = gaps;
+        this.students = students;
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public List<LearningPath> forStudent(Long studentId) {
+    public List<LearningPath> forStudent(Long studentId, UserSummary actor) {
+        requireCanView(studentId, actor);
         return paths.findByStudentIdOrderByCreatedAtDesc(studentId);
     }
 
+    @Override
     @Transactional(readOnly = true)
-    public LearningPath get(Long id) {
-        return paths.findById(id).orElseThrow(() -> new IllegalArgumentException("Learning path not found"));
+    public LearningPath get(Long studentId, Long pathId, UserSummary actor) {
+        requireCanView(studentId, actor);
+        return paths.findByIdAndStudentId(pathId, studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lộ trình."));
     }
 
-    @Transactional(readOnly = true)
-    public List<LearningStep> steps(Long pathId) {
-        return steps.findByPathIdOrderByStepOrderAsc(pathId);
-    }
-
+    @Override
     @Transactional
-    public LearningPath save(LearningPath path) {
+    public LearningPath generate(Long studentId, UserSummary actor) {
+        requireCanManage(studentId, actor);
+        var student = students.findById(studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
+        List<KnowledgeGap> openGaps = gaps.findByStudentId(studentId).stream()
+                .filter(gap -> gap.getStatus() == GapStatus.IDENTIFIED || gap.getStatus() == GapStatus.IN_REMEDIATION)
+                .sorted(Comparator.comparingInt((KnowledgeGap gap) -> priorityOrder(gap.getPriority()))
+                        .thenComparing(KnowledgeGap::getIdentifiedAt)
+                        .thenComparing(gap -> gap.getLesson().getId()))
+                .toList();
+        if (openGaps.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Học sinh hiện không có khoảng trống kiến thức cần đưa vào lộ trình.");
+        }
+
+        paths.findByStudentIdOrderByCreatedAtDesc(studentId).stream()
+                .filter(path -> path.getStatus() == LearningPathStatus.ACTIVE)
+                .forEach(path -> {
+                    path.setStatus(LearningPathStatus.ARCHIVED);
+                    path.setUpdatedAt(Instant.now());
+                });
+
+        LearningPath path = new LearningPath();
+        path.setStudent(student);
+        path.setVersion(paths.findMaxVersionByStudentId(studentId) + 1);
+        path.setUpdatedAt(Instant.now());
+
+        int order = 1;
+        for (KnowledgeGap gap : openGaps) {
+            LearningStep step = new LearningStep();
+            step.setStepOrder(order++);
+            step.setStatus(order == 2 ? LearningStepStatus.IN_PROGRESS : LearningStepStatus.LOCKED);
+            step.setTargetScore(TARGET_SCORE);
+            step.setPath(path);
+            step.setLesson(gap.getLesson());
+            path.getSteps().add(step);
+            gap.setStatus(GapStatus.IN_REMEDIATION);
+        }
         return paths.save(path);
     }
 
+    @Override
     @Transactional
-    public LearningStep updateStep(LearningStep step) {
-        return steps.save(step);
+    public LearningPath updateStepStatus(Long studentId, Long pathId, Long stepId, LearningStepStatus status,
+            UserSummary actor) {
+        requireCanView(studentId, actor);
+        if (actor.role() != Role.STUDENT || !actor.id().equals(studentId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ học sinh mới có thể cập nhật tiến độ của mình.");
+        }
+        LearningPath path = paths.findByIdAndStudentId(pathId, studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lộ trình."));
+        if (path.getStatus() != LearningPathStatus.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Lộ trình này không còn hoạt động.");
+        }
+        LearningStep step = steps.findByIdAndPathId(stepId, pathId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bước học."));
+        if (status == LearningStepStatus.LOCKED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể chuyển một bước học về trạng thái khóa.");
+        }
+        if (status == LearningStepStatus.IN_PROGRESS) {
+            if (step.getStatus() == LearningStepStatus.IN_PROGRESS) {
+                return path;
+            }
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bước học này chưa được mở hoặc đã hoàn thành.");
+        }
+        if (step.getStatus() != LearningStepStatus.IN_PROGRESS) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể hoàn thành bước đang học.");
+        }
+
+        step.setStatus(LearningStepStatus.COMPLETED);
+        steps.save(step);
+        List<LearningStep> orderedSteps = steps.findByPathIdOrderByStepOrderAsc(pathId);
+        orderedSteps.stream()
+                .filter(next -> next.getStepOrder() > step.getStepOrder())
+                .filter(next -> next.getStatus() == LearningStepStatus.LOCKED)
+                .findFirst()
+                .ifPresent(next -> {
+                    next.setStatus(LearningStepStatus.IN_PROGRESS);
+                    steps.save(next);
+                });
+        boolean complete = orderedSteps.stream().allMatch(item -> item.getId().equals(stepId)
+                || item.getStatus() == LearningStepStatus.COMPLETED);
+        if (complete) {
+            path.setStatus(LearningPathStatus.COMPLETED);
+        }
+        path.setUpdatedAt(Instant.now());
+        paths.save(path);
+        return paths.findByIdAndStudentId(pathId, studentId).orElse(path);
+    }
+
+    private void requireCanManage(Long studentId, UserSummary actor) {
+        requireCanView(studentId, actor);
+        if (actor.role() == Role.STUDENT) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Học sinh không thể tạo lộ trình.");
+        }
+    }
+
+    private void requireCanView(Long studentId, UserSummary actor) {
+        if (actor == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập.");
+        }
+        if (actor.role() == Role.ADMIN) {
+            return;
+        }
+        var student = students.findById(studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
+        if (actor.role() == Role.STUDENT && actor.id().equals(studentId)) {
+            return;
+        }
+        if (actor.role() == Role.TEACHER && student.getClassroom() != null
+                && student.getClassroom().getTeacher().getId().equals(actor.id())) {
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem lộ trình này.");
+    }
+
+    private int priorityOrder(GapPriority priority) {
+        return switch (priority) {
+            case HIGH -> 0;
+            case MEDIUM -> 1;
+            case LOW -> 2;
+        };
     }
 }

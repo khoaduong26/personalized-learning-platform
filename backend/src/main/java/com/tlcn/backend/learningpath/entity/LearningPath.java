@@ -28,7 +28,7 @@ public class LearningPath {
     @OrderBy("stepOrder ASC")
     private List<LearningStep> steps = new ArrayList<>();
 
-    protected LearningPath() {
+    public LearningPath() {
     }
 
     public Long getId() {

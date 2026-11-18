@@ -1,0 +1,71 @@
+.learning-path-panel { margin-top: 22px; padding-top: 21px; border-top: 1px solid #f0ede8; color: #393340; }
+.learning-path-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.learning-path-heading h3 { margin: 0; font-size: 17px; }
+.learning-path-heading p { margin: 5px 0 0; color: #89828d; font-size: 11px; }
+.learning-path-heading label { display: grid; gap: 5px; color: #655f69; font-size: 10px; font-weight: 700; }
+.learning-path-heading select { max-width: 220px; border: 1px solid #e3dfe6; border-radius: 8px; background: #fff; color: #302b35; padding: 8px 10px; font: inherit; font-size: 11px; }
+.learning-path-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 17px; }
+.learning-path-toolbar p { color: #756d7c; font-size: 11px; }
+.learning-path-toolbar button, .student-learning-steps button { border: 0; border-radius: 8px; background: #705788; color: #fff; padding: 9px 12px; font: inherit; font-size: 11px; font-weight: 750; cursor: pointer; }
+.learning-path-toolbar button:disabled, .student-learning-steps button:disabled { opacity: .55; cursor: wait; }
+.learning-path-message, .student-learning-message { border-radius: 9px; background: #edf3e7; color: #3f5a37; padding: 10px 12px; font-size: 12px; }
+.learning-path-error, .student-learning-error { border-radius: 9px; background: #fff1ef; color: #9a4c44; padding: 10px 12px; font-size: 12px; }
+.learning-path-empty { padding: 12px; border: 1px dashed #e5e0e8; border-radius: 9px; color: #89828d; font-size: 11px; line-height: 1.6; }
+.learning-path-card { margin-top: 12px; padding: 15px; border: 1px solid #e9e3ed; border-radius: 11px; background: #fcfbfd; }
+.learning-path-card-heading { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.learning-path-card-heading span { color: #6d8254; font-size: 10px; font-weight: 700; }
+.learning-path-card > p { color: #89828d; font-size: 10px; }
+.learning-path-progress { height: 7px; overflow: hidden; border-radius: 99px; background: #ebe7ee; }
+.learning-path-progress span { display: block; height: 100%; border-radius: inherit; background: #85a96d; transition: width .25s ease; }
+.learning-path-steps { display: grid; gap: 0; margin: 12px 0 0; padding: 0; list-style: none; }
+.learning-path-steps li { position: relative; display: flex; gap: 10px; padding: 11px 0; }
+.learning-path-steps li + li { border-top: 1px solid #f0ede8; }
+.learning-path-step-icon { display: grid; z-index: 1; flex: 0 0 27px; place-items: center; width: 27px; height: 27px; border: 1px solid #ded8e4; border-radius: 50%; background: #fff; color: #81758b; font-size: 11px; font-weight: 800; }
+.step-completed .learning-path-step-icon { border-color: #bad0a9; background: #eaf1e3; color: #50703e; }
+.step-in_progress .learning-path-step-icon { border-color: #a893bb; background: #f1ebf6; color: #604773; }
+.learning-path-steps li > div { display: grid; gap: 4px; }
+.learning-path-steps strong { color: #393340; font-size: 11px; }
+.learning-path-steps small, .learning-path-steps em { color: #89828d; font-size: 10px; font-style: normal; line-height: 1.5; }
+.learning-path-history { margin-top: 14px; color: #69577a; font-size: 11px; }
+.learning-path-history summary { cursor: pointer; font-weight: 750; }
+.learning-path-history .learning-path-card { margin-top: 8px; }
+.student-learning-shell { min-height: 100vh; padding: 0 clamp(16px, 5vw, 72px) 32px; background: #f7f8f3; color: #302b35; }
+.student-learning-topbar { display: flex; height: 69px; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e8df; }
+.student-learning-brand { color: #4d6940; font-size: 19px; font-weight: 850; text-decoration: none; }
+.student-learning-topbar > div { display: flex; align-items: center; gap: 17px; color: #575e53; font-size: 12px; font-weight: 650; }
+.student-learning-topbar a:last-child { color: #6f8361; font-size: 11px; text-decoration: none; }
+.student-learning-hero { position: relative; max-width: 760px; margin: 0 auto; padding: 50px 0 24px; text-align: center; }
+.student-learning-sparkle { position: absolute; top: 45px; right: 12%; color: #e1b54d; font-size: 35px; }
+.student-learning-kicker { color: #81946d; font-size: 10px; font-weight: 850; letter-spacing: 2px; }
+.student-learning-hero h1 { margin: 8px 0; color: #394b33; font-size: clamp(29px, 5vw, 42px); letter-spacing: -1px; }
+.student-learning-hero > p:last-child { color: #778071; font-size: 13px; }
+.student-learning-card { max-width: 760px; margin: 0 auto; padding: clamp(18px, 4vw, 30px); border: 1px solid #e6e9df; border-radius: 18px; background: #fff; box-shadow: 0 12px 35px #4050350a; }
+.student-learning-progress-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+.student-learning-progress-heading span { color: #89987b; font-size: 9px; font-weight: 850; letter-spacing: 1.4px; }
+.student-learning-progress-heading h2 { margin: 6px 0 14px; color: #3d5036; font-size: clamp(17px, 3vw, 22px); }
+.student-learning-progress-heading > strong { color: #6f8d5c; font-size: 28px; }.student-learning-progress-heading small { color: #9aa393; font-size: 13px; }
+.student-progress { height: 10px; background: #edf0e8; }
+.student-progress span { background: linear-gradient(90deg, #86a96f, #adc887); }
+.student-learning-steps { display: grid; gap: 16px; margin: 24px 0 0; padding: 0; list-style: none; }
+.student-learning-steps > li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; }
+.student-step-marker { display: grid; z-index: 1; place-items: center; width: 38px; height: 38px; border: 2px solid #e1e5dc; border-radius: 50%; background: #fff; color: #98a18f; font-size: 13px; font-weight: 850; }
+.student-learning-steps .step-in_progress .student-step-marker { border-color: #91ad7c; background: #edf4e7; color: #557544; box-shadow: 0 0 0 5px #edf4e766; }
+.student-learning-steps .step-completed .student-step-marker { border-color: #aec69b; background: #e9f1e3; color: #50703e; }
+.student-learning-steps article { min-width: 0; padding: 16px; border: 1px solid #ebeee6; border-radius: 13px; background: #fff; }
+.student-learning-steps .step-in_progress article { border-color: #d5e1cc; background: #fbfdf9; }
+.student-step-heading { display: flex; justify-content: space-between; gap: 12px; }
+.student-step-heading > div > span { color: #92998b; font-size: 9px; font-weight: 850; letter-spacing: 1px; }
+.step-in_progress .student-step-heading > div > span { color: #6f8d5c; }
+.student-step-heading h3 { margin: 5px 0; color: #3f4b39; font-size: 16px; }
+.student-step-star { color: #e3b84d; font-size: 21px; }
+.student-learning-steps article p { margin: 6px 0 8px; color: #72796d; font-size: 12px; line-height: 1.6; }
+.student-learning-steps article > small { color: #89987b; font-size: 10px; font-weight: 700; }
+.student-learning-steps button { display: block; margin-top: 14px; border-radius: 9px; background: #6e8d59; padding: 10px 14px; font-size: 12px; }
+.student-learning-message, .student-learning-error { max-width: 760px; margin: 0 auto 14px; }
+.student-learning-complete { text-align: center; padding-block: 44px; }
+.student-learning-complete > span { font-size: 36px; }
+.student-learning-complete h2, .student-learning-complete h1 { color: #44583b; }
+.student-learning-complete p { color: #778071; font-size: 13px; line-height: 1.6; }
+.student-learning-complete a { display: inline-block; margin-top: 12px; color: #688354; font-size: 12px; }
+.student-learning-footer { max-width: 760px; margin: 18px auto; color: #92998b; font-size: 11px; text-align: center; }
+@media (max-width: 620px) { .learning-path-heading, .learning-path-toolbar { align-items: stretch; flex-direction: column; }.learning-path-toolbar button { align-self: flex-start; }.student-learning-shell { padding-inline: 14px; }.student-learning-sparkle { right: 2%; }.student-learning-topbar > div { gap: 9px; }.student-learning-steps > li { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; }.student-step-marker { width: 30px; height: 30px; }.student-learning-steps article { padding: 13px; } }
