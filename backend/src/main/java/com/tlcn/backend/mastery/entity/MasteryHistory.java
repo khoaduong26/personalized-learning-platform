@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "mastery_history")
+@Table(name = "mastery_history", uniqueConstraints = @UniqueConstraint(columnNames = { "mastery_id", "trigger_source" }))
 public class MasteryHistory {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

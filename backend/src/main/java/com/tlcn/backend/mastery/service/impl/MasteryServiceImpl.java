@@ -17,6 +17,11 @@ import com.tlcn.backend.mastery.repository.KnowledgeMasteryRepository;
 import com.tlcn.backend.mastery.repository.MasteryHistoryRepository;
 import com.tlcn.backend.mastery.repository.StudentErrorRepository;
 import com.tlcn.backend.mastery.service.MasteryService;
+import com.tlcn.backend.learningpath.entity.LearningPath;
+import com.tlcn.backend.learningpath.entity.LearningPathStatus;
+import com.tlcn.backend.learningpath.entity.LearningStep;
+import com.tlcn.backend.learningpath.entity.LearningStepStatus;
+import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.repository.StudentRepository;
@@ -36,10 +41,11 @@ public class MasteryServiceImpl implements MasteryService {
     private final StudentAnswerRepository answers;
     private final StudentRepository students;
     private final ClassroomRepository classrooms;
+    private final LearningStepRepository learningSteps;
 
     public MasteryServiceImpl(KnowledgeMasteryRepository mastery, MasteryHistoryRepository history,
             StudentErrorRepository errors, KnowledgeGapRepository gaps, StudentAnswerRepository answers,
-            StudentRepository students, ClassroomRepository classrooms) {
+            StudentRepository students, ClassroomRepository classrooms, LearningStepRepository learningSteps) {
         this.mastery = mastery;
         this.history = history;
         this.errors = errors;
@@ -47,6 +53,7 @@ public class MasteryServiceImpl implements MasteryService {
         this.answers = answers;
         this.students = students;
         this.classrooms = classrooms;
+        this.learningSteps = learningSteps;
     }
 
     @Transactional(readOnly = true)
@@ -86,14 +93,23 @@ public class MasteryServiceImpl implements MasteryService {
 
     @Transactional
     public void analyze(AssessmentAttempt attempt) {
-        if (attempt.getAssessment() == null)
+        if (attempt.getAssessment() == null && attempt.getLearningStep() == null)
             return;
         List<StudentAnswer> submittedAnswers = answers.findByAttemptId(attempt.getId());
         var answersByQuestion = submittedAnswers.stream().collect(java.util.stream.Collectors.toMap(
                 answer -> answer.getQuestion().getId(), answer -> answer));
-        var byLesson = attempt.getAssessment().getQuestions().stream()
+        List<Question> sourceQuestions = attempt.getAssessment() != null
+                ? attempt.getAssessment().getQuestions()
+                : attempt.getLearningStep().getExercises().stream()
+                        .map(exercise -> exercise.getQuestion())
+                        .filter(question -> question.getApprovalStatus() == com.tlcn.backend.assessment.entity.ApprovalStatus.APPROVED)
+                        .toList();
+        var byLesson = sourceQuestions.stream()
                 .collect(java.util.stream.Collectors.groupingBy(Question::getLesson));
         byLesson.forEach((lesson, lessonQuestions) -> {
+            String triggerSource = attempt.getAssessment() != null
+                    ? "ASSESSMENT_" + attempt.getId()
+                    : "LEARNING_STEP_" + attempt.getLearningStep().getId() + "_ATTEMPT_" + attempt.getId();
             int correct = (int) lessonQuestions.stream().map(question -> answersByQuestion.get(question.getId()))
                     .filter(java.util.Objects::nonNull).filter(StudentAnswer::isCorrect).count();
             double attemptScore = 100.0 * correct / lessonQuestions.size();
@@ -105,6 +121,8 @@ public class MasteryServiceImpl implements MasteryService {
                         created.setLesson(lesson);
                         return created;
                     });
+            if (record.getId() != null && history.existsByMasteryIdAndTriggerSource(record.getId(), triggerSource))
+                return;
             boolean existed = record.getId() != null;
             double oldScore = record.getMasteryScore();
             double newScore = existed ? (oldScore + attemptScore) / 2.0 : attemptScore;
@@ -119,7 +137,7 @@ public class MasteryServiceImpl implements MasteryService {
             change.setMastery(record);
             change.setOldScore(existed ? oldScore : null);
             change.setNewScore(newScore);
-            change.setTriggerSource("ASSESSMENT_" + attempt.getId());
+            change.setTriggerSource(triggerSource);
             history.save(change);
 
             for (StudentAnswer answer : submittedAnswers.stream()
@@ -146,13 +164,69 @@ public class MasteryServiceImpl implements MasteryService {
                         : newScore < 70 ? GapPriority.MEDIUM : GapPriority.LOW);
                 gap.setRootCause("Điểm thành thạo hiện tại " + Math.round(newScore)
                         + "/100; có " + recentErrors + " câu sai trong lượt làm này.");
-                gap.setStatus(GapStatus.IDENTIFIED);
+                gap.setStatus(attempt.getLearningStep() == null ? GapStatus.IDENTIFIED : GapStatus.IN_REMEDIATION);
                 gaps.save(gap);
             } else if (existing.isPresent()) {
                 existing.get().setStatus(GapStatus.RESOLVED);
                 existing.get().setRootCause("Đã đạt ngưỡng thành thạo từ 70/100 trở lên.");
             }
         });
+        if (attempt.getLearningStep() != null) {
+            LearningStep step = attempt.getLearningStep();
+            Question lessonQuestion = sourceQuestions.stream()
+                    .filter(question -> question.getLesson().getId().equals(step.getLesson().getId()))
+                    .findFirst().orElse(null);
+            if (lessonQuestion != null) {
+                int correct = (int) sourceQuestions.stream()
+                        .filter(question -> question.getLesson().getId().equals(step.getLesson().getId()))
+                        .map(question -> answersByQuestion.get(question.getId()))
+                        .filter(java.util.Objects::nonNull).filter(StudentAnswer::isCorrect).count();
+                long total = sourceQuestions.stream()
+                        .filter(question -> question.getLesson().getId().equals(step.getLesson().getId())).count();
+                double stepScore = total == 0 ? 0 : 100.0 * correct / total;
+                updatePathProgress(step, stepScore);
+            }
+        }
+    }
+
+    private void updatePathProgress(LearningStep step, double score) {
+        LearningPath path = step.getPath();
+        List<LearningStep> orderedSteps = learningSteps.findByPathIdOrderByStepOrderAsc(path.getId());
+        boolean changed = false;
+        if (score >= (step.getTargetScore() == null ? 70.0 : step.getTargetScore())) {
+            if (step.getStatus() != LearningStepStatus.COMPLETED) {
+                step.setStatus(LearningStepStatus.COMPLETED);
+                changed = true;
+            }
+            LearningStep nextStep = orderedSteps.stream().filter(next -> next.getStepOrder() > step.getStepOrder())
+                    .filter(next -> next.getStatus() == LearningStepStatus.LOCKED)
+                    .min(java.util.Comparator.comparing(LearningStep::getStepOrder))
+                    .orElse(null);
+            if (nextStep != null) {
+                nextStep.setStatus(LearningStepStatus.IN_PROGRESS);
+                changed = true;
+            }
+            boolean complete = orderedSteps.stream().allMatch(item -> item.getStatus() == LearningStepStatus.COMPLETED);
+            LearningPathStatus nextStatus = complete ? LearningPathStatus.COMPLETED : LearningPathStatus.ACTIVE;
+            if (path.getStatus() != nextStatus) {
+                path.setStatus(nextStatus);
+                changed = true;
+            }
+        } else {
+            if (step.getStatus() != LearningStepStatus.IN_PROGRESS) {
+                step.setStatus(LearningStepStatus.IN_PROGRESS);
+                changed = true;
+            }
+            if (path.getStatus() != LearningPathStatus.ACTIVE) {
+                path.setStatus(LearningPathStatus.ACTIVE);
+                changed = true;
+            }
+        }
+        if (changed) {
+            path.setVersion(path.getVersion() + 1);
+            path.setUpdatedAt(Instant.now());
+        }
+        learningSteps.save(step);
     }
 
     @Transactional(readOnly = true)
