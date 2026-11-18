@@ -21,7 +21,7 @@ public class StepExercise {
     @Column(nullable = false)
     private Instant generatedAt = Instant.now();
 
-    protected StepExercise() {
+    public StepExercise() {
     }
 
     public Long getId() {
