@@ -6,6 +6,7 @@ import {
 } from '../services/classroomApi'
 import '../styles/classrooms.css'
 import MasteryPanel from '../../mastery/components/MasteryPanel'
+import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
 
 function currentSchoolYear() {
   const today = new Date()
@@ -116,19 +117,19 @@ export default function ClassroomsPage() {
   }
 
   if (access === 'loading') return <main className="classrooms-shell"><p className="classrooms-state">Đang kiểm tra phiên đăng nhập…</p></main>
-  if (access === 'signed-out') return <Gate title="Đăng nhập để quản lý lớp học" description="Trang này dành cho tài khoản giáo viên hoặc quản trị viên." />
-  if (access === 'forbidden') return (
-    <Gate
-      title="Trang này dành cho giáo viên và quản trị viên"
-      description={`${user?.fullName ? `Xin chào ${user.fullName}, ` : ''}tài khoản hiện tại không thể quản lý lớp học.`}
-    />
-  )
+  if (access === 'signed-out') return <Gate title="Đăng nhập để quản lý lớp học" description="Trang này dành cho tài khoản giáo viên hoặc quản trị viên." returnTo="/classrooms" />
+  if (access === 'forbidden') {
+    const description = user?.fullName
+      ? `Xin chào ${user.fullName}, tài khoản hiện tại không thể quản lý lớp học.`
+      : 'Tài khoản hiện tại không thể quản lý lớp học.'
+    return <Gate title="Trang này dành cho giáo viên và quản trị viên" description={description} />
+  }
 
   
   const selected = classes.find(item => item.id === selectedId)
 
   return <main className="classrooms-shell">
-    <header className="classrooms-topbar"><Link to="/" className="classrooms-brand"><span>✳</span> TLCN</Link><div className="classrooms-user"><span>{user?.fullName}</span><span className="classrooms-role">{user?.role === 'ADMIN' ? 'Quản trị viên' : 'Giáo viên'}</span><Link to="/">Trang chủ</Link></div></header>
+    <header className="classrooms-topbar"><Link to="/" className="classrooms-brand"><span>✳</span> TLCN</Link><WorkspaceNavigation role={user?.role} /><div className="classrooms-user"><span>{user?.fullName}</span><span className="classrooms-role">{user?.role === 'ADMIN' ? 'Quản trị viên' : 'Giáo viên'}</span></div></header>
     <section className="classrooms-heading"><div><p className="classrooms-kicker">GÓC DÀNH CHO THẦY CÔ</p><h1>Lớp học và học sinh</h1><p>Tổ chức lớp, thêm học sinh và cập nhật hồ sơ trong phạm vi được phân quyền.</p></div><span aria-hidden="true">♧</span></section>
     {notice && <div className="classrooms-notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Đóng">×</button></div>}
 
@@ -177,6 +178,6 @@ function StudentRow({ student, busy, onSave, onRemove }) {
   </article>
 }
 
-function Gate({ title, description }) {
-  return <main className="classrooms-shell"><div className="classrooms-gate"><span className="classrooms-kicker">KHU VỰC GIÁO VIÊN</span><h1>{title}</h1><p>{description}</p><Link className="classrooms-primary" to="/login">Đi đến đăng nhập</Link><Link className="classrooms-home-link" to="/">Về trang chủ</Link></div></main>
+function Gate({ title, description, returnTo }) {
+  return <main className="classrooms-shell"><div className="classrooms-gate"><span className="classrooms-kicker">KHU VỰC GIÁO VIÊN</span><h1>{title}</h1><p>{description}</p>{returnTo && <Link className="classrooms-primary" to={`/login?returnTo=${returnTo}`}>Đi đến đăng nhập</Link>}<Link className="classrooms-home-link" to="/">Về trang chủ</Link></div></main>
 }

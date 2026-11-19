@@ -8,6 +8,7 @@ import {
   submitAttempt,
 } from '../services/assessmentApi'
 import '../styles/assessments.css'
+import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
 
 const types = { DIAGNOSTIC: 'Khảo sát đầu vào', PERIODIC: 'Định kỳ', PRACTICE: 'Luyện tập' }
 const roles = { ADMIN: 'Quản trị viên', TEACHER: 'Giáo viên', STUDENT: 'Học sinh' }
@@ -145,10 +146,10 @@ export default function AssessmentsPage() {
   const selectedCount = useMemo(() => selectedQuestions.length, [selectedQuestions])
 
   if (access === 'loading') return <main className="assessment-shell"><p className="assessment-state">Đang kiểm tra phiên đăng nhập…</p></main>
-  if (access !== 'allowed') return <main className="assessment-shell"><div className="assessment-gate"><span className="assessment-kicker">KIỂM TRA VÀ ĐÁNH GIÁ</span><h1>{access === 'signed-out' ? 'Đăng nhập để tiếp tục' : 'Khu vực dành cho thành viên'}</h1><p>{access === 'signed-out' ? 'Đăng nhập để xem bài kiểm tra, lưu câu trả lời và theo dõi kết quả.' : 'Tài khoản này chưa có quyền truy cập nội dung đánh giá.'}</p><Link className="assessment-primary" to="/login">Đi đến đăng nhập</Link><Link className="assessment-back" to="/">Về trang chủ</Link></div></main>
+  if (access !== 'allowed') return <main className="assessment-shell"><div className="assessment-gate"><span className="assessment-kicker">KIỂM TRA VÀ ĐÁNH GIÁ</span><h1>{access === 'signed-out' ? 'Đăng nhập để tiếp tục' : 'Khu vực dành cho thành viên'}</h1><p>{access === 'signed-out' ? 'Đăng nhập để xem bài kiểm tra, lưu câu trả lời và theo dõi kết quả.' : 'Tài khoản này chưa có quyền truy cập nội dung đánh giá.'}</p>{access === 'signed-out' && <Link className="assessment-primary" to="/login?returnTo=/assessments">Đi đến đăng nhập</Link>}<Link className="assessment-back" to="/">Về trang chủ</Link></div></main>
 
   return <main className="assessment-shell">
-    <header className="assessment-topbar"><Link to="/" className="assessment-brand"><span>✳</span> TLCN</Link><div className="assessment-user"><span>{user?.fullName}</span><span className="assessment-role">{roles[user?.role]}</span><Link to="/">Trang chủ</Link></div></header>
+    <header className="assessment-topbar"><Link to="/" className="assessment-brand"><span>✳</span> TLCN</Link><WorkspaceNavigation role={user?.role} /><div className="assessment-user"><span>{user?.fullName}</span><span className="assessment-role">{roles[user?.role]}</span></div></header>
     <section className="assessment-heading"><div><p className="assessment-kicker">NGÂN HÀNG CÂU HỎI · KIỂM TRA · KẾT QUẢ</p><h1>{activeAttempt ? 'Bài làm của em' : result ? 'Kết quả bài kiểm tra' : 'Kiểm tra và đánh giá'}</h1><p>{activeAttempt ? `Làm từng câu rồi lưu tạm hoặc nộp bài. Thời gian: ${activeAttempt.assessment.durationMinutes || 'không giới hạn'} phút.` : 'Tạo câu hỏi theo bài học, tổ chức bài kiểm tra và theo dõi tiến độ học tập.'}</p></div><span className="assessment-heading-mark" aria-hidden="true">✎</span></section>
     {notice && <div className="assessment-notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Đóng">×</button></div>}
 

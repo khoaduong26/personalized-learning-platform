@@ -92,6 +92,12 @@
 .teacher-steps article > span { color: #88719f; font-size: 14px; font-weight: 700; }
 .teacher-steps h3 { font-size: 21px; margin-block: 12px; }
 .teacher-steps p { color: var(--muted); font-size: 15px; line-height: 1.8; }
+.teacher-step-link { display: flex; flex-direction: column; min-height: 220px; border: 1px solid #e7e1ec; border-radius: 16px; padding: 22px; color: inherit; text-decoration: none; background: #fff; transition: border-color .18s, box-shadow .18s, transform .18s; }
+.teacher-step-link:hover, .teacher-step-link:focus-visible { border-color: #bba9cb; box-shadow: 0 10px 28px #49385e12; transform: translateY(-2px); outline: none; }
+.teacher-step-link > span:first-child { color: #88719f; font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+.teacher-step-link h3 { margin-block: 14px 7px; }
+.teacher-step-link p { margin: 0 0 18px; }
+.teacher-step-action { display: inline-flex; align-items: center; gap: 8px; margin-top: auto; color: #604773; font-size: 13px; font-weight: 750; }
 .teacher-invite { margin-top: 38px; padding: 24px 28px; background: #f2f0e8; border-radius: 18px; display: flex; gap: 25px; justify-content: space-between; align-items: center; }
 .teacher-invite strong { font-size: 18px; }.teacher-invite p { color: var(--muted); font-size: 14px; margin-top: 5px; }.teacher-invite .home-button { flex-shrink: 0; }
 .home-closing { text-align: center; background: #e8eddf; padding-block: 50px 60px; }

@@ -53,6 +53,8 @@ export default function LoginPage() {
         navigate(profilePathFor(signedIn.role), { replace: true })
       }
       setForm(current => ({ ...current, password: '' }))
+      const returnTo = params.get('returnTo')
+      if (['/classrooms', '/academic', '/assessments'].includes(returnTo)) navigate(returnTo, { replace: true })
     } catch (failure) {
       setError(failure.message); setCode(failure.code); setFields(failure.fieldErrors || {})
     } finally { setBusy(false) }

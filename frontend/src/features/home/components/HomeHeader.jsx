@@ -75,7 +75,14 @@ export default function HomeHeader() {
       <header className="home-header">
         <div className="home-container home-header-inner">
           <Link className="home-brand" to="/" aria-label="EduLearn — Trang chủ"><img className="brand-symbol" src="/math-bunny.svg" width="44" height="44" alt="" /><span>EduLearn<span className="brand-dot">.</span></span></Link>
-          <nav className="home-nav" aria-label="Điều hướng chính"><a href="/#kham-pha">Khám phá</a><a href="/#thu-suc">Thử sức cùng Toán</a><a href="/#giao-vien">Dành cho giáo viên</a></nav>
+          <nav className="home-nav" aria-label="Điều hướng chính">
+            <a href="#kham-pha">Khám phá</a>
+            <a href="#thu-suc">Thử sức cùng Toán</a>
+            <a href="#giao-vien">Dành cho giáo viên</a>
+            <Link to="/classrooms">Lớp học</Link>
+            <Link to="/academic">Chương trình</Link>
+            <Link to="/assessments">Kiểm tra</Link>
+          </nav>
           <div className="home-account-actions">
             {user ? <details ref={menu} className="home-account-menu">
               <summary aria-label={`Tài khoản của ${user.fullName}`}><AccountAvatar user={user} />

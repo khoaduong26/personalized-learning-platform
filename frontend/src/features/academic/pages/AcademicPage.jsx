@@ -5,6 +5,7 @@ import {
   getAcademicSession, getLessons, getSubjects, getTopics, updateLesson, updateSubject, updateTopic,
 } from '../services/academicApi'
 import '../styles/academic.css'
+import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
 
 const emptyForm = { name: '', description: '' }
 
@@ -97,11 +98,11 @@ export default function AcademicPage() {
   }
 
   if (access === 'loading') return <main className="academic-shell"><p className="academic-state">Đang kiểm tra phiên đăng nhập…</p></main>
-  if (access === 'signed-out') return <main className="academic-shell"><div className="academic-gate"><span className="academic-kicker">KHU VỰC GIÁO VIÊN</span><h1>Đăng nhập để quản lý chương trình học</h1><p>Trang này dành cho tài khoản giáo viên hoặc quản trị viên.</p><Link className="academic-primary" to="/login">Đi đến đăng nhập</Link><Link className="academic-back" to="/">Về trang chủ</Link></div></main>
+  if (access === 'signed-out') return <main className="academic-shell"><div className="academic-gate"><span className="academic-kicker">KHU VỰC GIÁO VIÊN</span><h1>Đăng nhập để quản lý chương trình học</h1><p>Trang này dành cho tài khoản giáo viên hoặc quản trị viên.</p><Link className="academic-primary" to="/login?returnTo=/academic">Đi đến đăng nhập</Link><Link className="academic-back" to="/">Về trang chủ</Link></div></main>
   if (access === 'forbidden') return <main className="academic-shell"><div className="academic-gate"><span className="academic-kicker">CHƯA ĐƯỢC CẤP QUYỀN</span><h1>Trang này dành cho giáo viên và quản trị viên</h1><p>{user?.fullName ? `Xin chào ${user.fullName}, ` : ''}tài khoản hiện tại không thể quản lý chương trình học.</p><Link className="academic-back" to="/">Về trang chủ</Link></div></main>
 
   return <main className="academic-shell">
-    <header className="academic-topbar"><Link to="/" className="academic-brand"><span>✳</span> TLCN</Link><div className="academic-user"><span>{user?.fullName}</span><span className="academic-role">{user?.role === 'ADMIN' ? 'Quản trị viên' : 'Giáo viên'}</span><Link to="/">Trang chủ</Link></div></header>
+    <header className="academic-topbar"><Link to="/" className="academic-brand"><span>✳</span> TLCN</Link><WorkspaceNavigation role={user?.role} /><div className="academic-user"><span>{user?.fullName}</span><span className="academic-role">{user?.role === 'ADMIN' ? 'Quản trị viên' : 'Giáo viên'}</span></div></header>
     <section className="academic-heading"><div><p className="academic-kicker">QUẢN LÝ NỘI DUNG HỌC TẬP</p><h1>Chương trình học</h1><p>Tổ chức môn học, chủ đề và bài học theo cấu trúc rõ ràng.</p></div><span className="academic-heading-mark" aria-hidden="true">✎</span></section>
     <div className="academic-breadcrumb"><span>Chương trình học</span><span>›</span><strong>{subjects.find(item => item.id === subjectId)?.name || 'Chọn môn học'}</strong>{topicId && <><span>›</span><strong>{topics.find(item => item.id === topicId)?.name}</strong></>}</div>
     {notice && <div className="academic-notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Đóng">×</button></div>}

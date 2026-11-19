@@ -1,0 +1,53 @@
+.workspace-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-navigation a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: #716a78;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color .15s, background .15s;
+}
+
+.workspace-navigation a:hover,
+.workspace-navigation a[aria-current="page"] {
+  color: #604773;
+  background: #f1edf5;
+}
+
+@media (max-width: 760px) {
+  .academic-topbar,
+  .classrooms-topbar,
+  .assessment-topbar {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    padding-block: 9px;
+    gap: 4px 10px;
+  }
+
+  .workspace-navigation {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .workspace-navigation a {
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+}
