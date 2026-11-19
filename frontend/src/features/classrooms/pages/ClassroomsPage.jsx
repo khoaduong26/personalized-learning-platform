@@ -7,6 +7,7 @@ import {
 import '../styles/classrooms.css'
 import MasteryPanel from '../../mastery/components/MasteryPanel'
 import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
+import LearningPathPanel from '../../learningpath/components/LearningPathPanel'
 
 function currentSchoolYear() {
   const today = new Date()
@@ -157,6 +158,7 @@ export default function ClassroomsPage() {
           <div className="classrooms-roster-toolbar"><div><h3>Danh sách học sinh</h3><span>{students.length} em</span></div><form onSubmit={event => { event.preventDefault(); refreshStudents().catch(error => setNotice(error.message)) }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
           {students.length ? <div className="classrooms-students">{students.map(student => <StudentRow key={student.id} student={student} busy={busy} onSave={saveStudent} onRemove={() => dropStudent(student)} />)}</div> : <p className="classrooms-empty classrooms-roster-empty">Lớp chưa có học sinh. Tra cứu email ở phía trên để thêm thành viên.</p>}
           <MasteryPanel students={students} />
+          <LearningPathPanel students={students} />
         </> : <div className="classrooms-no-selection"><span>▦</span><h2>Chọn một lớp học</h2><p>Tạo lớp mới hoặc chọn lớp ở cột bên trái để quản lý danh sách học sinh.</p></div>}
       </section>
     </div>

@@ -57,6 +57,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers(HttpMethod.PUT, "/api/users/me", "/api/users/me/password").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers(HttpMethod.POST, "/api/users/me/avatar").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                // The service checks student, teacher-classroom, and admin ownership.
+                .requestMatchers("/api/students/*/learning-paths/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 // Existing feature stubs have no ownership checks yet. Do not expose student data.
                 .anyRequest().denyAll())
             .requestCache(cache -> cache.disable())
