@@ -6,6 +6,8 @@ import com.tlcn.backend.assessment.repository.*;
 import com.tlcn.backend.assessment.service.AssessmentService;
 import com.tlcn.backend.assessment.service.AttemptService;
 import com.tlcn.backend.mastery.service.MasteryService;
+import com.tlcn.backend.exercise.repository.StepExerciseRepository;
+import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.repository.StudentRepository;
@@ -26,11 +28,13 @@ public class AttemptServiceImpl implements AttemptService {
     private final StudentRepository students;
     private final AssessmentService assessments;
     private final MasteryService mastery;
+    private final LearningStepRepository learningSteps;
+    private final StepExerciseRepository stepExercises;
 
     public AttemptServiceImpl(AssessmentAttemptRepository attempts, StudentAnswerRepository answers,
             MultipleChoiceAnswerRepository multipleAnswers, FillBlankAnswerRepository fillAnswers,
             ShortAnswerAnswerRepository shortAnswers, StudentRepository students, AssessmentService assessments,
-            MasteryService mastery) {
+            MasteryService mastery, LearningStepRepository learningSteps, StepExerciseRepository stepExercises) {
         this.attempts = attempts;
         this.answers = answers;
         this.multipleAnswers = multipleAnswers;
@@ -39,6 +43,8 @@ public class AttemptServiceImpl implements AttemptService {
         this.students = students;
         this.assessments = assessments;
         this.mastery = mastery;
+        this.learningSteps = learningSteps;
+        this.stepExercises = stepExercises;
     }
 
     @Transactional(readOnly = true)
@@ -60,11 +66,40 @@ public class AttemptServiceImpl implements AttemptService {
     }
 
     @Transactional
+    public AssessmentAttempt startExercise(Long stepId, UserSummary actor) {
+        requireStudent(actor);
+        var step = learningSteps.findById(stepId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bước học."));
+        if (!step.getPath().getStudent().getId().equals(actor.id()))
+            throw forbidden();
+        boolean hasApprovedExercise = stepExercises.findByStepId(stepId).stream()
+                .anyMatch(item -> item.getQuestion().getApprovalStatus() == ApprovalStatus.APPROVED);
+        if (!hasApprovedExercise)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bước học chưa có bài tập được duyệt.");
+        AssessmentAttempt attempt = new AssessmentAttempt();
+        attempt.setStudent(students.findById(actor.id()).orElseThrow(() -> forbidden()));
+        attempt.setLearningStep(step);
+        attempt.setStatus(AttemptStatus.IN_PROGRESS);
+        return attempts.save(attempt);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Question> questionsForAttempt(AssessmentAttempt attempt) {
+        if (attempt.getAssessment() != null)
+            return attempt.getAssessment().getQuestions();
+        if (attempt.getLearningStep() != null)
+            return stepExercises.findByStepId(attempt.getLearningStep().getId()).stream()
+                    .map(item -> item.getQuestion())
+                    .filter(question -> question.getApprovalStatus() == ApprovalStatus.APPROVED).toList();
+        return List.of();
+    }
+
+    @Transactional
     public StudentAnswer saveAnswer(Long attemptId, AnswerRequest request, UserSummary actor) {
         requireStudent(actor);
         AssessmentAttempt attempt = accessibleAttempt(attemptId, actor);
         requireInProgress(attempt, true);
-        Question question = attempt.getAssessment().getQuestions().stream()
+        Question question = questionsForAttempt(attempt).stream()
                 .filter(value -> value.getId().equals(request.questionId())).findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Câu hỏi không thuộc bài kiểm tra này."));
@@ -178,7 +213,12 @@ public class AttemptServiceImpl implements AttemptService {
             return attempts.findById(id).orElseThrow(() -> notFound());
         if (actor.role() == Role.TEACHER) {
             AssessmentAttempt item = attempts.findById(id).orElseThrow(() -> notFound());
-            assessments.ownedAssessment(item.getAssessment().getId(), actor);
+            if (item.getAssessment() != null) {
+                assessments.ownedAssessment(item.getAssessment().getId(), actor);
+            } else if (item.getLearningStep() == null || item.getStudent().getClassroom() == null
+                    || !item.getStudent().getClassroom().getTeacher().getId().equals(actor.id())) {
+                throw forbidden();
+            }
             return item;
         }
         throw forbidden();
@@ -194,7 +234,7 @@ public class AttemptServiceImpl implements AttemptService {
     private void requireInProgress(AssessmentAttempt attempt, boolean checkDeadline) {
         if (attempt.getStatus() != AttemptStatus.IN_PROGRESS)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bài làm đã được nộp.");
-        Integer minutes = attempt.getAssessment().getDurationMinutes();
+        Integer minutes = attempt.getAssessment() == null ? null : attempt.getAssessment().getDurationMinutes();
         if (checkDeadline && minutes != null
                 && attempt.getStartedAt().plusSeconds(minutes * 60L).isBefore(Instant.now()))
             throw new ResponseStatusException(HttpStatus.CONFLICT,

@@ -8,6 +8,7 @@ import PublicLayout from '../layouts/PublicLayout'
 import NotFoundPage from '../pages/NotFoundPage'
 import ProfilePage from '../../features/profile/pages/ProfilePage'
 import StudentLearningPathPage from '../../features/learningpath/pages/StudentLearningPathPage'
+import ExercisesPage from '../../features/exercises/pages/ExercisesPage'
 
 function LoginRoute() {
   const [params] = useSearchParams()
@@ -35,6 +36,8 @@ export default function AppRoutes() {
       <Route path="academic" element={<AcademicPage />} />
       <Route path="assessments" element={<AssessmentsPage />} />
       <Route path="my-learning-path" element={<StudentLearningPathPage />} />
+      <Route path="exercises/review" element={<ExercisesPage />} />
+      <Route path="exercises/steps/:stepId" element={<ExercisesPage />} />
     </Routes>
   )
 }
