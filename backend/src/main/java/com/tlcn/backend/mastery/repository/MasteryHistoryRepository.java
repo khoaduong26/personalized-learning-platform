@@ -8,4 +8,6 @@ public interface MasteryHistoryRepository extends JpaRepository<MasteryHistory, 
     List<MasteryHistory> findByMasteryIdOrderByRecordedAtAsc(Long masteryId);
 
     long countByMasteryId(Long masteryId);
+
+    boolean existsByMasteryIdAndTriggerSource(Long masteryId, String triggerSource);
 }
