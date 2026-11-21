@@ -4,6 +4,7 @@ import com.tlcn.backend.auth.service.LoginService;
 import com.tlcn.backend.auth.exception.AuthException;
 
 import com.tlcn.backend.auth.dto.LoginRequest;
+import com.tlcn.backend.auth.repository.UserGoogleIdentityRepository;
 import com.tlcn.backend.user.entity.*;
 import com.tlcn.backend.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -14,10 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LoginServiceImpl implements LoginService {
     private final UserRepository users;
+    private final UserGoogleIdentityRepository googleIdentities;
     private final PasswordEncoder encoder;
     private final String dummyHash;
-    public LoginServiceImpl(UserRepository users, PasswordEncoder encoder) {
+    public LoginServiceImpl(UserRepository users, UserGoogleIdentityRepository googleIdentities,
+            PasswordEncoder encoder) {
         this.users = users; this.encoder = encoder;
+        this.googleIdentities = googleIdentities;
         dummyHash = encoder.encode(java.util.UUID.randomUUID().toString());
     }
 
@@ -26,7 +30,7 @@ public class LoginServiceImpl implements LoginService {
     public User login(LoginRequest request) {
         User user = users.findByEmail(request.email()).orElse(null);
         boolean matches = encoder.matches(request.password(), user == null ? dummyHash : user.getPassword());
-        if (user == null || !matches || user.getGoogleSubject() != null) {
+        if (user == null || !matches || googleIdentities.existsById(user.getId())) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Email hoặc mật khẩu không đúng.");
         }
         requireActive(user);
@@ -39,7 +43,7 @@ public class LoginServiceImpl implements LoginService {
         if (!Boolean.TRUE.equals(verified) || subject == null || subject.isBlank()) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "GOOGLE_UNVERIFIED", "Google chưa xác minh tài khoản.");
         }
-        User user = users.findByGoogleSubject(subject).orElseThrow(() ->
+        User user = googleIdentities.findUserBySubject(subject).orElseThrow(() ->
                 new AuthException(HttpStatus.UNAUTHORIZED, "GOOGLE_NOT_REGISTERED", "Bạn cần đăng ký bằng Google trước khi đăng nhập."));
         requireActive(user);
         return user;

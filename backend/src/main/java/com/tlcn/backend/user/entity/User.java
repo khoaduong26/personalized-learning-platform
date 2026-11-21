@@ -1,7 +1,6 @@
 package com.tlcn.backend.user.entity;
 
 import jakarta.persistence.*;
-import java.time.Instant;
 
 @Entity
 @Table(name = "users")
@@ -18,16 +17,10 @@ public class User {
     private String city;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private Role role;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private UserStatus status = UserStatus.ACTIVE;
-    // Only hashes are persisted; neither passwords nor OTPs may be serialized.
+    // Preserve the original users columns and their insert defaults for existing databases.
     @com.fasterxml.jackson.annotation.JsonIgnore
-    private String otpCode;
-    private Instant otpExpiredAt;
-    private Instant otpSentAt;
-    private Instant otpWindowStartedAt;
-    private int otpSendCount;
-    private int otpAttempts;
-    @Column(unique = true, length = 255)
-    private String googleSubject;
+    @Embedded
+    private LegacyAuth legacyAuth = new LegacyAuth();
     protected User() {}
     public static User withRole(Role role) {
         return switch (role) {
@@ -60,18 +53,4 @@ public class User {
     public void setRole(Role role) { this.role = role; }
     public UserStatus getStatus() { return status; }
     public void setStatus(UserStatus status) { this.status = status; }
-    public String getOtpCode() { return otpCode; }
-    public void setOtpCode(String otpCode) { this.otpCode = otpCode; }
-    public Instant getOtpExpiredAt() { return otpExpiredAt; }
-    public void setOtpExpiredAt(Instant otpExpiredAt) { this.otpExpiredAt = otpExpiredAt; }
-    public Instant getOtpSentAt() { return otpSentAt; }
-    public void setOtpSentAt(Instant value) { otpSentAt = value; }
-    public Instant getOtpWindowStartedAt() { return otpWindowStartedAt; }
-    public void setOtpWindowStartedAt(Instant value) { otpWindowStartedAt = value; }
-    public int getOtpSendCount() { return otpSendCount; }
-    public void setOtpSendCount(int value) { otpSendCount = value; }
-    public int getOtpAttempts() { return otpAttempts; }
-    public void setOtpAttempts(int value) { otpAttempts = value; }
-    public String getGoogleSubject() { return googleSubject; }
-    public void setGoogleSubject(String value) { googleSubject = value; }
 }
