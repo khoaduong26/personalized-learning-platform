@@ -1,6 +1,8 @@
 package com.tlcn.backend.user;
 
 import com.tlcn.backend.auth.service.*;
+import com.tlcn.backend.auth.entity.UserGoogleIdentity;
+import com.tlcn.backend.auth.repository.UserGoogleIdentityRepository;
 import com.tlcn.backend.auth.util.LoginTokenCookie;
 import com.tlcn.backend.user.entity.*;
 import com.tlcn.backend.user.exception.ProfileException;
@@ -34,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ProfileIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired UserRepository users;
+    @Autowired UserGoogleIdentityRepository googleIdentities;
     @Autowired PasswordEncoder encoder;
     @Autowired LoginTokenService tokens;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
@@ -167,7 +170,7 @@ class ProfileIntegrationTests {
         assertEquals(Role.STUDENT, persisted.getRole());
         assertEquals(UserStatus.ACTIVE, persisted.getStatus());
         assertEquals(originalHash, persisted.getPassword());
-        assertNull(persisted.getGoogleSubject());
+        assertFalse(googleIdentities.existsById(persisted.getId()));
         assertNull(persisted.getAvatarUrl());
         mvc.perform(get("/api/users/" + user.getId()).cookie(cookie)).andExpect(status().isForbidden());
         mvc.perform(get("/api/users").cookie(cookie)).andExpect(status().isForbidden());
@@ -287,7 +290,7 @@ class ProfileIntegrationTests {
     }
 
     @Test void googleAccountCanEditProfileButCannotChangeLocalPassword() throws Exception {
-        user.setGoogleSubject("google-" + user.getEmail()); users.saveAndFlush(user);
+        googleIdentities.saveAndFlush(new UserGoogleIdentity(user, "google-" + user.getEmail()));
         mvc.perform(get("/api/users/me").cookie(cookie)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.passwordChangeAllowed").value(false));
         putJson("/api/users/me", PROFILE, cookie).andExpect(status().isOk());

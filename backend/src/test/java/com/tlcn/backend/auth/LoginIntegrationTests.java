@@ -1,6 +1,8 @@
 package com.tlcn.backend.auth;
 
 import com.tlcn.backend.auth.util.LoginTokenCookie;
+import com.tlcn.backend.auth.entity.UserGoogleIdentity;
+import com.tlcn.backend.auth.repository.UserGoogleIdentityRepository;
 
 import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.service.*;
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LoginIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired UserRepository users;
+    @Autowired UserGoogleIdentityRepository googleIdentities;
     @Autowired PasswordEncoder encoder;
     @Autowired LoginService login;
     @Autowired LoginTokenService tokens;
@@ -138,12 +141,13 @@ class LoginIntegrationTests {
     @Test void googleLoginRequiresAnExistingVerifiedSubjectAndNeverLinksByEmail() {
         assertEquals("GOOGLE_NOT_REGISTERED", assertThrows(AuthException.class,
                 () -> login.loginGoogle("unknown", true)).getCode());
-        user.setGoogleSubject("google-" + user.getEmail()); users.saveAndFlush(user);
-        assertEquals(user.getId(), login.loginGoogle(user.getGoogleSubject(), true).getId());
-        assertThrows(AuthException.class, () -> login.loginGoogle(user.getGoogleSubject(), false));
+        String subject = "google-" + user.getEmail();
+        googleIdentities.saveAndFlush(new UserGoogleIdentity(user, subject));
+        assertEquals(user.getId(), login.loginGoogle(subject, true).getId());
+        assertThrows(AuthException.class, () -> login.loginGoogle(subject, false));
         assertThrows(AuthException.class, () -> login.login(new com.tlcn.backend.auth.dto.LoginRequest(user.getEmail(), "password123", false)));
         user.setStatus(UserStatus.LOCKED); users.saveAndFlush(user);
         assertEquals("ACCOUNT_LOCKED", assertThrows(AuthException.class,
-                () -> login.loginGoogle(user.getGoogleSubject(), true)).getCode());
+                () -> login.loginGoogle(subject, true)).getCode());
     }
 }
