@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers(HttpMethod.PUT, "/api/users/me", "/api/users/me/password").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers(HttpMethod.POST, "/api/users/me/avatar").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers("/api/admin/accounts", "/api/admin/accounts/**").hasRole("ADMIN")
                 // User directory is reserved for the admin user-management workflow.
                 .requestMatchers("/api/users", "/api/users/*").hasRole("ADMIN")
                 // Classroom service methods enforce teacher ownership and admin access.
