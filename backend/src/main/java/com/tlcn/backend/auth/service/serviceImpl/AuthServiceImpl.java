@@ -8,6 +8,7 @@ import com.tlcn.backend.auth.exception.InvalidOtpException;
 import com.tlcn.backend.auth.dto.*;
 import com.tlcn.backend.user.entity.*;
 import com.tlcn.backend.user.repository.UserRepository;
+import com.tlcn.backend.user.repository.UserAccountDetailsRepository;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
@@ -24,13 +25,16 @@ public class AuthServiceImpl implements AuthService {
     private static final Duration OTP_TTL = Duration.ofMinutes(5);
     private static final Duration COOLDOWN = Duration.ofSeconds(60);
     private final UserRepository users;
+    private final UserAccountDetailsRepository accountDetails;
     private final PasswordEncoder encoder;
     private final OtpDelivery delivery;
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
-    public AuthServiceImpl(UserRepository users, PasswordEncoder encoder, OtpDelivery delivery, Clock clock) {
+    public AuthServiceImpl(UserRepository users, UserAccountDetailsRepository accountDetails,
+            PasswordEncoder encoder, OtpDelivery delivery, Clock clock) {
         this.users = users;
+        this.accountDetails = accountDetails;
         this.encoder = encoder;
         this.delivery = delivery;
         this.clock = clock;
@@ -51,6 +55,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPhone(request.phone());
         user.setStatus(UserStatus.PENDING_OTP);
         users.saveAndFlush(user); // Enforce email uniqueness before sending mail.
+        accountDetails.save(new UserAccountDetails(user, clock.instant()));
         issueOtp(user);
         return pending(user);
     }
@@ -109,7 +114,9 @@ public class AuthServiceImpl implements AuthService {
         // Google accounts cannot be authenticated using a guessed local password.
         user.setPassword(encoder.encode(UUID.randomUUID().toString()));
         user.setStatus(UserStatus.ACTIVE);
-        return users.saveAndFlush(user);
+        users.saveAndFlush(user);
+        accountDetails.save(new UserAccountDetails(user, clock.instant()));
+        return user;
     }
 
     @Override

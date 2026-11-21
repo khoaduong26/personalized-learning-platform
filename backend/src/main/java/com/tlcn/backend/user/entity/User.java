@@ -29,6 +29,17 @@ public class User {
     @Column(unique = true, length = 255)
     private String googleSubject;
     protected User() {}
+    public static User withRole(Role role) {
+        return switch (role) {
+            case STUDENT -> new Student();
+            case TEACHER -> new Teacher();
+            case ADMIN -> {
+                User user = new User();
+                user.setRole(Role.ADMIN);
+                yield user;
+            }
+        };
+    }
     public Long getId() { return id; }
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
