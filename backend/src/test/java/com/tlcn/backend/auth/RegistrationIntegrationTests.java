@@ -1,6 +1,8 @@
 package com.tlcn.backend.auth;
 
 import com.tlcn.backend.auth.dto.*;
+import com.tlcn.backend.auth.entity.UserOtpState;
+import com.tlcn.backend.auth.repository.UserOtpStateRepository;
 import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.service.*;
 import com.tlcn.backend.user.entity.*;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,6 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RegistrationIntegrationTests {
     @Autowired AuthService auth;
     @Autowired UserRepository users;
+    @Autowired UserOtpStateRepository otpStates;
+    @Autowired JdbcTemplate jdbc;
     @Autowired TeacherRepository teachers;
     @Autowired StudentRepository students;
     @Autowired PasswordEncoder encoder;
@@ -53,6 +58,7 @@ class RegistrationIntegrationTests {
         return new RegisterRequest("  Nguyễn An  ", " " + email.toUpperCase() + " ", "password123", "0901234567", role);
     }
     private User user() { return users.findByEmail(email).orElseThrow(); }
+    private UserOtpState otpState() { return otpStates.findById(user().getId()).orElseThrow(); }
     private void assertCode(String code, Runnable operation) {
         assertEquals(code, assertThrows(AuthException.class, operation::run).getCode());
     }
@@ -65,13 +71,19 @@ class RegistrationIntegrationTests {
         assertEquals("Nguyễn An", pending.getFullName());
         assertTrue(teachers.existsById(pending.getId()));
         assertTrue(encoder.matches("password123", pending.getPassword()));
-        assertNotEquals(sentOtp.get(), pending.getOtpCode());
-        assertTrue(encoder.matches(sentOtp.get(), pending.getOtpCode()));
+        assertNotEquals(sentOtp.get(), otpState().getOtpCode());
+        assertTrue(encoder.matches(sentOtp.get(), otpState().getOtpCode()));
+        assertNull(jdbc.queryForObject("select otp_code from users where id = ?", String.class, pending.getId()));
+        assertEquals(2, jdbc.queryForObject("""
+                select count(*) from information_schema.columns where table_schema = 'PUBLIC'
+                and table_name = 'USERS' and column_name in ('OTP_ATTEMPTS', 'OTP_SEND_COUNT')
+                and is_nullable = 'NO'
+                """, Integer.class));
         assertEquals(START.plusSeconds(300), response.otpExpiresAt());
         auth.verify(new VerifyOtpRequest(email, sentOtp.get()));
         assertEquals(UserStatus.ACTIVE, user().getStatus());
-        assertNull(user().getOtpCode());
-        assertNull(user().getOtpExpiredAt());
+        assertNull(otpState().getOtpCode());
+        assertNull(otpState().getOtpExpiredAt());
         assertCode("REGISTRATION_NOT_PENDING", () -> auth.verify(new VerifyOtpRequest(email, sentOtp.get())));
     }
 
@@ -96,7 +108,7 @@ class RegistrationIntegrationTests {
         String wrong = correct.equals("000000") ? "111111" : "000000";
         for (int i = 1; i <= 5; i++) {
             assertCode("OTP_INVALID", () -> auth.verify(new VerifyOtpRequest(email, wrong)));
-            assertEquals(i, user().getOtpAttempts());
+            assertEquals(i, otpState().getOtpAttempts());
         }
         assertCode("OTP_ATTEMPTS_EXCEEDED", () -> auth.verify(new VerifyOtpRequest(email, correct)));
         assertEquals(UserStatus.PENDING_OTP, user().getStatus());
@@ -105,14 +117,14 @@ class RegistrationIntegrationTests {
     @Test
     void otpExpiresAtTheBoundaryAndResendInvalidatesOldChallenge() {
         auth.register(request(Role.STUDENT));
-        String oldHash = user().getOtpCode();
+        String oldHash = otpState().getOtpCode();
         String oldOtp = sentOtp.get();
         assertCode("OTP_COOLDOWN", () -> auth.resend(new EmailRequest(email)));
         when(clock.instant()).thenReturn(START.plusSeconds(300));
         assertCode("OTP_EXPIRED", () -> auth.verify(new VerifyOtpRequest(email, sentOtp.get())));
         var response = auth.resend(new EmailRequest(email));
-        assertNotEquals(oldHash, user().getOtpCode());
-        assertEquals(0, user().getOtpAttempts());
+        assertNotEquals(oldHash, otpState().getOtpCode());
+        assertEquals(0, otpState().getOtpAttempts());
         assertEquals(START.plusSeconds(600), response.otpExpiresAt());
         assertCode("OTP_INVALID", () -> auth.verify(new VerifyOtpRequest(email, oldOtp)));
         auth.verify(new VerifyOtpRequest(email, sentOtp.get()));
@@ -130,7 +142,7 @@ class RegistrationIntegrationTests {
         assertCode("OTP_SEND_LIMIT", () -> auth.resend(new EmailRequest(email)));
         when(clock.instant()).thenReturn(START.plusSeconds(3600));
         auth.resend(new EmailRequest(email));
-        assertEquals(1, user().getOtpSendCount());
+        assertEquals(1, otpState().getOtpSendCount());
     }
 
     @Test
@@ -141,13 +153,37 @@ class RegistrationIntegrationTests {
         assertTrue(users.findByEmail(email).isEmpty());
         doNothing().when(delivery).send(anyString(), anyString());
         auth.register(request(Role.STUDENT));
-        String originalHash = user().getOtpCode();
+        String originalHash = otpState().getOtpCode();
         when(clock.instant()).thenReturn(START.plusSeconds(60));
         doThrow(new AuthException(HttpStatus.SERVICE_UNAVAILABLE, "MAIL_UNAVAILABLE", "Unavailable"))
                 .when(delivery).send(anyString(), anyString());
         assertCode("MAIL_UNAVAILABLE", () -> auth.resend(new EmailRequest(email)));
-        assertEquals(originalHash, user().getOtpCode());
-        assertEquals(1, user().getOtpSendCount());
+        assertEquals(originalHash, otpState().getOtpCode());
+        assertEquals(1, otpState().getOtpSendCount());
+    }
+
+    @Test
+    void pendingAccountWithoutAnOtpStateCanRequestANewCode() {
+        auth.register(request(Role.STUDENT));
+        Long id = user().getId();
+        String legacyCode = sentOtp.get();
+        String legacyHash = otpState().getOtpCode();
+        otpStates.deleteById(id);
+        jdbc.update("""
+                update users set otp_code = ?, otp_expired_at = ?, otp_sent_at = ?, otp_window_started_at = ?,
+                    otp_send_count = 3, otp_attempts = 2 where id = ?
+                """, legacyHash, START.plusSeconds(300).atOffset(ZoneOffset.UTC), START.atOffset(ZoneOffset.UTC),
+                START.atOffset(ZoneOffset.UTC), id);
+
+        assertCode("OTP_EXPIRED", () -> auth.verify(new VerifyOtpRequest(email, legacyCode)));
+        var response = auth.resend(new EmailRequest(email));
+        assertEquals(START.plusSeconds(300), response.otpExpiresAt());
+        assertEquals(0, otpState().getOtpAttempts());
+        assertEquals(1, otpState().getOtpSendCount());
+        auth.verify(new VerifyOtpRequest(email, sentOtp.get()));
+        assertEquals(UserStatus.ACTIVE, user().getStatus());
+        assertNull(otpState().getOtpCode());
+        assertEquals(legacyHash, jdbc.queryForObject("select otp_code from users where id = ?", String.class, id));
     }
 
     @Test
@@ -168,6 +204,7 @@ class RegistrationIntegrationTests {
         User created = auth.registerGoogle("subject-" + email, email, true, "An", Role.TEACHER);
         assertEquals(UserStatus.ACTIVE, created.getStatus());
         assertTrue(teachers.existsById(created.getId()));
+        assertNull(jdbc.queryForObject("select google_subject from users where id = ?", String.class, created.getId()));
         assertCode("EMAIL_EXISTS", () -> auth.registerGoogle("another-" + email, email, true, "An", Role.STUDENT));
         assertEquals(Role.TEACHER, user().getRole());
         assertCode("EMAIL_EXISTS", () -> auth.registerGoogle("subject-" + email, "other-" + email, true, "An", Role.TEACHER));
