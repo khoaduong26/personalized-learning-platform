@@ -123,3 +123,45 @@
   .registration-progress li { font-size: 11px; gap: 6px; }
   .registration-progress li + li::before { width: 14px; margin-right: 0; }
 }
+.mock-login-panel {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0 1.25rem;
+  padding: 1rem;
+  border: 1px solid #d8d2ef;
+  border-radius: 1rem;
+  background: #f7f5ff;
+}
+
+.mock-login-panel strong {
+  color: #40356b;
+}
+
+.mock-login-panel p {
+  margin: 0 0 0.2rem;
+  color: #5f5c6d;
+  font-size: 0.88rem;
+}
+
+.mock-login-panel button {
+  min-height: 2.6rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #d8d2ef;
+  border-radius: 0.7rem;
+  background: #fff;
+  color: #40356b;
+  font: inherit;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mock-login-panel button:hover:not(:disabled) {
+  border-color: #8f7ecb;
+  background: #f0edff;
+}
+
+.mock-login-panel button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}

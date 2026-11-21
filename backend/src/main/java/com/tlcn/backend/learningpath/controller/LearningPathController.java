@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/students/{studentId}/learning-paths")
@@ -58,22 +59,26 @@ public class LearningPathController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public List<PathView> list(@PathVariable Long studentId, @AuthenticationPrincipal UserSummary actor) {
         return service.forStudent(studentId, actor).stream().map(PathView::from).toList();
     }
 
     @PostMapping("/generate")
+    @Transactional
     public PathView generate(@PathVariable Long studentId, @AuthenticationPrincipal UserSummary actor) {
         return PathView.from(service.generate(studentId, actor));
     }
 
     @GetMapping("/{pathId}")
+    @Transactional(readOnly = true)
     public PathView get(@PathVariable Long studentId, @PathVariable Long pathId,
             @AuthenticationPrincipal UserSummary actor) {
         return PathView.from(service.get(studentId, pathId, actor));
     }
 
     @PatchMapping("/{pathId}/steps/{stepId}")
+    @Transactional
     public PathView updateStep(@PathVariable Long studentId, @PathVariable Long pathId, @PathVariable Long stepId,
             @Valid @RequestBody UpdateStepStatusRequest request, @AuthenticationPrincipal UserSummary actor) {
         return PathView.from(service.updateStepStatus(studentId, pathId, stepId, request.status(), actor));

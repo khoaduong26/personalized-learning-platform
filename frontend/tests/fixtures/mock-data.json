@@ -1,0 +1,322 @@
+{
+  "_meta": {
+    "name": "EduLearn synthetic feature fixtures",
+    "purpose": "Dữ liệu giả để dựng kịch bản kiểm tra các luồng chính của EduLearn.",
+    "privacy": "Toàn bộ tên, email và kết quả trong file này đều là dữ liệu hư cấu; không dùng thông tin học sinh thật.",
+    "loading": "Fixture tĩnh cho test/mocking; ứng dụng không tự nạp file này vào API hoặc database.",
+    "schoolYear": "2026-2027",
+    "scoreScale": "0-100"
+  },
+  "actors": [
+    {
+      "id": 9101,
+      "fullName": "Cô Mai Demo",
+      "email": "teacher.demo@example.test",
+      "role": "TEACHER",
+      "status": "ACTIVE",
+      "classroomIds": [9201]
+    },
+    {
+      "id": 9102,
+      "fullName": "Bạn An Demo",
+      "email": "student.an@example.test",
+      "role": "STUDENT",
+      "status": "ACTIVE",
+      "classroomId": 9201,
+      "scenario": "Năng lực khá, có thể hoàn thành bước ôn tập đầu tiên."
+    },
+    {
+      "id": 9103,
+      "fullName": "Bạn Bình Demo",
+      "email": "student.binh@example.test",
+      "role": "STUDENT",
+      "status": "ACTIVE",
+      "classroomId": 9201,
+      "scenario": "Cần củng cố phép cộng có nhớ và đang có khoảng trống kiến thức mức cao."
+    },
+    {
+      "id": 9104,
+      "fullName": "Bạn Chi Demo",
+      "email": "student.chi@example.test",
+      "role": "STUDENT",
+      "status": "ACTIVE",
+      "classroomId": null,
+      "scenario": "Chưa được xếp vào lớp; dùng để thử tìm và thêm học sinh."
+    },
+    {
+      "id": 9105,
+      "fullName": "Quản trị Demo",
+      "email": "admin.demo@example.test",
+      "role": "ADMIN",
+      "status": "ACTIVE",
+      "scenario": "Tài khoản giả để dựng kịch bản quản trị; fixture không tạo thông tin đăng nhập."
+    }
+  ],
+  "classrooms": [
+    {
+      "id": 9201,
+      "name": "Lớp 2A - Demo",
+      "schoolYear": "2026-2027",
+      "teacherId": 9101,
+      "teacherName": "Cô Mai Demo",
+      "studentCount": 2,
+      "studentIds": [9102, 9103]
+    }
+  ],
+  "students": [
+    {
+      "id": 9102,
+      "fullName": "Bạn An Demo",
+      "email": "student.an@example.test",
+      "sex": "FEMALE",
+      "dateOfBirth": "2018-04-12"
+    },
+    {
+      "id": 9103,
+      "fullName": "Bạn Bình Demo",
+      "email": "student.binh@example.test",
+      "sex": "MALE",
+      "dateOfBirth": "2018-09-03"
+    },
+    {
+      "id": 9104,
+      "fullName": "Bạn Chi Demo",
+      "email": "student.chi@example.test",
+      "sex": "FEMALE",
+      "dateOfBirth": "2018-12-21"
+    }
+  ],
+  "academic": {
+    "subjects": [
+      {
+        "id": 9301,
+        "name": "Toán 2 - Demo",
+        "topicCount": 2
+      }
+    ],
+    "topics": [
+      {
+        "id": 9311,
+        "name": "Phép cộng và phép trừ trong phạm vi 100",
+        "subjectId": 9301,
+        "subjectName": "Toán 2 - Demo",
+        "lessonCount": 2
+      },
+      {
+        "id": 9312,
+        "name": "Giải toán có lời văn",
+        "subjectId": 9301,
+        "subjectName": "Toán 2 - Demo",
+        "lessonCount": 1
+      }
+    ],
+    "lessons": [
+      {
+        "id": 9321,
+        "name": "Cộng có nhớ trong phạm vi 100",
+        "description": "Đặt tính theo cột và cộng từ hàng đơn vị.",
+        "topicId": 9311,
+        "topicName": "Phép cộng và phép trừ trong phạm vi 100",
+        "subjectId": 9301
+      },
+      {
+        "id": 9322,
+        "name": "Trừ có nhớ trong phạm vi 100",
+        "description": "Thực hành trừ theo cột và kiểm tra kết quả.",
+        "topicId": 9311,
+        "topicName": "Phép cộng và phép trừ trong phạm vi 100",
+        "subjectId": 9301
+      },
+      {
+        "id": 9323,
+        "name": "Bài toán thêm bớt một số đơn vị",
+        "description": "Xác định phép tính từ dữ kiện và câu hỏi trong đề.",
+        "topicId": 9312,
+        "topicName": "Giải toán có lời văn",
+        "subjectId": 9301
+      }
+    ]
+  },
+  "assessments": [
+    {
+      "id": 9401,
+      "title": "Khảo sát đầu năm - Demo",
+      "type": "DIAGNOSTIC",
+      "durationMinutes": 20,
+      "published": true,
+      "teacherId": 9101,
+      "teacherName": "Cô Mai Demo",
+      "createdAt": "2026-08-20T02:00:00Z",
+      "classroomIds": [9201],
+      "classroomNames": ["Lớp 2A - Demo"],
+      "questions": [
+        {
+          "id": 9411,
+          "content": "Tính 27 + 15 = ?",
+          "difficulty": "MEDIUM",
+          "score": 5,
+          "lessonId": 9321,
+          "kind": "MULTIPLE_CHOICE",
+          "allowMultiple": false,
+          "options": [
+            { "id": 9421, "name": "32", "displayOrder": 0 },
+            { "id": 9422, "name": "42", "displayOrder": 1 },
+            { "id": 9423, "name": "52", "displayOrder": 2 }
+          ],
+          "correctOptionIds": [9422],
+          "explanation": "7 + 5 = 12, viết 2 nhớ 1; 2 + 1 + 1 = 4."
+        },
+        {
+          "id": 9412,
+          "content": "Tính 54 - 28 = ?",
+          "difficulty": "MEDIUM",
+          "score": 5,
+          "lessonId": 9322,
+          "kind": "MULTIPLE_CHOICE",
+          "allowMultiple": false,
+          "options": [
+            { "id": 9424, "name": "26", "displayOrder": 0 },
+            { "id": 9425, "name": "34", "displayOrder": 1 },
+            { "id": 9426, "name": "36", "displayOrder": 2 }
+          ],
+          "correctOptionIds": [9424],
+          "explanation": "Mượn 1 chục: 14 - 8 = 6, còn 4 - 2 = 2."
+        },
+        {
+          "id": 9413,
+          "content": "Lan có 18 nhãn vở, được tặng thêm 7 nhãn. Lan có tất cả bao nhiêu nhãn vở?",
+          "difficulty": "EASY",
+          "score": 5,
+          "lessonId": 9323,
+          "kind": "SHORT_ANSWER",
+          "allowMultiple": false,
+          "options": [],
+          "correctAnswer": "25",
+          "explanation": "Tìm số tất cả nên tính 18 + 7 = 25."
+        }
+      ]
+    },
+    {
+      "id": 9402,
+      "title": "Luyện tập cộng có nhớ - Bản nháp Demo",
+      "type": "PRACTICE",
+      "durationMinutes": 10,
+      "published": false,
+      "teacherId": 9101,
+      "teacherName": "Cô Mai Demo",
+      "createdAt": "2026-09-01T02:00:00Z",
+      "classroomIds": [],
+      "classroomNames": [],
+      "questions": []
+    }
+  ],
+  "attempts": [
+    {
+      "id": 9501,
+      "assessmentId": 9401,
+      "studentId": 9102,
+      "status": "SUBMITTED",
+      "startedAt": "2026-08-22T02:00:00Z",
+      "submittedAt": "2026-08-22T02:12:00Z",
+      "answers": [
+        { "id": 9511, "questionId": 9411, "selectedOptionIds": [9422], "correct": true, "awardedScore": 5 },
+        { "id": 9512, "questionId": 9412, "selectedOptionIds": [9425], "correct": false, "awardedScore": 0 },
+        { "id": 9513, "questionId": 9413, "content": "25", "correct": true, "awardedScore": 5 }
+      ],
+      "totalScore": 10,
+      "maxScore": 15
+    },
+    {
+      "id": 9502,
+      "assessmentId": 9401,
+      "studentId": 9103,
+      "status": "IN_PROGRESS",
+      "startedAt": "2026-08-22T02:05:00Z",
+      "submittedAt": null,
+      "answers": [
+        { "id": 9514, "questionId": 9411, "selectedOptionIds": [9421], "correct": false, "awardedScore": null }
+      ],
+      "totalScore": null,
+      "maxScore": 15
+    }
+  ],
+  "masteryProfiles": [
+    {
+      "studentId": 9102,
+      "records": [
+        { "id": 9601, "lessonId": 9321, "lessonName": "Cộng có nhớ trong phạm vi 100", "score": 82, "level": "PROFICIENT", "confidence": 0.8, "lastUpdated": "2026-08-22T02:12:00Z" },
+        { "id": 9602, "lessonId": 9322, "lessonName": "Trừ có nhớ trong phạm vi 100", "score": 62, "level": "DEVELOPING", "confidence": 0.6, "lastUpdated": "2026-08-22T02:12:00Z" },
+        { "id": 9603, "lessonId": 9323, "lessonName": "Bài toán thêm bớt một số đơn vị", "score": 90, "level": "MASTERED", "confidence": 0.8, "lastUpdated": "2026-08-22T02:12:00Z" }
+      ]
+    },
+    {
+      "studentId": 9103,
+      "records": [
+        { "id": 9604, "lessonId": 9321, "lessonName": "Cộng có nhớ trong phạm vi 100", "score": 38, "level": "BEGINNING", "confidence": 0.4, "lastUpdated": "2026-08-22T02:15:00Z" },
+        { "id": 9605, "lessonId": 9322, "lessonName": "Trừ có nhớ trong phạm vi 100", "score": 55, "level": "DEVELOPING", "confidence": 0.4, "lastUpdated": "2026-08-22T02:15:00Z" }
+      ]
+    }
+  ],
+  "masteryHistory": [
+    { "id": 9611, "masteryId": 9601, "oldScore": 65, "newScore": 82, "recordedAt": "2026-08-22T02:12:00Z", "triggerSource": "ASSESSMENT_9401" },
+    { "id": 9612, "masteryId": 9604, "oldScore": 45, "newScore": 38, "recordedAt": "2026-08-22T02:15:00Z", "triggerSource": "ASSESSMENT_9401" }
+  ],
+  "studentErrors": [
+    { "id": 9621, "studentId": 9102, "lessonId": 9322, "answerId": 9512, "errorType": "Quên nhớ khi trừ qua chục", "description": "Em trừ hàng chục trực tiếp mà chưa mượn 1 chục cho hàng đơn vị.", "createdAt": "2026-08-22T02:12:00Z" },
+    { "id": 9622, "studentId": 9103, "lessonId": 9321, "answerId": 9514, "errorType": "Chưa cộng phần nhớ", "description": "Sau khi cộng hàng đơn vị, cần cộng thêm 1 chục nhớ vào hàng chục.", "createdAt": "2026-08-22T02:15:00Z" }
+  ],
+  "knowledgeGaps": [
+    { "id": 9631, "studentId": 9102, "lessonId": 9322, "priority": "MEDIUM", "rootCause": "Điểm thành thạo 62/100; còn nhầm thao tác mượn khi trừ.", "status": "IDENTIFIED", "identifiedAt": "2026-08-22T02:12:00Z" },
+    { "id": 9632, "studentId": 9103, "lessonId": 9321, "priority": "HIGH", "rootCause": "Điểm thành thạo 38/100; chưa cộng phần nhớ trong phép cộng có nhớ.", "status": "IN_REMEDIATION", "identifiedAt": "2026-08-22T02:15:00Z" }
+  ],
+  "learningPaths": [
+    {
+      "id": 9701,
+      "studentId": 9103,
+      "status": "ACTIVE",
+      "version": 1,
+      "createdAt": "2026-08-23T02:00:00Z",
+      "updatedAt": "2026-08-23T02:00:00Z",
+      "steps": [
+        { "id": 9711, "stepOrder": 1, "status": "IN_PROGRESS", "targetScore": 70, "lessonId": 9321, "lessonName": "Cộng có nhớ trong phạm vi 100" },
+        { "id": 9712, "stepOrder": 2, "status": "LOCKED", "targetScore": 70, "lessonId": 9322, "lessonName": "Trừ có nhớ trong phạm vi 100" }
+      ]
+    }
+  ],
+  "generatedExercises": [
+    {
+      "id": 9801,
+      "learningStepId": 9711,
+      "questionId": 9811,
+      "lessonId": 9321,
+      "content": "Tính 36 + 27 = ?",
+      "difficulty": "EASY",
+      "score": 10,
+      "isAiGenerated": true,
+      "approvalStatus": "PENDING",
+      "options": [
+        { "id": 9821, "name": "53", "displayOrder": 0, "correct": false },
+        { "id": 9822, "name": "63", "displayOrder": 1, "correct": true },
+        { "id": 9823, "name": "73", "displayOrder": 2, "correct": false }
+      ],
+      "explanation": "6 + 7 = 13, viết 3 nhớ 1; 3 + 2 + 1 = 6."
+    },
+    {
+      "id": 9802,
+      "learningStepId": 9711,
+      "questionId": 9812,
+      "lessonId": 9321,
+      "content": "Tính 28 + 14 = ?",
+      "difficulty": "EASY",
+      "score": 10,
+      "isAiGenerated": true,
+      "approvalStatus": "APPROVED",
+      "options": [
+        { "id": 9824, "name": "32", "displayOrder": 0, "correct": false },
+        { "id": 9825, "name": "42", "displayOrder": 1, "correct": true },
+        { "id": 9826, "name": "52", "displayOrder": 2, "correct": false }
+      ],
+      "explanation": "8 + 4 = 12, viết 2 nhớ 1; 2 + 1 + 1 = 4."
+    }
+  ]
+}

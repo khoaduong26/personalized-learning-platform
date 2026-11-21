@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -50,6 +51,7 @@ public class AttemptController {
 
     @PostMapping("/assessments/{assessmentId}/attempts")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     public AttemptResult start(@PathVariable Long assessmentId, @AuthenticationPrincipal UserSummary actor) {
         AssessmentAttempt attempt = attempts.start(assessmentId, actor);
         return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
@@ -57,6 +59,7 @@ public class AttemptController {
 
     @PostMapping("/exercises/steps/{stepId}/attempts")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     public AttemptResult startExercise(@PathVariable Long stepId, @AuthenticationPrincipal UserSummary actor) {
         AssessmentAttempt attempt = attempts.startExercise(stepId, actor);
         return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
@@ -70,18 +73,21 @@ public class AttemptController {
     }
 
     @GetMapping("/attempts/student/{studentId}")
+    @Transactional(readOnly = true)
     public List<AttemptResult> byStudent(@PathVariable Long studentId, @AuthenticationPrincipal UserSummary actor) {
         return assessments.attemptsForStudent(studentId, actor).stream()
                 .map(attempt -> AttemptResult.from(attempt, attempts.questionsForAttempt(attempt))).toList();
     }
 
     @GetMapping("/attempts/{id}")
+    @Transactional(readOnly = true)
     public AttemptResult get(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
         AssessmentAttempt attempt = attempts.get(id, actor);
         return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
     }
 
     @GetMapping("/attempts/{id}/draft")
+    @Transactional(readOnly = true)
     public List<AnswerDraft> draft(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
         if (actor == null || actor.role() != com.tlcn.backend.user.entity.Role.STUDENT)
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ học sinh mới được xem câu trả lời đang lưu.");
@@ -103,19 +109,22 @@ public class AttemptController {
     }
 
     @PostMapping("/attempts/{id}/submit")
+    @Transactional
     public AttemptResult submit(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
         AssessmentAttempt attempt = attempts.submit(id, actor);
         return AttemptResult.from(attempt, attempts.questionsForAttempt(attempt));
     }
 
     @GetMapping("/attempts/{id}/result")
+    @Transactional(readOnly = true)
     public AssessmentResult result(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
         AssessmentAttempt attempt = attempts.get(id, actor);
         if (attempt.getStatus() != AttemptStatus.SUBMITTED)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Kết quả sẽ hiển thị sau khi nộp bài.");
         Map<Long, StudentAnswer> saved = new HashMap<>();
         attempt.getAnswers().forEach(answer -> saved.put(answer.getQuestion().getId(), answer));
-        List<AnswerDetail> details = attempts.questionsForAttempt(attempt).stream().map(question -> {
+        List<Question> questions = attempts.questionsForAttempt(attempt);
+        List<AnswerDetail> details = questions.stream().map(question -> {
             StudentAnswer answer = saved.get(question.getId());
             List<String> submitted = new ArrayList<>();
             List<String> expected = new ArrayList<>();
@@ -135,17 +144,19 @@ public class AttemptController {
                     submitted.addAll(filled.getAnswers().stream()
                             .sorted(Comparator.comparing(item -> item.getBlank().getPosition()))
                             .map(StudentBlankAnswer::getContent).toList());
-            } else {
+            } else if (question instanceof ShortAnswerQuestion shortQuestion) {
                 kind = "SHORT_ANSWER";
-                ShortAnswerQuestion shortQuestion = (ShortAnswerQuestion) question;
                 expected.add(shortQuestion.getCorrectAnswer());
                 if (answer instanceof ShortAnswerAnswer shortAnswer)
                     submitted.add(shortAnswer.getContent());
+            } else {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Không hỗ trợ dạng câu hỏi của bài làm này.");
             }
             return new AnswerDetail(question.getId(), question.getContent(), kind, answer != null && answer.isCorrect(),
                     question.getScore(), answer == null ? 0 : answer.score(), submitted, expected,
                     question.getExplanation());
         }).toList();
-        return new AssessmentResult(AttemptResult.from(attempt, attempts.questionsForAttempt(attempt)), details);
+        return new AssessmentResult(AttemptResult.from(attempt, questions), details);
     }
 }

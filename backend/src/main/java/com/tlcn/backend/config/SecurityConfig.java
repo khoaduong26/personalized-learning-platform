@@ -51,14 +51,32 @@ public class SecurityConfig {
             .authorizeHttpRequests(rules -> rules
                 .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp",
                         "/api/auth/options", "/api/auth/google", "/api/auth/google-login",
-                        "/api/auth/login", "/api/auth/logout", "/api/auth/csrf", "/oauth2/authorization/google",
+                        "/api/auth/login", "/api/auth/logout", "/api/auth/csrf", "/api/csrf", "/oauth2/authorization/google",
                         "/login/oauth2/code/google", "/error").permitAll()
-                .requestMatchers("/api/auth/registration-session", "/api/auth/me").authenticated()
+                .requestMatchers("/api/auth/registration-session", "/api/auth/me", "/api/auth/session").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers(HttpMethod.PUT, "/api/users/me", "/api/users/me/password").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers(HttpMethod.POST, "/api/users/me/avatar").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
-                // The service checks student, teacher-classroom, and admin ownership.
+                // User directory is reserved for the admin user-management workflow.
+                .requestMatchers("/api/users", "/api/users/*").hasRole("ADMIN")
+                // Classroom service methods enforce teacher ownership and admin access.
+                .requestMatchers("/api/classrooms/**").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers("/api/students/candidates").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers("/api/students/*/mastery/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers("/api/students/*/learning-paths/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers("/api/students/*").hasAnyRole("ADMIN", "TEACHER")
+                // Curriculum is readable by signed-in users; only admins may change shared content.
+                .requestMatchers(HttpMethod.GET, "/api/subjects/**", "/api/topics/**", "/api/lessons/**")
+                    .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers("/api/subjects/**", "/api/topics/**", "/api/lessons/**")
+                    .hasAnyRole("ADMIN", "TEACHER")
+                // Service checks assignment, teacher ownership, attempt ownership and review role.
+                .requestMatchers("/api/assessments/**", "/api/attempts/**")
+                    .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers("/api/mastery/classrooms/**").hasAnyRole("ADMIN", "TEACHER")
+                .requestMatchers("/api/mastery/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                // The service checks student, teacher-classroom, and admin ownership.
+                // Learning-path service enforces student and teacher-classroom ownership.
                 // Exercise service methods enforce step ownership and teacher-only review.
                 .requestMatchers("/api/exercises/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 // Existing feature stubs have no ownership checks yet. Do not expose student data.
@@ -103,7 +121,7 @@ public class SecurityConfig {
         CorsConfiguration cors = new CorsConfiguration();
 
         cors.setAllowedOrigins(List.of(frontendUrl));
-        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Content-Type", "X-CSRF-TOKEN"));
         cors.setAllowCredentials(true);
 

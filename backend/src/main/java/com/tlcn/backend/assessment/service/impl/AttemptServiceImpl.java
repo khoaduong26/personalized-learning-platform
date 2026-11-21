@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.hibernate.Hibernate;
 
 @Service
 public class AttemptServiceImpl implements AttemptService {
@@ -86,10 +87,11 @@ public class AttemptServiceImpl implements AttemptService {
     @Transactional(readOnly = true)
     public List<Question> questionsForAttempt(AssessmentAttempt attempt) {
         if (attempt.getAssessment() != null)
-            return attempt.getAssessment().getQuestions();
+            return attempt.getAssessment().getQuestions().stream()
+                    .map(question -> (Question) Hibernate.unproxy(question)).toList();
         if (attempt.getLearningStep() != null)
             return stepExercises.findByStepId(attempt.getLearningStep().getId()).stream()
-                    .map(item -> item.getQuestion())
+                    .map(item -> (Question) Hibernate.unproxy(item.getQuestion()))
                     .filter(question -> question.getApprovalStatus() == ApprovalStatus.APPROVED).toList();
         return List.of();
     }

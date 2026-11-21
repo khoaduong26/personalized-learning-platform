@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.Hibernate;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,6 +26,7 @@ public class ExerciseController {
             String kind, String status, String explanation, boolean allowMultiple, List<ReviewOption> options,
             List<String> expectedAnswers) {
         static ReviewView from(Question question) {
+            question = (Question) Hibernate.unproxy(question);
             if (question instanceof MultipleChoiceQuestion multiple) {
                 return new ReviewView(question.getId(), question.getContent(), question.getDifficulty().name(),
                         question.getScore(), question.getLesson().getId(), "MULTIPLE_CHOICE",
@@ -52,29 +55,34 @@ public class ExerciseController {
     }
 
     @GetMapping("/steps/{stepId}")
+    @Transactional(readOnly = true)
     public List<QuestionView> forStep(@PathVariable Long stepId, @AuthenticationPrincipal UserSummary actor) {
         return service.forStep(stepId, actor).stream().map(e -> QuestionView.from(e.getQuestion())).toList();
     }
 
     @PostMapping("/steps/{stepId}/generated")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     public ReviewView createGenerated(@PathVariable Long stepId, @Valid @RequestBody QuestionRequest request,
             @AuthenticationPrincipal UserSummary actor) {
         return ReviewView.from(service.createGenerated(stepId, request, actor));
     }
 
     @GetMapping("/pending-review")
+    @Transactional(readOnly = true)
     public List<ReviewView> pending(@AuthenticationPrincipal UserSummary actor) {
         return service.pendingReview(actor).stream().map(ReviewView::from).toList();
     }
 
     @PatchMapping("/questions/{questionId}")
+    @Transactional
     public ReviewView update(@PathVariable Long questionId, @Valid @RequestBody QuestionRequest request,
             @AuthenticationPrincipal UserSummary actor) {
         return ReviewView.from(service.updateGenerated(questionId, request, actor));
     }
 
     @PatchMapping("/questions/{questionId}/review")
+    @Transactional
     public ReviewView review(@PathVariable Long questionId, @RequestBody ReviewRequest request,
             @AuthenticationPrincipal UserSummary actor) {
         return ReviewView.from(service.review(questionId, request.status(), actor));

@@ -1,6 +1,13 @@
 
- // Relative URLs keep requests on the frontend origin (Vite proxies /api in dev).
+import { isMockMode } from './mockMode.js'
+
+// Relative URLs keep requests on the frontend origin (Vite proxies /api in dev).
 export async function httpRequest(path, { method = 'GET', body, signal, headers = {} } = {}) {
+  if (isMockMode()) {
+    const { mockRequest } = await import('./mockApi.js')
+    return mockRequest(path, { method, body, signal })
+  }
+
   let response
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
   try {

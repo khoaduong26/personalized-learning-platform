@@ -42,19 +42,24 @@ public class AssessmentServiceImpl implements AssessmentService {
     @Transactional(readOnly = true)
     public List<Assessment> list(UserSummary actor) {
         requireSignedIn(actor);
+        List<Assessment> values;
         if (actor.role() == Role.STUDENT)
-            return assessments.findByPublishedTrueOrderByCreatedAtDesc();
-        if (actor.role() == Role.ADMIN)
-            return assessments.findAll();
-        if (actor.role() == Role.TEACHER)
-            return assessments.findByTeacherIdOrderByCreatedAtDesc(actor.id());
-        throw forbidden();
+            values = assessments.findPublishedForStudent(actor.id());
+        else if (actor.role() == Role.ADMIN)
+            values = assessments.findAll();
+        else if (actor.role() == Role.TEACHER)
+            values = assessments.findByTeacherIdOrderByCreatedAtDesc(actor.id());
+        else
+            throw forbidden();
+        values.forEach(this::initializeAssessmentView);
+        return values;
     }
 
     @Transactional(readOnly = true)
     public Assessment get(Long id, UserSummary actor) {
         Assessment value = assessments.findById(id).orElseThrow(() -> notFound("Không tìm thấy bài kiểm tra."));
         requireCanView(value, actor);
+        initializeAssessmentView(value);
         return value;
     }
 
@@ -65,12 +70,20 @@ public class AssessmentServiceImpl implements AssessmentService {
         List<Question> attached = questions.findAllById(request.questionIds());
         if (attached.size() != new HashSet<>(request.questionIds()).size())
             throw notFound("Một số câu hỏi không tồn tại.");
+        List<Classroom> assignedClassrooms = classrooms.findAllById(request.classroomIds());
+        if (assignedClassrooms.size() != new HashSet<>(request.classroomIds()).size())
+            throw notFound("Một số lớp học không tồn tại.");
+        if (actor.role() == Role.TEACHER && assignedClassrooms.stream()
+                .anyMatch(classroom -> !classroom.getTeacher().getId().equals(actor.id())))
+            throw forbidden();
         Assessment value = new Assessment();
         value.setTitle(request.title().strip());
         value.setType(request.type());
         value.setDurationMinutes(request.durationMinutes());
         value.setTeacher(teacher);
         value.setQuestions(attached);
+        value.setClassrooms(assignedClassrooms);
+        initializeAssessmentView(value);
         return assessments.save(value);
     }
 
@@ -79,7 +92,10 @@ public class AssessmentServiceImpl implements AssessmentService {
         Assessment value = ownedAssessment(id, actor);
         if (value.getQuestions().isEmpty())
             throw badRequest("Hãy thêm ít nhất một câu hỏi trước khi giao bài.");
+        if (value.getClassrooms().isEmpty())
+            throw badRequest("Hãy chọn ít nhất một lớp trước khi giao bài.");
         value.setPublished(true);
+        initializeAssessmentView(value);
         return value;
     }
 
@@ -88,7 +104,9 @@ public class AssessmentServiceImpl implements AssessmentService {
         requireTeacher(actor);
         if (!lessons.existsById(lessonId))
             throw notFound("Không tìm thấy bài học.");
-        return questions.findByLessonIdOrderByIdDesc(lessonId);
+        List<Question> found = questions.findByLessonIdOrderByIdDesc(lessonId);
+        found.forEach(this::initializeQuestionView);
+        return found;
     }
 
     @Transactional
@@ -146,6 +164,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         q.setAiGenerated(false);
         q.setApprovalStatus(ApprovalStatus.APPROVED);
         q.setExplanation(request.explanation());
+        initializeQuestionView(q);
         return questions.save(q);
     }
 
@@ -181,9 +200,32 @@ public class AssessmentServiceImpl implements AssessmentService {
         if (actor.role() == Role.ADMIN
                 || (actor.role() == Role.TEACHER && value.getTeacher().getId().equals(actor.id())))
             return;
-        if (actor.role() == Role.STUDENT && value.isPublished())
+        if (actor.role() == Role.STUDENT && value.isPublished()
+                && value.getClassrooms().stream().anyMatch(classroom -> classroom.getStudents().stream()
+                        .anyMatch(student -> student.getId().equals(actor.id()))))
             return;
         throw forbidden();
+    }
+
+    private void initializeAssessmentView(Assessment value) {
+        value.getTeacher().getFullName();
+        value.getClassrooms().forEach(classroom -> {
+            classroom.getId();
+            classroom.getName();
+        });
+        value.getQuestions().forEach(this::initializeQuestionView);
+    }
+
+    private void initializeQuestionView(Question question) {
+        question.getLesson().getId();
+        if (question instanceof MultipleChoiceQuestion multipleChoice)
+            multipleChoice.getOptions().forEach(option -> {
+                option.getId();
+                option.getName();
+                option.getDisplayOrder();
+            });
+        if (question instanceof FillBlankQuestion fillBlank)
+            fillBlank.getBlanks().size();
     }
 
     private void requireTeacher(UserSummary actor) {

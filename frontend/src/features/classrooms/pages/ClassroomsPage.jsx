@@ -55,13 +55,15 @@ export default function ClassroomsPage() {
   }, [loadClasses])
 
   const refreshStudents = useCallback(async () => {
-    if (!selectedId) { setStudents([]); return }
-    setStudents(await getClassroomStudents(selectedId, studentSearch))
+    if (!selectedId) return []
+    return getClassroomStudents(selectedId, studentSearch)
   }, [selectedId, studentSearch])
 
   useEffect(() => {
     if (access !== 'allowed') return
-    refreshStudents().catch(error => setNotice(error.message))
+    let active = true
+    refreshStudents().then(items => { if (active) setStudents(items) }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [access, refreshStudents])
 
   const mutate = async (action, message, preferredClassId) => {
@@ -99,19 +101,19 @@ export default function ClassroomsPage() {
     await enrollStudent(selectedId, student.id)
     setCandidates(current => current.filter(item => item.id !== student.id))
     setCandidateEmail('')
-    await refreshStudents()
+    setStudents(await refreshStudents())
   }, `Đã thêm ${student.fullName} vào lớp.`, selectedId)
 
   const dropStudent = student => {
     if (!window.confirm(`Gỡ ${student.fullName} khỏi lớp?`)) return
-    mutate(async () => { await removeStudent(selectedId, student.id); await refreshStudents() }, 'Đã gỡ học sinh khỏi lớp.', selectedId)
+    mutate(async () => { await removeStudent(selectedId, student.id); setStudents(await refreshStudents()) }, 'Đã gỡ học sinh khỏi lớp.', selectedId)
   }
 
   const saveStudent = async (studentId, body) => {
     setBusy(true)
     try {
       await updateStudent(studentId, body)
-      await refreshStudents()
+      setStudents(await refreshStudents())
       setNotice('Đã cập nhật hồ sơ học sinh.')
     } catch (error) { setNotice(error.message); throw error }
     finally { setBusy(false) }
@@ -155,7 +157,7 @@ export default function ClassroomsPage() {
             {candidates.map(student => <div key={student.id} className="classrooms-candidate"><div><strong>{student.fullName}</strong><span>{student.email}</span></div><button type="button" disabled={busy} onClick={() => addStudent(student)}>+ Thêm vào lớp</button></div>)}
             {candidateEmail && !candidates.length && <span className="classrooms-search-hint">Tìm đúng email của học sinh chưa được xếp lớp.</span>}
           </section>
-          <div className="classrooms-roster-toolbar"><div><h3>Danh sách học sinh</h3><span>{students.length} em</span></div><form onSubmit={event => { event.preventDefault(); refreshStudents().catch(error => setNotice(error.message)) }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
+          <div className="classrooms-roster-toolbar"><div><h3>Danh sách học sinh</h3><span>{students.length} em</span></div><form onSubmit={event => { event.preventDefault(); refreshStudents().then(setStudents).catch(error => setNotice(error.message)) }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
           {students.length ? <div className="classrooms-students">{students.map(student => <StudentRow key={student.id} student={student} busy={busy} onSave={saveStudent} onRemove={() => dropStudent(student)} />)}</div> : <p className="classrooms-empty classrooms-roster-empty">Lớp chưa có học sinh. Tra cứu email ở phía trên để thêm thành viên.</p>}
           <MasteryPanel students={students} />
           <LearningPathPanel students={students} />

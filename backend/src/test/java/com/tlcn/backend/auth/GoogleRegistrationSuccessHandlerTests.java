@@ -31,6 +31,7 @@ class GoogleRegistrationSuccessHandlerTests {
         when(oidcUser.getEmail()).thenReturn("test@example.invalid");
         when(oidcUser.getEmailVerified()).thenReturn(true);
         when(oidcUser.getFullName()).thenReturn("An");
+        request.getSession().setAttribute(AuthController.GOOGLE_FLOW, "register");
         request.getSession().setAttribute(AuthController.GOOGLE_ROLE, Role.STUDENT);
     }
     @AfterEach void clearContext() { SecurityContextHolder.clearContext(); }

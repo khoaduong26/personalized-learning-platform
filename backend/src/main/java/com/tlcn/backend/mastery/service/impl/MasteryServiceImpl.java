@@ -58,7 +58,12 @@ public class MasteryServiceImpl implements MasteryService {
 
     @Transactional(readOnly = true)
     public List<KnowledgeMastery> profile(Long studentId) {
-        return mastery.findByStudentId(studentId);
+        List<KnowledgeMastery> records = mastery.findByStudentId(studentId);
+        records.forEach(record -> {
+            record.getLesson().getId();
+            record.getLesson().getName();
+        });
+        return records;
     }
 
     @Transactional(readOnly = true)
@@ -68,12 +73,22 @@ public class MasteryServiceImpl implements MasteryService {
 
     @Transactional(readOnly = true)
     public List<StudentError> errors(Long studentId) {
-        return errors.findByStudentIdOrderByCreatedAtDesc(studentId);
+        List<StudentError> records = errors.findByStudentIdOrderByCreatedAtDesc(studentId);
+        records.forEach(record -> {
+            record.getLesson().getId();
+            record.getLesson().getName();
+        });
+        return records;
     }
 
     @Transactional(readOnly = true)
     public List<KnowledgeGap> gaps(Long studentId) {
-        return gaps.findByStudentId(studentId);
+        List<KnowledgeGap> records = gaps.findByStudentId(studentId);
+        records.forEach(record -> {
+            record.getLesson().getId();
+            record.getLesson().getName();
+        });
+        return records;
     }
 
     @Transactional

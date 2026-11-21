@@ -64,28 +64,39 @@ export default function AssessmentsPage() {
 
   useEffect(() => {
     if (!isTeacher || !resultClassId) { setResultStudents([]); setResultStudentId(''); return }
+    let active = true
     getClassroomStudents(resultClassId).then(items => {
+      if (!active) return
       const options = items.map(item => ({ ...item, name: item.fullName }))
       setResultStudents(options)
       setResultStudentId(current => options.some(item => String(item.id) === current) ? current : (options[0] ? String(options[0].id) : ''))
-    }).catch(error => setNotice(error.message))
+    }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [isTeacher, resultClassId])
   useEffect(() => {
     if (!isTeacher || !resultStudentId) { setTeacherHistory([]); return }
-    getAttemptHistory(resultStudentId).then(setTeacherHistory).catch(error => setNotice(error.message))
+    let active = true
+    getAttemptHistory(resultStudentId).then(items => { if (active) setTeacherHistory(items) }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [isTeacher, resultStudentId])
 
   useEffect(() => {
     if (!subjectId) { setTopics([]); setTopicId(''); return }
-    getTopics(subjectId).then(items => { setTopics(items); setTopicId(items[0] ? String(items[0].id) : '') }).catch(error => setNotice(error.message))
+    let active = true
+    getTopics(subjectId).then(items => { if (active) { setTopics(items); setTopicId(items[0] ? String(items[0].id) : '') } }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [subjectId])
   useEffect(() => {
     if (!topicId) { setLessons([]); setLessonId(''); return }
-    getLessons(topicId).then(items => { setLessons(items); setLessonId(items[0] ? String(items[0].id) : '') }).catch(error => setNotice(error.message))
+    let active = true
+    getLessons(topicId).then(items => { if (active) { setLessons(items); setLessonId(items[0] ? String(items[0].id) : '') } }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [topicId])
   useEffect(() => {
     if (!lessonId || !isTeacher) { setBank([]); return }
-    getQuestionBank(lessonId).then(setBank).catch(error => setNotice(error.message))
+    let active = true
+    getQuestionBank(lessonId).then(items => { if (active) setBank(items) }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [lessonId, isTeacher])
 
   const safeAction = async action => {
@@ -168,7 +179,7 @@ export default function AssessmentsPage() {
           <label>Nội dung câu hỏi<textarea required maxLength="4000" value={questionForm.content} onChange={e => setQuestionForm({ ...questionForm, content: e.target.value })} placeholder="Ví dụ: 8 + 7 bằng bao nhiêu?" /></label>
           <div className="assessment-form-row"><Select label="Dạng câu hỏi" value={questionForm.kind} items={[{ id: 'MULTIPLE_CHOICE', name: 'Trắc nghiệm' }, { id: 'FILL_BLANK', name: 'Điền khuyết' }, { id: 'SHORT_ANSWER', name: 'Trả lời ngắn' }]} onChange={kind => setQuestionForm({ ...questionForm, kind })} /><Select label="Độ khó" value={questionForm.difficulty} items={[{ id: 'EASY', name: 'Dễ' }, { id: 'MEDIUM', name: 'Vừa' }, { id: 'HARD', name: 'Khó' }]} onChange={difficulty => setQuestionForm({ ...questionForm, difficulty })} /><label>Điểm<input type="number" min="0.1" max="100" step="0.1" required value={questionForm.score} onChange={e => setQuestionForm({ ...questionForm, score: e.target.value })} /></label></div>
           {questionForm.kind === 'MULTIPLE_CHOICE' && <div className="assessment-choice-builder"><label className="assessment-check"><input type="checkbox" checked={questionForm.allowMultiple} onChange={e => setQuestionForm({ ...questionForm, allowMultiple: e.target.checked })} /> Cho phép chọn nhiều đáp án</label>{questionForm.options.map((option, index) => <div className="assessment-option-edit" key={index}><input required value={option.name} placeholder={`Lựa chọn ${index + 1}`} onChange={e => setQuestionForm({ ...questionForm, options: questionForm.options.map((item, i) => i === index ? { ...item, name: e.target.value } : item) })} /><label className="assessment-check"><input type="checkbox" checked={option.correct} onChange={e => setQuestionForm({ ...questionForm, options: questionForm.options.map((item, i) => i === index ? { ...item, correct: e.target.checked } : item) })} /> Đúng</label>{questionForm.options.length > 2 && <button type="button" className="assessment-remove" onClick={() => setQuestionForm({ ...questionForm, options: questionForm.options.filter((_, i) => i !== index) })}>×</button>}</div>)}<button type="button" className="assessment-text-button" onClick={() => setQuestionForm({ ...questionForm, options: [...questionForm.options, emptyOption()] })}>+ Thêm lựa chọn</button></div>}
-          {questionForm.kind === 'FILL_BLANK' && <div className="assessment-choice-builder"><p className="assessment-field-label">Đáp án theo thứ tự ô trống</p>{questionForm.blanks.map((blank, index) => <div className="assessment-option-edit" key={index}><input required value={blank.correctAnswer} placeholder={`Đáp án ô ${index + 1}`} onChange={e => setQuestionForm({ ...questionForm, blanks: questionForm.blanks.map((item, i) => i === index ? { correctAnswer: e.target.value } : item) })} />{questionForm.blanks.length > 1 && <button type="button" className="assessment-remove" onClick={() => setQuestionForm({ ...questionForm, blanks: questionForm.blanks.filter((_, i) => i !== index) })}>×</button>}</div>)}<button type="button" className="assessment-text-button" onClick={() => setQuestionForm({ ...questionForm, blanks: [...questionForm.blanks, { correctAnswer: '' }] })}>+ Thêm ô trống</button></div>}
+          {questionForm.kind === 'FILL_BLANK' && <div className="assessment-choice-builder"><p className="assessment-field-label">Đáp án theo thứ tự ô trống</p>{questionForm.blanks.map((blank, index) => <div className="assessment-option-edit" key={blank.position ?? index}><input required value={blank.correctAnswer} placeholder={`Đáp án ô ${index + 1}`} onChange={e => setQuestionForm({ ...questionForm, blanks: questionForm.blanks.map((item, i) => i === index ? { correctAnswer: e.target.value } : item) })} />{questionForm.blanks.length > 1 && <button type="button" className="assessment-remove" onClick={() => setQuestionForm({ ...questionForm, blanks: questionForm.blanks.filter((_, i) => i !== index) })}>×</button>}</div>)}<button type="button" className="assessment-text-button" onClick={() => setQuestionForm({ ...questionForm, blanks: [...questionForm.blanks, { correctAnswer: '' }] })}>+ Thêm ô trống</button></div>}
           {questionForm.kind === 'SHORT_ANSWER' && <label>Đáp án chuẩn<input required value={questionForm.correctAnswer} onChange={e => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })} /></label>}
           {questionForm.kind !== 'MULTIPLE_CHOICE' && <label className="assessment-check"><input type="checkbox" checked={questionForm.caseSensitive} onChange={e => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} /> Phân biệt chữ hoa và chữ thường</label>}
           <label>Lời giải / gợi ý<textarea value={questionForm.explanation} onChange={e => setQuestionForm({ ...questionForm, explanation: e.target.value })} placeholder="Hiển thị sau khi học sinh nộp bài" /></label>
@@ -176,7 +187,7 @@ export default function AssessmentsPage() {
         </form> : <Empty text="Tạo môn học, chủ đề và bài học trước khi thêm câu hỏi." />}
       </section>
       <section className="assessment-panel"><PanelTitle eyebrow="CÂU HỎI ĐÃ LƯU" title="Ngân hàng theo bài học" detail="Chọn câu hỏi để đưa vào bài kiểm tra mới." />
-        {bank.length ? <div className="assessment-bank-list">{bank.map((question, index) => <label className="assessment-bank-item" key={question.id}><input type="checkbox" checked={selectedQuestions.includes(question.id)} onChange={() => toggleId(setSelectedQuestions, question.id)} /><span><strong>{question.content}</strong><small>{question.kind === 'MULTIPLE_CHOICE' ? 'Trắc nghiệm' : question.kind === 'FILL_BLANK' ? 'Điền khuyết' : 'Trả lời ngắn'} · {question.difficulty === 'EASY' ? 'Dễ' : question.difficulty === 'MEDIUM' ? 'Vừa' : 'Khó'} · {question.score} điểm</small></span></label>)}</div> : <Empty text="Bài học này chưa có câu hỏi trong ngân hàng." />}
+        {bank.length ? <div className="assessment-bank-list">{bank.map(question => <label className="assessment-bank-item" key={question.id}><input type="checkbox" checked={selectedQuestions.includes(question.id)} onChange={() => toggleId(setSelectedQuestions, question.id)} /><span><strong>{question.content}</strong><small>{question.kind === 'MULTIPLE_CHOICE' ? 'Trắc nghiệm' : question.kind === 'FILL_BLANK' ? 'Điền khuyết' : 'Trả lời ngắn'} · {question.difficulty === 'EASY' ? 'Dễ' : question.difficulty === 'MEDIUM' ? 'Vừa' : 'Khó'} · {question.score} điểm</small></span></label>)}</div> : <Empty text="Bài học này chưa có câu hỏi trong ngân hàng." />}
         <form className="assessment-form assessment-create-form" onSubmit={saveAssessment}><PanelTitle eyebrow="BƯỚC 2 · BÀI KIỂM TRA" title="Lưu bài kiểm tra nháp" detail="Chọn lớp được giao và câu hỏi cần sử dụng." />
           <label>Tên bài kiểm tra<input required maxLength="180" value={assessmentForm.title} onChange={e => setAssessmentForm({ ...assessmentForm, title: e.target.value })} placeholder="Ví dụ: Ôn tập phép cộng trong phạm vi 20" /></label>
           <div className="assessment-form-row"><Select label="Loại bài" value={assessmentForm.type} items={Object.entries(types).map(([id, name]) => ({ id, name }))} onChange={type => setAssessmentForm({ ...assessmentForm, type })} /><label>Thời gian (phút)<input type="number" min="1" max="240" value={assessmentForm.durationMinutes} onChange={e => setAssessmentForm({ ...assessmentForm, durationMinutes: e.target.value })} /></label></div>

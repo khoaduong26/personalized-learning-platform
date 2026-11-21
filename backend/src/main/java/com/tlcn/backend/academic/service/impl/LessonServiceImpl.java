@@ -80,8 +80,9 @@ public class LessonServiceImpl implements LessonService {
 
     private void ensureUnique(Long topicId, String name, Long exceptId) {
         if (repository.existsByTopicIdAndNameIgnoreCase(topicId, name)
-                && (exceptId == null || !repository.findById(exceptId).map(lesson ->
-                        lesson.getTopic().getId().equals(topicId) && lesson.getName().equalsIgnoreCase(name)).orElse(false))) {
+                && (exceptId == null || !repository.findById(exceptId).map(
+                        lesson -> lesson.getTopic().getId().equals(topicId) && lesson.getName().equalsIgnoreCase(name))
+                        .orElse(false))) {
             throw new AcademicConflictException("Bài học này đã tồn tại trong chủ đề.");
         }
     }

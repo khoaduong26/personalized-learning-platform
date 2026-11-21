@@ -46,15 +46,20 @@ export default function AcademicPage() {
 
   useEffect(() => {
     if (!subjectId || access !== 'allowed') { setTopics([]); setTopicId(null); return }
+    let active = true
     getTopics(subjectId).then(items => {
+      if (!active) return
       setTopics(items)
       setTopicId(current => items.some(item => item.id === current) ? current : (items[0]?.id ?? null))
-    }).catch(error => setNotice(error.message))
+    }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [subjectId, access, catalogRevision])
 
   useEffect(() => {
     if (!topicId || access !== 'allowed') { setLessons([]); return }
-    getLessons(topicId).then(setLessons).catch(error => setNotice(error.message))
+    let active = true
+    getLessons(topicId).then(items => { if (active) setLessons(items) }).catch(error => { if (active) setNotice(error.message) })
+    return () => { active = false }
   }, [topicId, access, catalogRevision])
 
   const mutate = async (action, success) => {

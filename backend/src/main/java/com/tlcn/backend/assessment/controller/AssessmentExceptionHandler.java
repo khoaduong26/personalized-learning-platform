@@ -23,4 +23,5 @@ public class AssessmentExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("code", "VALIDATION_ERROR",
                 "message", "Vui lòng kiểm tra thông tin đã nhập."));
     }
+
 }

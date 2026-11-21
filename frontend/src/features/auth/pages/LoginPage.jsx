@@ -5,6 +5,13 @@ import RegistrationField from '../components/RegistrationField'
 import { getCurrentUser, getRegistrationOptions, loginAccount, logoutAccount } from '../services/authApi'
 import { notifyAccountChanged } from '../../../shared/services/accountEvents'
 import { profilePathFor } from '../../../shared/utils/profilePath'
+import { isMockMode } from '../../../shared/services/mockMode.js'
+
+const demoAccounts = [
+  { email: 'teacher.demo@example.test', label: 'Vào với vai trò giáo viên', destination: '/classrooms' },
+  { email: 'student.binh@example.test', label: 'Vào với vai trò học sinh', destination: '/my-learning-path' },
+  { email: 'admin.demo@example.test', label: 'Vào với vai trò quản trị viên', destination: '/academic' },
+]
 
 const googleErrors = {
   'not-registered': 'Bạn chưa có tài khoản Google trên EduLearn. Hãy đăng ký trước.',
@@ -60,6 +67,19 @@ export default function LoginPage() {
     } finally { setBusy(false) }
   }
 
+  async function enterDemoAccount(account) {
+    setBusy(true); setError('')
+    try {
+      const signedIn = await loginAccount({ email: account.email, password: 'mock', rememberMe: false })
+      setUser(signedIn)
+      notifyAccountChanged()
+      const returnTo = params.get('returnTo')
+      navigate(returnTo || account.destination, { replace: true })
+    } catch (failure) {
+      setError(failure.message)
+    } finally { setBusy(false) }
+  }
+
   async function logout() {
     setBusy(true); setError('')
     try { await logoutAccount(); setUser(null); setGoogleDismissed(true); notifyAccountChanged() }
@@ -83,6 +103,11 @@ export default function LoginPage() {
       <button className="registration-secondary login-logout" disabled={busy} onClick={logout}>{busy ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
     </> : <>
       <p className="registration-description">Chào mừng bạn quay lại! Đăng nhập để tiếp tục hành trình học tập.</p>
+      {isMockMode() && <section className="mock-login-panel" aria-label="Tài khoản kiểm tra dữ liệu mẫu">
+        <strong>Chế độ dữ liệu mẫu</strong>
+        <p>Chọn vai trò để mở các màn hình demo. Thay đổi chỉ tồn tại trong phiên này.</p>
+        {demoAccounts.map(account => <button key={account.email} type="button" disabled={busy || checking} onClick={() => enterDemoAccount(account)}>{account.label}</button>)}
+      </section>}
       {checking && <p role="status" className="registration-hint">Đang kiểm tra phiên đăng nhập…</p>}
       <form onSubmit={submit}>
         <fieldset disabled={busy || checking}>

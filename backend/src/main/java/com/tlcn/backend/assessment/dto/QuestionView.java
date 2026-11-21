@@ -2,6 +2,7 @@ package com.tlcn.backend.assessment.dto;
 
 import com.tlcn.backend.assessment.entity.*;
 import java.util.List;
+import org.hibernate.Hibernate;
 
 public record QuestionView(Long id, String content, String difficulty, Double score, Long lessonId, String kind,
                 boolean allowMultiple, List<ChoiceView> options, int blankCount) {
@@ -9,6 +10,7 @@ public record QuestionView(Long id, String content, String difficulty, Double sc
         }
 
         public static QuestionView from(Question q) {
+                q = (Question) Hibernate.unproxy(q);
                 String kind = q instanceof MultipleChoiceQuestion ? "MULTIPLE_CHOICE"
                                 : q instanceof FillBlankQuestion ? "FILL_BLANK" : "SHORT_ANSWER";
                 List<ChoiceView> options = q instanceof MultipleChoiceQuestion mc ? mc.getOptions().stream()

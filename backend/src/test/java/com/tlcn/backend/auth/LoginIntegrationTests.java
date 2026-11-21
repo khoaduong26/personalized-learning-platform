@@ -12,9 +12,9 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.*;
@@ -113,7 +113,7 @@ class LoginIntegrationTests {
     @Test void logoutRevokesJwtEvenIfTheOldCookieIsReplayed() throws Exception {
         Cookie cookie = authCookie(attempt(user.getEmail(), "password123", true).andExpect(status().isOk()).andReturn());
         var csrf = csrf();
-        mvc.perform(post("/api/auth/logout").cookie(cookie).session(csrf.session()).header(csrf.header(), csrf.token()))
+        mvc.perform(post("/api/auth/logout").session(csrf.session()).cookie(cookie).header(csrf.header(), csrf.token()))
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/auth/me").cookie(cookie)).andExpect(status().isUnauthorized());
     }
