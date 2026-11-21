@@ -1,6 +1,8 @@
 package com.tlcn.backend.user.service;
 
 import com.tlcn.backend.auth.repository.LoginSessionRepository;
+import com.tlcn.backend.auth.entity.UserOtpState;
+import com.tlcn.backend.auth.repository.UserOtpStateRepository;
 import com.tlcn.backend.user.dto.AccountRequests;
 import com.tlcn.backend.user.dto.AccountResponse;
 import com.tlcn.backend.user.entity.Role;
@@ -32,15 +34,18 @@ public class AccountService {
     private final UserRepository users;
     private final UserAccountDetailsRepository accountDetails;
     private final LoginSessionRepository sessions;
+    private final UserOtpStateRepository otpStates;
     private final PasswordEncoder passwords;
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
     public AccountService(UserRepository users, UserAccountDetailsRepository accountDetails,
-            LoginSessionRepository sessions, PasswordEncoder passwords, JdbcTemplate jdbc, Clock clock) {
+            LoginSessionRepository sessions, UserOtpStateRepository otpStates, PasswordEncoder passwords,
+            JdbcTemplate jdbc, Clock clock) {
         this.users = users;
         this.accountDetails = accountDetails;
         this.sessions = sessions;
+        this.otpStates = otpStates;
         this.passwords = passwords;
         this.jdbc = jdbc;
         this.clock = clock;
@@ -108,12 +113,7 @@ public class AccountService {
         if (emailChanged && (user.getStatus() == UserStatus.PENDING_OTP
                 || details.getStatusBeforeLock() == UserStatus.PENDING_OTP)) {
             // A code delivered to the old address must never verify the new address.
-            user.setOtpCode(null);
-            user.setOtpExpiredAt(null);
-            user.setOtpSentAt(null);
-            user.setOtpWindowStartedAt(null);
-            user.setOtpSendCount(0);
-            user.setOtpAttempts(0);
+            otpStates.findById(id).ifPresent(UserOtpState::reset);
         }
         save(user);
         if (roleChanged) {

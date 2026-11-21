@@ -13,7 +13,6 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     @Query("select u from User u where u.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") Long id);
     Optional<User> findByEmail(String email);
-    Optional<User> findByGoogleSubject(String googleSubject);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.email = :email")
     Optional<User> findByEmailForUpdate(@Param("email") String email);

@@ -1,6 +1,7 @@
 package com.tlcn.backend.user.service.serviceImpl;
 
 import com.tlcn.backend.auth.repository.LoginSessionRepository;
+import com.tlcn.backend.auth.repository.UserGoogleIdentityRepository;
 import com.tlcn.backend.user.dto.*;
 import com.tlcn.backend.user.entity.*;
 import com.tlcn.backend.user.exception.ProfileException;
@@ -19,18 +20,20 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final LoginSessionRepository sessions;
+    private final UserGoogleIdentityRepository googleIdentities;
     private final AvatarStorage avatars;
 
     public ProfileServiceImpl(UserRepository users, PasswordEncoder encoder,
-            LoginSessionRepository sessions, AvatarStorage avatars) {
+            LoginSessionRepository sessions, UserGoogleIdentityRepository googleIdentities, AvatarStorage avatars) {
         this.users = users;
         this.encoder = encoder;
         this.sessions = sessions;
+        this.googleIdentities = googleIdentities;
         this.avatars = avatars;
     }
 
     @Override @Transactional(readOnly = true)
-    public ProfileResponse getProfile(Long userId) { return ProfileResponse.from(activeUser(userId, false)); }
+    public ProfileResponse getProfile(Long userId) { return response(activeUser(userId, false)); }
 
     @Override @Transactional
     public ProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
@@ -50,7 +53,7 @@ public class ProfileServiceImpl implements ProfileService {
             student.setSex(request.sex());
             student.setDateOfBirth(request.dateOfBirth());
         }
-        return ProfileResponse.from(users.save(user));
+        return response(users.save(user));
     }
 
     @Override @Transactional
@@ -59,14 +62,14 @@ public class ProfileServiceImpl implements ProfileService {
         AvatarImage image = AvatarImage.read(file);
         String url = avatars.upload(userId, image.bytes(), image.contentType());
         user.setAvatarUrl(url);
-        return ProfileResponse.from(users.save(user));
+        return response(users.save(user));
     }
 
     @Override @Transactional
     public void changePassword(Long userId, ChangePasswordRequest request) {
         User user = activeUser(userId, true);
         // Google accounts have a random placeholder hash and authenticate through Google only.
-        if (user.getGoogleSubject() != null) {
+        if (googleIdentities.existsById(userId)) {
             throw new ProfileException(HttpStatus.BAD_REQUEST, "GOOGLE_PASSWORD_MANAGED",
                     "Tài khoản Google cần đổi mật khẩu tại Google.");
         }
@@ -82,6 +85,10 @@ public class ProfileServiceImpl implements ProfileService {
         user.setPassword(encoder.encode(request.newPassword()));
         users.save(user);
         sessions.deleteByUserId(userId);
+    }
+
+    private ProfileResponse response(User user) {
+        return ProfileResponse.from(user, !googleIdentities.existsById(user.getId()));
     }
 
     private User activeUser(Long userId, boolean lock) {
