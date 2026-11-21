@@ -44,7 +44,7 @@ public class AuthServiceImpl implements AuthService {
             throw error(HttpStatus.CONFLICT, "EMAIL_EXISTS",
                     "Email đã được đăng ký. Nếu chưa xác minh, hãy chọn gửi lại OTP.");
         }
-        User user = newUser(request.role());
+        User user = User.withRole(request.role());
         user.setFullName(request.fullName());
         user.setEmail(request.email());
         user.setPassword(encoder.encode(request.password()));
@@ -101,7 +101,7 @@ public class AuthServiceImpl implements AuthService {
                 || users.findByEmail(email.strip().toLowerCase(Locale.ROOT)).isPresent()) {
             throw error(HttpStatus.CONFLICT, "EMAIL_EXISTS", "Email đã có tài khoản. Hãy chuyển sang đăng nhập.");
         }
-        User user = newUser(role);
+        User user = User.withRole(role);
         String fullName = name == null || name.isBlank() ? email : name.strip();
         user.setFullName(fullName.substring(0, Math.min(120, fullName.length())));
         user.setEmail(email.strip().toLowerCase(Locale.ROOT));
@@ -117,10 +117,6 @@ public class AuthServiceImpl implements AuthService {
         if (role != Role.TEACHER && role != Role.STUDENT) {
             throw error(HttpStatus.BAD_REQUEST, "ROLE_INVALID", "Chỉ giáo viên và học sinh được tự đăng ký.");
         }
-    }
-
-    private User newUser(Role role) {
-        return role == Role.TEACHER ? new Teacher() : new Student();
     }
 
     private User pendingUser(String email) {
