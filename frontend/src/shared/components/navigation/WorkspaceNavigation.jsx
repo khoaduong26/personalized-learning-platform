@@ -6,6 +6,7 @@ const links = [
   { to: '/classrooms', label: 'Lớp học', staffOnly: true },
   { to: '/academic', label: 'Chương trình', staffOnly: true },
   { to: '/assessments', label: 'Kiểm tra' },
+  { to: '/admin/accounts', label: 'Tài khoản', adminOnly: true },
 ]
 
 export default function WorkspaceNavigation({ role }) {
@@ -13,7 +14,7 @@ export default function WorkspaceNavigation({ role }) {
 
   return (
     <nav className="workspace-navigation" aria-label="Điều hướng khu vực học tập">
-      {links.filter(link => !link.staffOnly || isStaff).map(link => (
+      {links.filter(link => (!link.staffOnly || isStaff) && (!link.adminOnly || role === 'ADMIN')).map(link => (
         <NavLink key={link.to} to={link.to} end={link.end}>
           {link.label}
         </NavLink>

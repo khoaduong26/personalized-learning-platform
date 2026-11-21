@@ -94,6 +94,9 @@ export default function HomeHeader() {
                 <Link to={profilePathFor(user.role)} onClick={closeMenu}>
                   <ProfileIcon name="user" /><span>{user.role === 'TEACHER' ? 'Hồ sơ giáo viên' : 'Tài khoản của tôi'}</span><span className="home-account-link-arrow" aria-hidden="true">↗</span>
                 </Link>
+                {user.role === 'ADMIN' && <Link to="/admin/accounts" onClick={closeMenu}>
+                  <ProfileIcon name="user" /><span>Quản lý tài khoản</span><span className="home-account-link-arrow" aria-hidden="true">↗</span>
+                </Link>}
                 <Link to="/" onClick={closeMenu}><ProfileIcon name="arrow" /><span>Về trang chủ</span></Link>
                 <div className="home-account-menu-bottom"><button type="button" disabled={signingOut} onClick={logout}><ProfileIcon name="logout" />{signingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button></div>
                 {logoutError && <p className="home-account-error" role="alert">{logoutError}</p>}

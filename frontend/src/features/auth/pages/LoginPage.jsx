@@ -10,8 +10,9 @@ import { isMockMode } from '../../../shared/services/mockMode.js'
 const demoAccounts = [
   { email: 'teacher.demo@example.test', label: 'Vào với vai trò giáo viên', destination: '/classrooms' },
   { email: 'student.binh@example.test', label: 'Vào với vai trò học sinh', destination: '/my-learning-path' },
-  { email: 'admin.demo@example.test', label: 'Vào với vai trò quản trị viên', destination: '/academic' },
+  { email: 'admin.demo@example.test', label: 'Vào với vai trò quản trị viên', destination: '/admin/accounts' },
 ]
+const destinations = ['/classrooms', '/academic', '/assessments', '/my-learning-path', '/admin/accounts']
 
 const googleErrors = {
   'not-registered': 'Bạn chưa có tài khoản Google trên EduLearn. Hãy đăng ký trước.',
@@ -22,6 +23,7 @@ const roleNames = { ADMIN: 'Quản trị viên', TEACHER: 'Giáo viên', STUDENT
 
 export default function LoginPage() {
   const [params] = useSearchParams()
+  const returnTo = destinations.includes(params.get('returnTo')) ? params.get('returnTo') : null
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
   const [checking, setChecking] = useState(true)
@@ -60,8 +62,7 @@ export default function LoginPage() {
         navigate(profilePathFor(signedIn.role), { replace: true })
       }
       setForm(current => ({ ...current, password: '' }))
-      const returnTo = params.get('returnTo')
-      if (['/classrooms', '/academic', '/assessments'].includes(returnTo)) navigate(returnTo, { replace: true })
+      if (returnTo) navigate(returnTo, { replace: true })
     } catch (failure) {
       setError(failure.message); setCode(failure.code); setFields(failure.fieldErrors || {})
     } finally { setBusy(false) }
@@ -73,7 +74,6 @@ export default function LoginPage() {
       const signedIn = await loginAccount({ email: account.email, password: 'mock', rememberMe: false })
       setUser(signedIn)
       notifyAccountChanged()
-      const returnTo = params.get('returnTo')
       navigate(returnTo || account.destination, { replace: true })
     } catch (failure) {
       setError(failure.message)
@@ -96,8 +96,8 @@ export default function LoginPage() {
     {user ? <>
       <p className="registration-notice success" role="status">Bạn đã đăng nhập với vai trò {roleNames[user.role]}.</p>
       <p className="registration-email">{user.email}</p>
-      <Link className="registration-primary registration-link" to={profilePathFor(user.role)}>
-        {user.role === 'TEACHER' ? 'Mở hồ sơ giáo viên' : 'Quản lý tài khoản'}
+      <Link className="registration-primary registration-link" to={user.role === 'ADMIN' ? '/admin/accounts' : profilePathFor(user.role)}>
+        {user.role === 'ADMIN' ? 'Quản lý tài khoản' : user.role === 'TEACHER' ? 'Mở hồ sơ giáo viên' : 'Tài khoản của tôi'}
       </Link>
       <Link className="registration-text-link" to="/">Về trang chủ</Link>
       <button className="registration-secondary login-logout" disabled={busy} onClick={logout}>{busy ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>
