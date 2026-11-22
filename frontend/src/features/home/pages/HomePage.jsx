@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useOutletContext } from 'react-router-dom'
 import MathGarden from '../components/MathGarden'
 import PracticePreview from '../components/PracticePreview'
 import { practiceTopics } from '../data/practice'
 import '../styles/home.css'
 
 export default function HomePage() {
-  const { hash } = useLocation()
+  const { hash, key } = useLocation()
+  const user = useOutletContext()
+  const isStudent = user?.role === 'STUDENT'
+  const isTeacher = user?.role === 'TEACHER'
+  const isAdmin = user?.role === 'ADMIN'
   const [topicId, setTopicId] = useState('operations')
   const topic = practiceTopics.find((item) => item.id === topicId)
 
@@ -15,37 +19,51 @@ export default function HomePage() {
   useEffect(() => {
     const targetId = hash.slice(1)
     if (!targetId) return
-    requestAnimationFrame(() => document.getElementById(targetId)?.scrollIntoView({ block: 'start' }))
-  }, [hash])
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(targetId)
+      target?.focus({ preventScroll: true })
+      target?.scrollIntoView({ block: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [hash, key])
 
   return (
-    <main id="noi-dung">
+    <main id="noi-dung" tabIndex={-1}>
       <section className="home-container home-hero" aria-labelledby="hero-title">
         <div className="home-hero-copy">
-          <p className="home-eyebrow"><span className="eyebrow-dot" /> TOÁN LỚP 2 · HỌC THEO NHỊP CỦA EM</p>
-          <h1 id="hero-title">Một chút tò mò.<br />Một thế giới <span>Toán vui.<svg viewBox="0 0 300 16" aria-hidden="true"><path d="M3 10Q125-4 295 9M27 15Q156 4 273 14" /></svg></span></h1>
-          <p className="home-lead">Cùng khám phá những con số, thử sức với bài toán nhỏ và tự tin hơn mỗi ngày. Từng bước một, em làm được mà!</p>
-          <div className="home-hero-actions"><a className="home-button" href="#thu-suc">Em thử sức nhé <span aria-hidden="true">→</span></a><a className="home-text-link" href="#giao-vien">Tôi là giáo viên <span aria-hidden="true">↗</span></a></div>
-          <div className="home-reassurance"><span aria-hidden="true">✓</span> Không cần tài khoản để thử bài toán bên dưới</div>
+          <h1 id="hero-title">{isTeacher ? 'Góc làm việc của thầy cô' : isAdmin ? 'Quản trị EduLearn' : 'Cùng em học Toán lớp 2!'}</h1>
+          <p className="home-lead">{isTeacher ? 'Quản lý lớp, giao bài kiểm tra và xem từng em cần luyện thêm phần nào.' : isAdmin ? 'Quản lý tài khoản, lớp học và chương trình Toán lớp 2.' : 'Làm bài thầy cô giao, luyện thêm theo từng bước hoặc thử một bài Toán ngay.'}</p>
+          <div className="home-hero-actions">
+            <Link className="home-button" to={isAdmin ? '/admin/accounts' : isTeacher ? '/classrooms' : '/my-learning-path'}>
+              {isAdmin ? 'Quản lý tài khoản' : isTeacher ? 'Mở lớp học' : 'Lộ trình của em'} <span aria-hidden="true">→</span>
+            </Link>
+            {user ? <Link className="home-text-link" to={isAdmin ? '/academic' : '/assessments'}>
+              {isAdmin ? 'Chương trình học' : isTeacher ? 'Mở bài kiểm tra' : 'Bài kiểm tra của em'}
+            </Link> : <Link className="home-text-link" to="/#thu-suc">Thử bài Toán</Link>}
+          </div>
+          {!user && <p className="home-reassurance">Em có thể thử bài Toán mà không cần đăng nhập.</p>}
         </div>
-        <div className="home-hero-art"><div className="garden-label"><span aria-hidden="true">✦</span> Mỗi ngày, một khám phá mới</div><MathGarden /><div className="garden-caption"><span aria-hidden="true">♡</span> Sai một chút cũng không sao.<br /><strong>Mình cùng thử lại nhé!</strong></div></div>
+        <div className="home-hero-art"><MathGarden /></div>
       </section>
 
-      <div className="home-values"><div className="home-container"><span><span aria-hidden="true">✳</span> Bài toán nhỏ, niềm vui lớn</span><span><span aria-hidden="true">◇</span> Học từng bước, hiểu thật chắc</span><span><span aria-hidden="true">♡</span> Có thầy cô cùng đồng hành</span></div></div>
-
-      <section id="kham-pha" className="home-container home-explore" aria-labelledby="explore-title">
+      <section id="kham-pha" className="home-container home-explore" aria-labelledby="explore-title" tabIndex={-1}>
         <div className="home-section-heading"><div><p className="home-eyebrow">THẾ GIỚI TOÁN HỌC</p><h2 id="explore-title">Hôm nay, em muốn khám phá gì?</h2></div><p>Chọn một chủ đề.<br />Cùng thử một bài toán nhỏ nhé!</p></div>
-        <div className="home-topics">{practiceTopics.map((item, index) => <a key={item.id} href="#thu-suc" className={`topic-card ${item.color}`} onClick={() => setTopicId(item.id)}><div className="topic-top"><span className="topic-symbol" aria-hidden="true">{item.symbol}</span><span className="topic-number">0{index + 1}</span></div><h3>{item.title}</h3><p>{item.description}</p><span className="topic-link">Thử một bài toán <span aria-hidden="true">↗</span></span></a>)}</div>
+        <div className="home-topics">{practiceTopics.map(item => <Link key={item.id} to="/#thu-suc" className={`topic-card ${item.color}`} onClick={() => setTopicId(item.id)}><div className="topic-top"><span className="topic-symbol" aria-hidden="true">{item.symbol}</span></div><h3>{item.title}</h3><p>{item.description}</p><span className="topic-link">Thử một bài <span aria-hidden="true">↗</span></span></Link>)}</div>
       </section>
 
-      <section id="thu-suc" className="home-practice-section" aria-labelledby="practice-title"><div className="home-container home-practice-grid">
+      <section id="thu-suc" className="home-practice-section" aria-labelledby="practice-title" tabIndex={-1}><div className="home-container home-practice-grid">
         <div className="home-practice-copy"><p className="home-eyebrow">HỌC BẰNG CÁCH THỬ</p><h2 id="practice-title">Một bài toán nhỏ.<br />Em sẵn sàng chưa?</h2><p>Không cần vội. Em cứ suy nghĩ, chọn đáp án và xem lời giải. Nếu thấy khó, đã có gợi ý giúp em!</p><div className="topic-picker" role="group" aria-label="Chủ đề bài tập">{practiceTopics.map((item) => <button key={item.id} type="button" aria-pressed={topicId === item.id} onClick={() => setTopicId(item.id)}>{item.title}</button>)}</div><div className="practice-encouragement"><span aria-hidden="true">✦</span> Mỗi lần thử là một lần em học thêm điều mới.</div></div>
         <PracticePreview key={topic.id} topic={topic} />
       </div></section>
 
-      <section id="giao-vien" className="home-container home-teachers" aria-labelledby="teacher-title"><div className="home-section-heading"><div><p className="home-eyebrow">GÓC DÀNH CHO THẦY CÔ</p><h2 id="teacher-title">Hiểu từng em.<br />Đồng hành từng bước.</h2></div><p>Mỗi học sinh có một nhịp học riêng.<br />EduLearn hướng đến việc hỗ trợ thầy cô<br />tìm ra bước tiếp theo phù hợp.</p></div><p className="teacher-roadmap-label">BẮT ĐẦU THEO 3 BƯỚC</p><div className="teacher-steps"><Link to="/classrooms" className="teacher-step-link"><span>01 · LỚP HỌC</span><h3>Tổ chức lớp và học sinh</h3><p>Tạo lớp, thêm học sinh và xem hồ sơ năng lực của từng em.</p><span className="teacher-step-action">Mở quản lý lớp <span aria-hidden="true">→</span></span></Link><Link to="/academic" className="teacher-step-link"><span>02 · CHƯƠNG TRÌNH</span><h3>Sắp xếp nội dung học</h3><p>Tạo môn học, chủ đề và bài học để gắn kiến thức vào câu hỏi.</p><span className="teacher-step-action">Mở chương trình học <span aria-hidden="true">→</span></span></Link><Link to="/assessments" className="teacher-step-link"><span>03 · KIỂM TRA</span><h3>Đánh giá và theo dõi</h3><p>Tạo câu hỏi theo bài học, giao bài kiểm tra và xem kết quả.</p><span className="teacher-step-action">Mở kiểm tra <span aria-hidden="true">→</span></span></Link></div><div className="teacher-invite"><div><strong>Điểm bắt đầu: lớp học của bạn</strong><p>Thêm học sinh trước, rồi chuẩn bị nội dung và bài kiểm tra cho lớp.</p></div><Link className="home-button" to="/classrooms">Quản lý lớp học <span aria-hidden="true">→</span></Link></div></section>
-
-      <section className="home-closing"><div className="home-container"><span className="closing-star" aria-hidden="true">✳</span><h2>Không cần giỏi ngay.<br />Chỉ cần vui học mỗi ngày.</h2><p>Hành trình khám phá Toán học bắt đầu từ một bước nhỏ.</p><a className="home-button" href="#thu-suc">Cùng thử một bài toán <span aria-hidden="true">→</span></a></div></section>
+      {!isStudent && <section id="giao-vien" className="home-container home-teachers" aria-labelledby="teacher-title" tabIndex={-1}>
+        <div className="home-section-heading"><h2 id="teacher-title">Dành cho thầy cô</h2></div>
+        <div className="teacher-steps">
+          <Link to="/classrooms" className="teacher-step-link"><h3>Quản lý lớp học</h3><p>Thêm học sinh và xem kết quả học của từng em.</p></Link>
+          <Link to="/assessments" className="teacher-step-link"><h3>Giao bài kiểm tra</h3><p>Tạo câu hỏi, giao bài cho lớp và xem kết quả.</p></Link>
+          <Link to="/exercises/review" className="teacher-step-link"><h3>Duyệt bài tập</h3><p>Kiểm tra bài được đề xuất trước khi giao cho học sinh.</p></Link>
+        </div>
+      </section>}
     </main>
   )
 }

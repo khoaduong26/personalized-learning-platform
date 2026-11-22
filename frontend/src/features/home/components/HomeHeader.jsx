@@ -1,11 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { logoutAccount } from '../../auth/services/authApi'
-import { getProfile } from '../../profile/services/profileApi'
 import { initials, roleNames } from '../../profile/utils/profile'
 import ProfileIcon from '../../profile/components/ProfileIcon'
-import { ACCOUNT_CHANGED, notifyAccountChanged } from '../../../shared/services/accountEvents'
+import { notifyAccountChanged } from '../../../shared/services/accountEvents'
 import { profilePathFor } from '../../../shared/utils/profilePath'
+import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
 import '../../profile/styles/profile.css'
 
 function AccountAvatar({ user }) {
@@ -14,22 +14,11 @@ function AccountAvatar({ user }) {
   </span>
 }
 
-export default function HomeHeader() {
+export default function HomeHeader({ user, onLogout }) {
   const navigate = useNavigate()
   const menu = useRef(null)
-  const [user, setUser] = useState(null)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
-  useEffect(() => {
-    const controller = new AbortController()
-    function refresh() {
-      getProfile(controller.signal).then(setUser).catch(error => { if (error.status === 401) setUser(null) })
-    }
-    refresh()
-    window.addEventListener(ACCOUNT_CHANGED, refresh)
-    return () => { controller.abort(); window.removeEventListener(ACCOUNT_CHANGED, refresh) }
-  }, [])
-
   useEffect(() => {
     function closeOutside(event) {
       if (!menu.current?.contains(event.target)) menu.current?.removeAttribute('open')
@@ -57,7 +46,7 @@ export default function HomeHeader() {
     setLogoutError('')
     try {
       await logoutAccount()
-      setUser(null)
+      onLogout()
       notifyAccountChanged()
       navigate('/login', { replace: true })
     } catch (error) {
@@ -75,14 +64,12 @@ export default function HomeHeader() {
       <header className="home-header">
         <div className="home-container home-header-inner">
           <Link className="home-brand" to="/" aria-label="EduLearn — Trang chủ"><img className="brand-symbol" src="/math-bunny.svg" width="44" height="44" alt="" /><span>EduLearn<span className="brand-dot">.</span></span></Link>
-          <nav className="home-nav" aria-label="Điều hướng chính">
-            <a href="#kham-pha">Khám phá</a>
-            <a href="#thu-suc">Thử sức cùng Toán</a>
-            <a href="#giao-vien">Dành cho giáo viên</a>
-            <Link to="/classrooms">Lớp học</Link>
-            <Link to="/academic">Chương trình</Link>
-            <Link to="/assessments">Kiểm tra</Link>
-          </nav>
+          {user ? <WorkspaceNavigation role={user.role} /> : (
+            <nav className="home-nav" aria-label="Điều hướng chính">
+              <Link to="/#thu-suc">Thử bài Toán</Link>
+              <Link to="/#giao-vien">Dành cho thầy cô</Link>
+            </nav>
+          )}
           <div className="home-account-actions">
             {user ? <details ref={menu} className="home-account-menu">
               <summary aria-label={`Tài khoản của ${user.fullName}`}><AccountAvatar user={user} />
@@ -94,9 +81,6 @@ export default function HomeHeader() {
                 <Link to={profilePathFor(user.role)} onClick={closeMenu}>
                   <ProfileIcon name="user" /><span>{user.role === 'TEACHER' ? 'Hồ sơ giáo viên' : 'Tài khoản của tôi'}</span><span className="home-account-link-arrow" aria-hidden="true">↗</span>
                 </Link>
-                {user.role === 'ADMIN' && <Link to="/admin/accounts" onClick={closeMenu}>
-                  <ProfileIcon name="user" /><span>Quản lý tài khoản</span><span className="home-account-link-arrow" aria-hidden="true">↗</span>
-                </Link>}
                 <Link to="/" onClick={closeMenu}><ProfileIcon name="arrow" /><span>Về trang chủ</span></Link>
                 <div className="home-account-menu-bottom"><button type="button" disabled={signingOut} onClick={logout}><ProfileIcon name="logout" />{signingOut ? 'Đang đăng xuất…' : 'Đăng xuất'}</button></div>
                 {logoutError && <p className="home-account-error" role="alert">{logoutError}</p>}
