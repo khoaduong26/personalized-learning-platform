@@ -4,6 +4,7 @@ const MODE_KEY = 'edulearn.mock.enabled'
 const ACTOR_KEY = 'edulearn.mock.actor'
 const clone = value => value == null ? value : structuredClone(value)
 const state = clone(fixture)
+for (const exercise of state.generatedExercises) exercise.kind ??= 'MULTIPLE_CHOICE'
 let nextId = 9900
 
 function fail(status, message, code = 'MOCK_ERROR') {
@@ -264,7 +265,7 @@ function exerciseView(item) {
     content: item.content,
     difficulty: item.difficulty,
     score: item.score,
-    kind: item.kind || 'MULTIPLE_CHOICE',
+    kind: item.kind,
     allowMultiple: Boolean(item.allowMultiple),
     options: clone(item.options || []),
     blankCount: item.blankCount || 0,
@@ -511,7 +512,9 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
   if (match) {
     requireActor(['ADMIN', 'TEACHER', 'STUDENT'])
     const approvedOnly = current.role === 'STUDENT'
-    return state.generatedExercises.filter(item => item.learningStepId === Number(match[1]) && (!approvedOnly || item.approvalStatus === 'APPROVED')).map(exerciseView)
+    return state.generatedExercises
+      .filter(item => item.learningStepId === Number(match[1]) && (!approvedOnly || item.approvalStatus === 'APPROVED'))
+      .map(item => approvedOnly ? questionView({ ...item, id: item.questionId }) : exerciseView(item))
   }
   match = route.match(/^\/api\/exercises\/questions\/(\d+)(?:\/(review))?$/)
   if (match) {
