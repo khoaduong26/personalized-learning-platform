@@ -68,4 +68,50 @@
 .student-learning-complete p { color: #778071; font-size: 13px; line-height: 1.6; }
 .student-learning-complete a { display: inline-block; margin-top: 12px; color: #688354; font-size: 12px; }
 .student-learning-footer { max-width: 760px; margin: 18px auto; color: #92998b; font-size: 11px; text-align: center; }
+.student-learning-shell .student-learning-topbar {
+  height: auto;
+  min-height: 69px;
+  gap: 8px 16px;
+}
+.student-learning-name { color: #495445; font-size: 14px; overflow-wrap: anywhere; }
+.student-learning-card h2 { color: #384e32; font-size: clamp(18px, 3vw, 23px); font-weight: 800; margin-bottom: 12px; }
+.student-learning-hero > p:last-child,
+.student-learning-steps article p,
+.student-learning-complete p {
+  color: #4d5947;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.student-step-heading h3 { font-size: 19px; font-weight: 800; overflow-wrap: anywhere; }
+.student-step-heading > div > span,
+.step-in_progress .student-step-heading > div > span { color: #4d6245; font-size: 14px; letter-spacing: 0; }
+.student-step-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.student-learning-action,
+.student-step-actions button,
+.student-learning-back {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 750;
+  text-align: center;
+}
+.student-learning-action,
+.student-learning-complete .student-learning-action { color: #fff; background: #426536; }
+.student-learning-action:hover { background: #34532b; }
+.student-step-actions button,
+.student-learning-complete .student-learning-back { margin: 0; color: #426536; background: #eff4eb; }
+.student-learning-complete a { margin: 14px 5px 0; }
+.student-learning-complete .student-learning-back { margin: 14px 5px 0; }
+.student-learning-gate { position: relative; top: 7vh; }
+.student-learning-message, .student-learning-error { font-size: 15px; }
+.student-learning-shell :is(a, button):focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
 @media (max-width: 620px) { .learning-path-heading, .learning-path-toolbar { align-items: stretch; flex-direction: column; }.learning-path-toolbar button { align-self: flex-start; }.student-learning-shell { padding-inline: 14px; }.student-learning-sparkle { right: 2%; }.student-learning-topbar > div { gap: 9px; }.student-learning-steps > li { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; }.student-step-marker { width: 30px; height: 30px; }.student-learning-steps article { padding: 13px; } }
+@media (max-width: 480px) {
+  .student-step-actions > * { width: 100%; }
+  .student-learning-hero { padding-top: 32px; }
+}

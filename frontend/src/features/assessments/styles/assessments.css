@@ -94,5 +94,16 @@
 .assessment-gate .assessment-primary { padding: 0 16px; font-size: 13px; }
 .assessment-back { color: #69577a; font-size: 13px; }
 .assessment-footer { padding-top: 20px; color: #89838c; font-size: 11px; text-align: center; }
+.assessment-student .assessment-heading-mark { flex-shrink: 0; margin-left: 12px; }
+.assessment-student h1,
+.assessment-student h2,
+.assessment-student h3 { font-weight: 750; }
+.assessment-student .assessment-heading > div > p:last-child,
+.assessment-student :is(.assessment-empty, .assessment-option, .assessment-test-item strong, .assessment-result-item > strong) { color: #494250; font-size: 16px; }
+.assessment-student .assessment-question h3 { font-size: 19px; }
+.assessment-student :is(.assessment-test-item small, .assessment-question-heading small, .assessment-result-item > p, .assessment-result-item > div, .assessment-result-item > small) { color: #60596a; font-size: 14px; }
+.assessment-student :is(.assessment-primary, .assessment-secondary, .assessment-option, .assessment-input-list input, .assessment-answer-input input) { min-height: 48px; font-size: 15px; }
+.assessment-student .assessment-option input { width: 18px; height: 18px; flex-shrink: 0; }
+.assessment-student :is(a, button, input):focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
 @media (max-width: 1000px) { .assessment-teacher-grid { grid-template-columns: 1fr; }.assessment-tests { grid-column: auto; } }
 @media (max-width: 700px) { .assessment-shell { padding-inline: 16px; }.assessment-topbar { height: 65px; }.assessment-user { gap: 8px; font-size: 11px; }.assessment-user > a { margin-left: 1px; }.assessment-role { display: none; }.assessment-heading { padding-top: 30px; }.assessment-form-row { grid-template-columns: 1fr; }.assessment-student-grid { grid-template-columns: 1fr; }.assessment-test-item { align-items: flex-start; flex-direction: column; }.assessment-test-actions { align-self: flex-end; }.assessment-gate { margin-top: 12vh; padding: 25px; }.assessment-option-list, .assessment-input-list, .assessment-answer-input { margin-left: 0; }.assessment-result-head { align-items: flex-start; flex-direction: column; }.assessment-score { justify-items: start; } }
