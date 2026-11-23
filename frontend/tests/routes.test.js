@@ -30,6 +30,7 @@ const routes = [
   ['/profile', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
   ['/profile/teacher', 'Hồ sơ giáo viên', 'TÀI KHOẢN GIÁO VIÊN'],
   ['/profile/student', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
+  ['/exercises/review', 'Đang tải…', 'exercise-page'],
   ['/does-not-exist', 'Không tìm thấy trang', 'home-header'],
 ]
 
