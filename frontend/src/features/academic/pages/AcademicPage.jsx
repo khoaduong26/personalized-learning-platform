@@ -45,7 +45,7 @@ export default function AcademicPage() {
   }, [loadSubjects])
 
   useEffect(() => {
-    if (!subjectId || access !== 'allowed') { setTopics([]); setTopicId(null); return }
+    if (!subjectId || access !== 'allowed') return
     let active = true
     getTopics(subjectId).then(items => {
       if (!active) return
@@ -56,7 +56,7 @@ export default function AcademicPage() {
   }, [subjectId, access, catalogRevision])
 
   useEffect(() => {
-    if (!topicId || access !== 'allowed') { setLessons([]); return }
+    if (!topicId || access !== 'allowed') return
     let active = true
     getLessons(topicId).then(items => { if (active) setLessons(items) }).catch(error => { if (active) setNotice(error.message) })
     return () => { active = false }
@@ -114,12 +114,12 @@ export default function AcademicPage() {
     <section className="academic-columns" aria-label="Cấu trúc chương trình học">
       <AcademicColumn title="Môn học" count={subjects.length} hint="Cấp 1 · Toán, Tiếng Việt…">
         <ItemForm kind="subject" label="Tên môn học" form={forms.subject} editing={editing?.kind === 'subject'} busy={busy} onChange={value => setForms(current => ({ ...current, subject: value }))} onSubmit={value => save('subject', value)} onCancel={() => { setEditing(null); setForms(current => ({ ...current, subject: emptyForm })) }} />
-        <div className="academic-list">{subjects.map(item => <AcademicItem key={item.id} item={item} selected={subjectId === item.id} meta={`${item.topicCount} chủ đề`} onSelect={() => { setSubjectId(item.id); setEditing(null); setForms({ subject: emptyForm, topic: emptyForm, lesson: emptyForm }) }} onEdit={() => beginEdit('subject', item)} onDelete={() => remove('subject', item)} />)}</div>
+        <div className="academic-list">{subjects.map(item => <AcademicItem key={item.id} item={item} selected={subjectId === item.id} meta={`${item.topicCount} chủ đề`} onSelect={() => { setSubjectId(item.id); setTopics([]); setTopicId(null); setLessons([]); setEditing(null); setForms({ subject: emptyForm, topic: emptyForm, lesson: emptyForm }) }} onEdit={() => beginEdit('subject', item)} onDelete={() => remove('subject', item)} />)}</div>
         {!subjects.length && <EmptyState text="Chưa có môn học. Thêm môn học đầu tiên để bắt đầu." />}
       </AcademicColumn>
       <AcademicColumn title="Chủ đề" count={topics.length} hint={subjectId ? 'Cấp 2 · nhóm kiến thức' : 'Chọn môn học trước'}>
         {subjectId ? <ItemForm kind="topic" label="Tên chủ đề" form={forms.topic} editing={editing?.kind === 'topic'} busy={busy} onChange={value => setForms(current => ({ ...current, topic: value }))} onSubmit={value => save('topic', value)} onCancel={() => { setEditing(null); setForms(current => ({ ...current, topic: emptyForm })) }} /> : <p className="academic-inline-hint">Hãy chọn một môn học để quản lý chủ đề.</p>}
-        <div className="academic-list">{topics.map(item => <AcademicItem key={item.id} item={item} selected={topicId === item.id} meta={`${item.lessonCount} bài học`} onSelect={() => { setTopicId(item.id); setEditing(null); setForms(current => ({ ...current, topic: emptyForm, lesson: emptyForm })) }} onEdit={() => beginEdit('topic', item)} onDelete={() => remove('topic', item)} />)}</div>
+        <div className="academic-list">{topics.map(item => <AcademicItem key={item.id} item={item} selected={topicId === item.id} meta={`${item.lessonCount} bài học`} onSelect={() => { setTopicId(item.id); setLessons([]); setEditing(null); setForms(current => ({ ...current, topic: emptyForm, lesson: emptyForm })) }} onEdit={() => beginEdit('topic', item)} onDelete={() => remove('topic', item)} />)}</div>
         {subjectId && !topics.length && <EmptyState text="Môn học này chưa có chủ đề." />}
       </AcademicColumn>
       <AcademicColumn title="Bài học" count={lessons.length} hint={topicId ? 'Cấp 3 · đơn vị kiến thức' : 'Chọn chủ đề trước'}>
