@@ -19,7 +19,7 @@ import org.springframework.web.client.RestClientException;
 
 @Component
 public class CloudinaryAvatarStorage implements AvatarStorage {
-    private final RestClient client;
+    private volatile RestClient client;
     private final String cloudName;
     private final String apiKey;
     private final String apiSecret;
@@ -28,7 +28,7 @@ public class CloudinaryAvatarStorage implements AvatarStorage {
     public CloudinaryAvatarStorage(@Value("${app.cloudinary.cloud-name:}") String cloudName,
             @Value("${app.cloudinary.api-key:}") String apiKey,
             @Value("${app.cloudinary.api-secret:}") String apiSecret) {
-        this(cloudName, apiKey, apiSecret, createClient());
+        this(cloudName, apiKey, apiSecret, null);
     }
 
     CloudinaryAvatarStorage(String cloudName, String apiKey, String apiSecret, RestClient client) {
@@ -63,7 +63,7 @@ public class CloudinaryAvatarStorage implements AvatarStorage {
         fields.add("public_id", "tlcn/avatars/" + userId + "/" + UUID.randomUUID());
         fields.add("overwrite", "false");
         try {
-            Map<?, ?> response = client.post()
+            Map<?, ?> response = client().post()
                     .uri("https://api.cloudinary.com/v1_1/" + cloudName + "/image/upload")
                     .headers(headers -> headers.setBasicAuth(apiKey, apiSecret))
                     .contentType(MediaType.MULTIPART_FORM_DATA).body(fields).retrieve().body(Map.class);
@@ -81,5 +81,19 @@ public class CloudinaryAvatarStorage implements AvatarStorage {
     private ProfileException unavailable() {
         return new ProfileException(HttpStatus.BAD_GATEWAY, "AVATAR_UPLOAD_FAILED",
                 "Chưa tải được ảnh đại diện. Vui lòng thử lại.");
+    }
+
+    private RestClient client() {
+        RestClient current = client;
+        if (current == null) {
+            synchronized (this) {
+                current = client;
+                if (current == null) {
+                    current = createClient();
+                    client = current;
+                }
+            }
+        }
+        return current;
     }
 }
