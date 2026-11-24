@@ -9,30 +9,29 @@ export default function MasteryPanel({ students }) {
   const [errors, setErrors] = useState([])
   const [state, setState] = useState('idle')
   const [message, setMessage] = useState('')
+  const [loadedStudentId, setLoadedStudentId] = useState('')
+
+  const selectedStudentId = students.some(student => String(student.id) === studentId)
+    ? studentId
+    : String(students[0]?.id ?? '')
 
   useEffect(() => {
-    if (!students.some(student => String(student.id) === studentId)) {
-      setStudentId(students[0] ? String(students[0].id) : '')
-    }
-  }, [students, studentId])
-
-  useEffect(() => {
-    if (!studentId) { setProfile([]); setGaps([]); setErrors([]); return }
+    if (!selectedStudentId) return
     const controller = new AbortController()
-    setState('loading'); setMessage('')
-    Promise.all([getMasteryProfile(studentId), getKnowledgeGaps(studentId), getStudentErrors(studentId)])
+    Promise.all([getMasteryProfile(selectedStudentId), getKnowledgeGaps(selectedStudentId), getStudentErrors(selectedStudentId)])
       .then(([masteries, knowledgeGaps, studentErrors]) => {
         if (controller.signal.aborted) return
-        setProfile(masteries); setGaps(knowledgeGaps); setErrors(studentErrors); setState('ready')
+        setProfile(masteries); setGaps(knowledgeGaps); setErrors(studentErrors); setMessage(''); setState('ready'); setLoadedStudentId(selectedStudentId)
       })
       .catch(error => {
         if (controller.signal.aborted) return
-        setMessage(error.message); setState('error')
+        setMessage(error.message); setState('error'); setLoadedStudentId(selectedStudentId)
       })
     return () => controller.abort()
-  }, [studentId])
+  }, [selectedStudentId])
 
-  const selected = students.find(student => String(student.id) === studentId)
+  const selected = students.find(student => String(student.id) === selectedStudentId)
+  const isLoading = Boolean(selectedStudentId) && loadedStudentId !== selectedStudentId
   const average = profile.length
     ? Math.round(profile.reduce((sum, item) => sum + item.score, 0) / profile.length)
     : 0
@@ -40,12 +39,12 @@ export default function MasteryPanel({ students }) {
   return <section className="mastery-panel" aria-labelledby="mastery-title">
     <div className="mastery-panel-heading">
       <div><span className="classrooms-kicker">THEO DÕI TIẾN BỘ</span><h3 id="mastery-title">Hồ sơ năng lực</h3><p>Mức độ thành thạo, kiến thức cần ôn và dạng lỗi đã ghi nhận.</p></div>
-      <label>Chọn học sinh<select aria-label="Chọn học sinh xem hồ sơ năng lực" value={studentId} onChange={event => setStudentId(event.target.value)}>
+      <label>Chọn học sinh<select aria-label="Chọn học sinh xem hồ sơ năng lực" value={selectedStudentId} onChange={event => { setStudentId(event.target.value); setProfile([]); setGaps([]); setErrors([]) }}>
         {students.map(student => <option key={student.id} value={student.id}>{student.fullName}</option>)}
       </select></label>
     </div>
     {!students.length ? <p className="mastery-empty">Thêm học sinh vào lớp để bắt đầu theo dõi năng lực.</p>
-      : state === 'loading' ? <p className="mastery-empty" role="status">Đang tải hồ sơ của {selected?.fullName}…</p>
+      : isLoading ? <p className="mastery-empty" role="status">Đang tải hồ sơ của {selected?.fullName}…</p>
         : state === 'error' ? <p className="mastery-error" role="alert">{message}</p>
           : <>
             <div className="mastery-summary"><div><strong>{average}<small>/100</small></strong><span>Điểm trung bình các kiến thức</span></div><div><strong>{profile.length}</strong><span>Kiến thức đã được đánh giá</span></div><div><strong>{gaps.length}</strong><span>Khoảng trống cần ôn</span></div></div>
