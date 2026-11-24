@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getAssessmentSession } from '../../assessments/services/assessmentApi'
+import { getAssessmentSession, getAttemptDraft, getAttemptHistory } from '../../assessments/services/assessmentApi'
 import {
   getExerciseResult, getPendingExercises, getStepExercises, reviewExercise, saveExerciseAnswer,
   startExerciseAttempt, submitExerciseAttempt, updateExercise,
 } from '../services/exerciseApi'
 import { createExerciseDraft, toExerciseUpdate, validateExerciseUpdate } from '../services/exerciseDraft'
+import { restoreExerciseAnswers, toExerciseAnswerPayload } from '../services/exerciseAttempt'
 import '../styles/exercises.css'
 
 const kindName = { MULTIPLE_CHOICE: 'Trắc nghiệm', FILL_BLANK: 'Điền khuyết', SHORT_ANSWER: 'Trả lời ngắn' }
@@ -19,6 +20,8 @@ export default function ExercisesPage() {
   const [pending, setPending] = useState([])
   const [answers, setAnswers] = useState({})
   const [attempt, setAttempt] = useState(null)
+  const [resumedAttempt, setResumedAttempt] = useState(false)
+  const [confirmSubmit, setConfirmSubmit] = useState(false)
   const [result, setResult] = useState(null)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -37,8 +40,22 @@ export default function ExercisesPage() {
       if (!stepId && session.role === 'STUDENT') { setAccess('missing-step'); return }
       setAccess('allowed')
       try {
-        if (stepId) setQuestions(await getStepExercises(stepId))
-        else setPending(await getPendingExercises())
+        if (stepId) {
+          const available = await getStepExercises(stepId)
+          if (!active) return
+          setQuestions(available)
+          try {
+            const history = await getAttemptHistory(session.id)
+            const current = history.find(item => String(item.learningStepId) === String(stepId) && item.status === 'IN_PROGRESS')
+            if (current) {
+              const saved = await getAttemptDraft(current.id)
+              if (!active) return
+              setAttempt(current)
+              setAnswers(restoreExerciseAnswers(saved))
+              setResumedAttempt(true)
+            }
+          } catch (error) { if (active) setNotice(error.message) }
+        } else setPending(await getPendingExercises())
       } catch (error) { if (active) setNotice(error.message) }
     }).catch(error => { if (active) setAccess(error.status === 403 ? 'forbidden' : 'signed-out') })
     return () => { active = false }
@@ -52,21 +69,24 @@ export default function ExercisesPage() {
   const change = (id, update) => setAnswers(current => ({ ...current, [id]: { ...current[id], ...update } }))
   const start = () => run(async () => {
     const active = await startExerciseAttempt(stepId)
-    setAttempt(active); setResult(null); setAnswers({})
+    setAttempt(active); setResult(null); setAnswers({}); setResumedAttempt(false)
+  })
+  const saveDraft = () => run(async () => {
+    for (const question of questions) {
+      const answer = answers[question.id] || {}
+      await saveExerciseAnswer(attempt.id, toExerciseAnswerPayload(question, answer))
+    }
+    setNotice('Đã lưu tạm bài làm. Em có thể quay lại để làm tiếp.')
   })
   const submit = () => run(async () => {
     for (const question of questions) {
       const answer = answers[question.id] || {}
-      const payload = question.kind === 'MULTIPLE_CHOICE'
-        ? { questionId: question.id, selectedOptionIds: answer.selectedOptionIds || [] }
-        : question.kind === 'FILL_BLANK'
-          ? { questionId: question.id, blankAnswers: answer.blankAnswers || blankAnswers(question) }
-          : { questionId: question.id, content: answer.content || '' }
-      await saveExerciseAnswer(attempt.id, payload)
+      await saveExerciseAnswer(attempt.id, toExerciseAnswerPayload(question, answer))
     }
     await submitExerciseAttempt(attempt.id)
     setResult(await getExerciseResult(attempt.id))
     setAttempt(null)
+    setConfirmSubmit(false)
   })
 
   const beginEdit = question => {
@@ -125,6 +145,7 @@ export default function ExercisesPage() {
     </section>}
 
     {stepId && attempt && <section className="exercise-list">
+      {resumedAttempt && <p className="exercise-notice" role="status">Đã mở lại bài làm đang lưu. Em có thể tiếp tục từ phần đã làm.</p>}
       {questions.map((question, index) => <article className="exercise-card" key={question.id}>
         <div className="exercise-card-meta"><span>Câu {index + 1} · {kindName[question.kind]}</span><span>{question.score} điểm</span></div><h2>{question.content}</h2>
         {question.kind === 'MULTIPLE_CHOICE' && <fieldset className="exercise-options"><legend>Chọn câu trả lời</legend>{question.options.map(option => <label key={option.id}><input type={question.allowMultiple ? 'checkbox' : 'radio'} name={`question-${question.id}`} checked={(answers[question.id]?.selectedOptionIds || []).includes(option.id)} onChange={event => {
@@ -136,7 +157,11 @@ export default function ExercisesPage() {
         }} /></label>)}</div>}
         {question.kind === 'SHORT_ANSWER' && <label className="exercise-answer-fields">Câu trả lời<input value={answers[question.id]?.content || ''} onChange={event => change(question.id, { content: event.target.value })} /></label>}
       </article>)}
-      <button className="exercise-primary" disabled={busy} onClick={submit}>Nộp bài</button>
+      <div className="exercise-attempt-actions"><button className="exercise-secondary" disabled={busy} onClick={saveDraft}>Lưu tạm</button><button className="exercise-primary" disabled={busy} onClick={() => setConfirmSubmit(true)}>Nộp bài</button></div>
+      {confirmSubmit && <section className="exercise-confirm" role="alertdialog" aria-labelledby="exercise-confirm-title" aria-describedby="exercise-confirm-description">
+        <div><h2 id="exercise-confirm-title">Nộp bài nhé?</h2><p id="exercise-confirm-description">Sau khi nộp, em sẽ xem được điểm và đáp án. Em có thể quay lại kiểm tra câu trả lời trước.</p></div>
+        <div className="exercise-actions"><button className="exercise-secondary" disabled={busy} onClick={() => setConfirmSubmit(false)}>Xem lại bài</button><button className="exercise-primary" disabled={busy} onClick={submit}>{busy ? 'Đang nộp…' : 'Xác nhận nộp bài'}</button></div>
+      </section>}
     </section>}
 
     {result && <section className="exercise-list"><article className="exercise-card exercise-result"><p className="exercise-kicker">KẾT QUẢ CỦA EM</p><h2>{result.attempt.totalScore} / {result.attempt.maxScore} điểm</h2>{result.answers.map((answer, index) => <div key={answer.questionId} className="exercise-result-item"><strong>{index + 1}. {answer.correct ? 'Chính xác!' : 'Mình cùng ôn lại nhé.'}</strong><p>{answer.questionContent}</p>{!answer.correct && <p>Đáp án: {answer.expected.join(', ')}</p>}</div>)}</article></section>}

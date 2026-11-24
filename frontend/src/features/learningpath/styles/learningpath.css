@@ -61,6 +61,7 @@
 .student-learning-steps article p { margin: 6px 0 8px; color: #72796d; font-size: 12px; line-height: 1.6; }
 .student-learning-steps article > small { color: #89987b; font-size: 10px; font-weight: 700; }
 .student-learning-steps button { display: block; margin-top: 14px; border-radius: 9px; background: #6e8d59; padding: 10px 14px; font-size: 12px; }
+.student-exercise-link { display: inline-flex; justify-content: center; align-items: center; min-height: 38px; margin: 14px 9px 0 0; padding: 0 13px; border-radius: 9px; background: #705788; color: #fff; font-size: 12px; font-weight: 750; text-decoration: none; }
 .student-learning-message, .student-learning-error { max-width: 760px; margin: 0 auto 14px; }
 .student-learning-complete { text-align: center; padding-block: 44px; }
 .student-learning-complete > span { font-size: 36px; }
