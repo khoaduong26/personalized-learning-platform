@@ -37,7 +37,7 @@ Các biến cấu hình chính gồm `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB
 
 ### Sinh bài tập
 
-`POST /api/exercises/steps/{stepId}/generate` tạo một câu hỏi minh họa bằng bộ quy tắc demo mặc định. Hiện chỉ có provider `demo` (`APP_EXERCISE_GENERATOR_PROVIDER=demo`); phản hồi ghi rõ `provider`, `demo` và lưu ý rằng đây chưa phải nội dung do AI bên ngoài sinh. Adapter khác cần triển khai contract `ExerciseQuestionGenerator`; dự án chưa cấu hình hoặc gọi nhà cung cấp AI bên ngoài. Bài tập luôn gắn với bài học của bước đã chọn, ở trạng thái `PENDING` để giáo viên rà soát và duyệt.
+`POST /api/exercises/steps/{stepId}/generate` tạo câu hỏi trắc nghiệm Toán lớp 2 qua adapter được chọn bằng `APP_EXERCISE_GENERATOR_PROVIDER=demo|openai|gemini`. Mặc định là `demo`. Adapter OpenAI dùng `OPENAI_API_KEY` và tùy chọn `OPENAI_MODEL`; adapter Gemini dùng `GEMINI_API_KEY` và tùy chọn `GEMINI_MODEL`. Chỉ cấu hình khóa trong môi trường backend, không đưa vào Git hoặc frontend. Phản hồi AI ghi rõ provider; bài tập luôn gắn với bài học của bước đang chọn, ở trạng thái `PENDING` để giáo viên rà soát và duyệt. Kết quả model vẫn phải qua validation backend.
 
 Tạo database trước khi chạy, ví dụ:
 
