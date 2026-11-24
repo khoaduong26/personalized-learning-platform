@@ -13,6 +13,11 @@
 .exercise-card-meta { display: flex; justify-content: space-between; gap: 10px; color: #887f8e; font-size: 11px; }
 .exercise-answer, .exercise-explanation { margin: 7px 0; color: #655d6b; font-size: 13px; line-height: 1.5; }
 .exercise-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 17px; }
+.exercise-attempt-actions { display: flex; justify-content: space-between; gap: 10px; }
+.exercise-confirm { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 18px 20px; border: 1px solid #e3d9e9; border-radius: 13px; background: #faf7fc; box-shadow: 0 10px 28px #44394d0c; }
+.exercise-confirm h2 { margin: 0; color: #4d3f59; font-size: 17px; }
+.exercise-confirm p { margin: 6px 0 0; color: #746b7c; font-size: 12px; line-height: 1.55; }
+.exercise-confirm .exercise-actions { flex-shrink: 0; margin-top: 0; }
 .exercise-edit-form { display: grid; gap: 12px; margin-top: 14px; }
 .exercise-edit-form > label, .exercise-edit-row label { display: grid; gap: 6px; color: #625a68; font-size: 12px; font-weight: 750; }
 .exercise-edit-form textarea, .exercise-edit-form input, .exercise-edit-form select { box-sizing: border-box; width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid #e4dfe7; border-radius: 8px; color: #38323f; background: white; font: inherit; font-size: 13px; font-weight: 450; resize: vertical; }
@@ -35,4 +40,4 @@
 .exercise-result-item p { color: #716a76; line-height: 1.5; }
 .exercise-gate { margin-top: 70px; }
 .exercise-gate a { display: inline-block; margin-top: 12px; color: #705788; font-weight: 750; }
-@media (max-width: 640px) { .exercise-page { padding: 0 16px 38px; } .exercise-header > div { gap: 7px; font-size: 11px; } .exercise-card { padding: 16px; } .exercise-actions { justify-content: stretch; } .exercise-actions button { flex: 1; } }
+@media (max-width: 640px) { .exercise-page { padding: 0 16px 38px; } .exercise-header > div { gap: 7px; font-size: 11px; } .exercise-card { padding: 16px; } .exercise-actions { justify-content: stretch; } .exercise-actions button { flex: 1; } .exercise-confirm { align-items: stretch; flex-direction: column; } .exercise-confirm .exercise-actions { flex-wrap: nowrap; } }
