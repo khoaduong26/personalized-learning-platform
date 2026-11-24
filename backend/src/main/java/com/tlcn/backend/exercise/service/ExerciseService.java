@@ -15,6 +15,8 @@ public interface ExerciseService {
 
     Question createGenerated(Long stepId, QuestionRequest request, UserSummary actor);
 
+    ExerciseGenerationResult generateForStep(Long stepId, UserSummary actor);
+
     Question updateGenerated(Long questionId, QuestionRequest request, UserSummary actor);
 
     Question review(Long questionId, ApprovalStatus decision, UserSummary actor);

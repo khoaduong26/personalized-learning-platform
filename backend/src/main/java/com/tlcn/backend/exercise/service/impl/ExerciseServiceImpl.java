@@ -6,12 +6,15 @@ import com.tlcn.backend.assessment.dto.QuestionRequest;
 import com.tlcn.backend.assessment.entity.*;
 import com.tlcn.backend.assessment.repository.QuestionRepository;
 import com.tlcn.backend.exercise.entity.StepExercise;
+import com.tlcn.backend.exercise.generation.ExerciseQuestionGenerator;
 import com.tlcn.backend.exercise.repository.StepExerciseRepository;
+import com.tlcn.backend.exercise.service.ExerciseGenerationResult;
 import com.tlcn.backend.exercise.service.ExerciseService;
 import com.tlcn.backend.learningpath.entity.LearningStep;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
+import jakarta.validation.Validator;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
@@ -25,13 +28,18 @@ public class ExerciseServiceImpl implements ExerciseService {
     private final QuestionRepository questions;
     private final LearningStepRepository steps;
     private final LessonRepository lessons;
+    private final ExerciseQuestionGenerator generator;
+    private final Validator validator;
 
     public ExerciseServiceImpl(StepExerciseRepository exercises, QuestionRepository questions,
-            LearningStepRepository steps, LessonRepository lessons) {
+            LearningStepRepository steps, LessonRepository lessons, ExerciseQuestionGenerator generator,
+            Validator validator) {
         this.exercises = exercises;
         this.questions = questions;
         this.steps = steps;
         this.lessons = lessons;
+        this.generator = generator;
+        this.validator = validator;
     }
 
     @Transactional(readOnly = true)
@@ -60,15 +68,42 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (!step.getLesson().getId().equals(request.lessonId()))
             throw badRequest("Bài tập phải gắn với bài học của bước đang chọn.");
 
-        Question question = buildQuestion(request);
-        question.setAiGenerated(true);
-        question.setApprovalStatus(ApprovalStatus.PENDING);
-        question = questions.save(question);
-        StepExercise exercise = new StepExercise();
-        exercise.setStep(step);
-        exercise.setQuestion(question);
-        exercises.save(exercise);
-        return question;
+        return savePendingExercise(step, request);
+    }
+
+    @Transactional
+    public ExerciseGenerationResult generateForStep(Long stepId, UserSummary actor) {
+        requireTeacher(actor);
+        LearningStep step = getStep(stepId);
+        requireCanManageStep(step, actor);
+
+        ExerciseQuestionGenerator.GeneratedExercise generated;
+        try {
+            generated = generator.generate(step);
+        } catch (RuntimeException exception) {
+            throw generationFailure("Bộ sinh bài tập hiện không khả dụng.");
+        }
+        if (generated == null || generated.question() == null || generated.provider() == null
+                || generated.provider().isBlank() || (generated.demo() && (generated.notice() == null
+                        || generated.notice().isBlank())))
+            throw generationFailure("Bộ sinh bài tập trả về kết quả không hợp lệ.");
+
+        QuestionRequest request = generated.question();
+        var violations = validator.validate(request);
+        if (!violations.isEmpty())
+            throw generationFailure("Bộ sinh bài tập trả về dữ liệu không hợp lệ: "
+                    + violations.iterator().next().getMessage());
+        if (!step.getLesson().getId().equals(request.lessonId()))
+            throw generationFailure("Bộ sinh bài tập trả về bài học không khớp với bước đang chọn.");
+
+        try {
+            Question question = savePendingExercise(step, request);
+            return new ExerciseGenerationResult(question, generated.provider(), generated.demo(), generated.notice());
+        } catch (ResponseStatusException exception) {
+            if (exception.getStatusCode() == HttpStatus.BAD_REQUEST || exception.getStatusCode() == HttpStatus.NOT_FOUND)
+                throw generationFailure("Không thể lưu đầu ra của bộ sinh bài tập: " + exception.getReason());
+            throw exception;
+        }
     }
 
     @Transactional
@@ -188,6 +223,22 @@ public class ExerciseServiceImpl implements ExerciseService {
         question.setApprovalStatus(ApprovalStatus.PENDING);
         question.setExplanation(request.explanation());
         return question;
+    }
+
+    private Question savePendingExercise(LearningStep step, QuestionRequest request) {
+        Question question = buildQuestion(request);
+        question.setAiGenerated(true);
+        question.setApprovalStatus(ApprovalStatus.PENDING);
+        question = questions.save(question);
+        StepExercise exercise = new StepExercise();
+        exercise.setStep(step);
+        exercise.setQuestion(question);
+        exercises.save(exercise);
+        return question;
+    }
+
+    private ResponseStatusException generationFailure(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
     }
 
     private LearningStep getStep(Long stepId) {

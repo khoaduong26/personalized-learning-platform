@@ -35,6 +35,10 @@ Từ thư mục `backend`, nếu chưa có `.env`, tạo file đó từ `.env.ex
 
 Các biến cấu hình chính gồm `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DDL_AUTO`, `FRONTEND_URL`, `JWT_SECRET` và các biến email/Cloudinary/Google OAuth khi cần bật các tích hợp đó. Khi chưa có cấu hình Cloudinary, chức năng tải ảnh đại diện trả thông báo dịch vụ chưa khả dụng; backend vẫn có thể khởi động.
 
+### Sinh bài tập
+
+`POST /api/exercises/steps/{stepId}/generate` tạo một câu hỏi minh họa bằng bộ quy tắc demo mặc định. Hiện chỉ có provider `demo` (`APP_EXERCISE_GENERATOR_PROVIDER=demo`); phản hồi ghi rõ `provider`, `demo` và lưu ý rằng đây chưa phải nội dung do AI bên ngoài sinh. Adapter khác cần triển khai contract `ExerciseQuestionGenerator`; dự án chưa cấu hình hoặc gọi nhà cung cấp AI bên ngoài. Bài tập luôn gắn với bài học của bước đã chọn, ở trạng thái `PENDING` để giáo viên rà soát và duyệt.
+
 Tạo database trước khi chạy, ví dụ:
 
 ```sql
@@ -85,5 +89,3 @@ Backend test dùng H2 trong bộ nhớ qua profile `test`, không cần MySQL. N
 3. Mở **Duyệt bài tập** để kiểm tra nội dung/đáp án, chỉnh sửa, từ chối hoặc duyệt bài đang chờ.
 4. Đăng nhập bằng tài khoản học sinh demo, làm bài kiểm tra hoặc bài tập đã duyệt, nộp bài và xem kết quả.
 5. Quay lại tài khoản giáo viên để đối chiếu cập nhật năng lực, khoảng trống kiến thức và tiến độ lộ trình.
-
-Ghi chú về trạng thái tích hợp và kiểm kê ngày 22/11 nằm trong [DAY22_AUDIT.md](./DAY22_AUDIT.md).
