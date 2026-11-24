@@ -39,6 +39,8 @@ Các biến cấu hình chính gồm `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB
 
 `POST /api/exercises/steps/{stepId}/generate` tạo câu hỏi trắc nghiệm Toán lớp 2 qua adapter được chọn bằng `APP_EXERCISE_GENERATOR_PROVIDER=demo|openai|gemini|combined`. Mặc định là `demo`. Adapter OpenAI dùng `OPENAI_API_KEY` và tùy chọn `OPENAI_MODEL`; adapter Gemini dùng `GEMINI_API_KEY` và tùy chọn `GEMINI_MODEL`. Chế độ `combined` dùng OpenAI tạo bản nháp, Gemini rà soát phép tính và độ phù hợp; cần cấu hình cả hai khóa. Nếu Gemini từ chối bản nháp, backend không lưu câu hỏi. Chỉ cấu hình khóa trong môi trường backend, không đưa vào Git hoặc frontend. Mọi bài tập vẫn ở trạng thái `PENDING` để giáo viên rà soát và duyệt; kết quả model vẫn phải qua validation backend.
 
+Lộ trình có thể dùng AI để sắp xếp các khoảng trống đang mở qua `APP_LEARNING_PATH_GENERATOR_PROVIDER=rules|openai|gemini|combined` (mặc định `rules`). Chế độ `combined` dùng OpenAI đề xuất thứ tự và Gemini rà soát; backend chỉ chấp nhận thứ tự chứa đúng một lần từng khoảng trống hợp lệ, còn bài học, trạng thái và điểm mục tiêu vẫn do backend quản lý. Cấu hình này dùng chung `OPENAI_API_KEY`, `OPENAI_MODEL`, `GEMINI_API_KEY` và `GEMINI_MODEL` ở trên.
+
 Tạo database trước khi chạy, ví dụ:
 
 ```sql
