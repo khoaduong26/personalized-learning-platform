@@ -4,7 +4,7 @@ import com.tlcn.backend.learningpath.entity.LearningStep;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -13,7 +13,8 @@ import tools.jackson.databind.json.JsonMapper;
 import org.springframework.web.client.RestClient;
 
 @Component
-@ConditionalOnProperty(prefix = "app.exercise-generator", name = "provider", havingValue = "openai")
+@ConditionalOnExpression("'${app.exercise-generator.provider:demo}' == 'openai' or "
+        + "'${app.exercise-generator.provider:demo}' == 'combined'")
 public class OpenAiExerciseQuestionGenerator implements ExerciseQuestionGenerator {
     private final String apiKey;
     private final String model;

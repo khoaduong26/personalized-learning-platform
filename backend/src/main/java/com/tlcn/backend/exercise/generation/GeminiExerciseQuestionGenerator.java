@@ -1,10 +1,11 @@
 package com.tlcn.backend.exercise.generation;
 
+import com.tlcn.backend.assessment.dto.QuestionRequest;
 import com.tlcn.backend.learningpath.entity.LearningStep;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -12,8 +13,9 @@ import tools.jackson.databind.json.JsonMapper;
 import org.springframework.web.client.RestClient;
 
 @Component
-@ConditionalOnProperty(prefix = "app.exercise-generator", name = "provider", havingValue = "gemini")
-public class GeminiExerciseQuestionGenerator implements ExerciseQuestionGenerator {
+@ConditionalOnExpression("'${app.exercise-generator.provider:demo}' == 'gemini' or "
+        + "'${app.exercise-generator.provider:demo}' == 'combined'")
+public class GeminiExerciseQuestionGenerator implements ExerciseQuestionGenerator, ExerciseQuestionReviewer {
     private final String apiKey;
     private final String model;
     private final RestClient client;
@@ -34,23 +36,38 @@ public class GeminiExerciseQuestionGenerator implements ExerciseQuestionGenerato
 
     @Override
     public GeneratedExercise generate(LearningStep step) {
+        String output = generateJson(ExerciseGeneratorSupport.prompt(step), ExerciseGeneratorSupport.geminiSchema());
+        return ExerciseGeneratorSupport.parse(output, step.getLesson().getId(), "gemini", mapper);
+    }
+
+    @Override
+    public ReviewResult review(LearningStep step, QuestionRequest question) {
+        String output = generateJson(ExerciseGeneratorSupport.reviewPrompt(step, question),
+                ExerciseGeneratorSupport.geminiReviewSchema());
+        try {
+            return mapper.readValue(output, ReviewResult.class);
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException("Gemini trả về kết quả rà soát không hợp lệ.", exception);
+        }
+    }
+
+    private String generateJson(String prompt, Map<String, Object> schema) {
         if (apiKey.isBlank()) {
             throw new IllegalStateException("Chưa cấu hình GEMINI_API_KEY.");
         }
         Map<String, Object> generationConfig = Map.of(
                 "responseMimeType", "application/json",
-                "responseJsonSchema", ExerciseGeneratorSupport.geminiSchema(),
+                "responseJsonSchema", schema,
                 "temperature", 0.2,
                 "maxOutputTokens", 1000);
         Map<String, Object> body = Map.of(
-                "contents", new Object[]{Map.of("parts", new Object[]{Map.of("text", ExerciseGeneratorSupport.prompt(step))})},
+                "contents", new Object[]{Map.of("parts", new Object[]{Map.of("text", prompt)})},
                 "generationConfig", generationConfig);
 
         JsonNode response = client.post().uri("https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", model)
                 .header("x-goog-api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().body(JsonNode.class);
-        String output = extractOutput(response);
-        return ExerciseGeneratorSupport.parse(output, step.getLesson().getId(), "gemini", mapper);
+        return extractOutput(response);
     }
 
     private String extractOutput(JsonNode response) {
