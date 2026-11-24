@@ -10,7 +10,10 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.tlcn.backend.academic.entity.Lesson;
+import com.tlcn.backend.assessment.dto.QuestionRequest;
+import com.tlcn.backend.assessment.entity.Difficulty;
 import com.tlcn.backend.learningpath.entity.LearningStep;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -76,6 +79,31 @@ class ProviderExerciseQuestionGeneratorTests {
         server.verify();
     }
 
+    @Test
+    void geminiReviewerUsesStructuredVerdictForDraft() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        String verdict = "{\"accepted\":true,\"feedback\":\"Phép tính và đáp án phù hợp.\"}";
+        server.expect(requestTo("https://generativelanguage.googleapis.com/v1beta/models/test-gemini:generateContent"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("x-goog-api-key", "test-gemini-key"))
+                .andExpect(jsonPath("$.generationConfig.responseJsonSchema.properties.accepted.type").value("BOOLEAN"))
+                .andRespond(withSuccess(geminiResponse(verdict), MediaType.APPLICATION_JSON));
+
+        var adapter = new GeminiExerciseQuestionGenerator("test-gemini-key", "test-gemini", builder.build(),
+                JsonMapper.builder().build());
+        QuestionRequest draft = new QuestionRequest("7 + 5 = ?", Difficulty.EASY, 1.0, LESSON_ID,
+                "MULTIPLE_CHOICE", false, null, null,
+                List.of(new QuestionRequest.OptionInput("12", true, 0),
+                        new QuestionRequest.OptionInput("13", false, 1)), null, "7 cộng 5 bằng 12.");
+
+        var review = adapter.review(step(), draft);
+
+        assertTrue(review.accepted());
+        assertEquals("Phép tính và đáp án phù hợp.", review.feedback());
+        server.verify();
+    }
+
     private LearningStep step() {
         Lesson lesson = mock(Lesson.class);
         when(lesson.getId()).thenReturn(LESSON_ID);
@@ -92,7 +120,11 @@ class ProviderExerciseQuestionGeneratorTests {
     }
 
     private String geminiResponse() {
-        return "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":" + quote(MODEL_JSON)
+        return geminiResponse(MODEL_JSON);
+    }
+
+    private String geminiResponse(String text) {
+        return "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":" + quote(text)
                 + "}]},\"finishReason\":\"STOP\"}]}";
     }
 
