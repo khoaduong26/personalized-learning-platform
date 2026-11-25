@@ -166,7 +166,7 @@ public class AttemptServiceImpl implements AttemptService {
     }
 
     private void grade(StudentAnswer answer) {
-        Question question = answer.getQuestion();
+        Question question = (Question) Hibernate.unproxy(answer.getQuestion());
         double max = question.getScore();
         if (question instanceof MultipleChoiceQuestion mc && answer instanceof MultipleChoiceAnswer selected) {
             Set<Long> expected = mc.getOptions().stream().filter(Option::isCorrect).map(Option::getId)

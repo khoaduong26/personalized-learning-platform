@@ -37,9 +37,13 @@ Các biến cấu hình chính gồm `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB
 
 ### Sinh bài tập
 
-`POST /api/exercises/steps/{stepId}/generate` tạo câu hỏi trắc nghiệm Toán lớp 2 qua adapter được chọn bằng `APP_EXERCISE_GENERATOR_PROVIDER=demo|openai|gemini|combined`. Mặc định là `demo`. Adapter OpenAI dùng `OPENAI_API_KEY` và tùy chọn `OPENAI_MODEL`; adapter Gemini dùng `GEMINI_API_KEY` và tùy chọn `GEMINI_MODEL`. Chế độ `combined` dùng OpenAI tạo bản nháp, Gemini rà soát phép tính và độ phù hợp; cần cấu hình cả hai khóa. Nếu Gemini từ chối bản nháp, backend không lưu câu hỏi. Chỉ cấu hình khóa trong môi trường backend, không đưa vào Git hoặc frontend. Mọi bài tập vẫn ở trạng thái `PENDING` để giáo viên rà soát và duyệt; kết quả model vẫn phải qua validation backend.
+`POST /api/exercises/steps/{stepId}/generate` tạo câu hỏi trắc nghiệm Toán lớp 2 bằng Gemini hoặc DeepSeek. Cấu hình `APP_EXERCISE_GENERATOR_PROVIDER=gemini|deepseek` cùng khóa và model tương ứng trong môi trường backend (`GEMINI_API_KEY`/`GEMINI_MODEL` hoặc `DEEPSEEK_API_KEY`/`DEEPSEEK_MODEL`). Mặc định vẫn là Gemini. Khi Gemini hết hạn mức/quá tải/lỗi kết nối, backend có thể tự chuyển sang DeepSeek nếu `APP_AI_FALLBACK_PROVIDER=deepseek` (mặc định) và `DEEPSEEK_API_KEY` đã cấu hình. Không đưa khóa thật vào Git hoặc frontend. Mọi bài tập do AI sinh đều ở trạng thái `PENDING` để giáo viên rà soát và duyệt; kết quả model phải qua validation backend.
 
-Lộ trình có thể dùng AI để sắp xếp các khoảng trống đang mở qua `APP_LEARNING_PATH_GENERATOR_PROVIDER=rules|openai|gemini|combined` (mặc định `rules`). Chế độ `combined` dùng OpenAI đề xuất thứ tự và Gemini rà soát; backend chỉ chấp nhận thứ tự chứa đúng một lần từng khoảng trống hợp lệ, còn bài học, trạng thái và điểm mục tiêu vẫn do backend quản lý. Cấu hình này dùng chung `OPENAI_API_KEY`, `OPENAI_MODEL`, `GEMINI_API_KEY` và `GEMINI_MODEL` ở trên.
+Gemini hoặc DeepSeek sắp xếp các khoảng trống đang mở qua `APP_LEARNING_PATH_GENERATOR_PROVIDER=gemini|deepseek`. Khi chọn Gemini, backend cũng tự chuyển sang DeepSeek theo `APP_AI_FALLBACK_PROVIDER` nếu Gemini hết hạn mức, quá tải hoặc mất kết nối và `DEEPSEEK_API_KEY` đã cấu hình. Backend chỉ chấp nhận thứ tự chứa đúng một lần từng khoảng trống hợp lệ; bài học, trạng thái và điểm mục tiêu vẫn do backend quản lý. DeepSeek dùng endpoint tương thích Chat Completions tại `https://api.deepseek.com/chat/completions` và model mặc định `deepseek-flash`.
+
+### Xem bài làm của học sinh
+
+Trong **Hồ sơ năng lực** của từng học sinh, giáo viên có thể mở từng câu trả lời sai để xem nội dung câu hỏi, câu trả lời của học sinh, đáp án đúng, điểm câu hỏi và lời giải (nếu có). Quyền xem vẫn được giới hạn theo lớp mà giáo viên quản lý.
 
 Tạo database trước khi chạy, ví dụ:
 

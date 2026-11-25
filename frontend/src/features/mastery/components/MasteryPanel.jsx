@@ -152,7 +152,19 @@ export default function MasteryPanel({ students, classroomId }) {
                 <b className={`mastery-priority priority-${String(gap.priority).toLowerCase()}`}>{gap.priority}</b>
               </li>)}</ul> : <p className="mastery-empty">Chưa phát hiện kiến thức cần củng cố.</p>}</section>
             </div>
-            <section className="mastery-errors"><h4>Dạng lỗi đã ghi nhận</h4>{errors.length ? <ul className="mastery-list">{errors.slice(0, 5).map(error => <li key={error.id}><div><strong>{error.errorType}</strong><span>{error.description || `Bài học ${error.lessonId}`}</span></div><time dateTime={error.createdAt}>{new Date(error.createdAt).toLocaleDateString('vi-VN')}</time></li>)}</ul> : <p className="mastery-empty">Chưa ghi nhận lỗi sai.</p>}</section>
+            <section className="mastery-errors"><h4>Câu trả lời cần xem lại</h4>{errors.length ? <ul className="mastery-list">{errors.map(error => <li key={error.id} className="mastery-error-item"><div>
+              <strong>{error.questionContent || error.errorType}</strong>
+              <span>{error.lessonName || `Bài học ${error.lessonId}`} · {error.assessmentTitle || 'Bài luyện tập'} · {new Date(error.createdAt).toLocaleDateString('vi-VN')}</span>
+              <details className="mastery-error-detail"><summary>Xem câu trả lời và đáp án</summary>
+                <dl>
+                  <div><dt>Học sinh trả lời</dt><dd>{error.studentAnswers?.length ? error.studentAnswers.join(' · ') : 'Chưa trả lời'}</dd></div>
+                  <div><dt>Đáp án đúng</dt><dd>{error.correctAnswers?.length ? error.correctAnswers.join(' · ') : 'Chưa có đáp án'}</dd></div>
+                  <div><dt>Điểm câu hỏi</dt><dd>{error.awardedScore ?? 0}/{error.score ?? 0}</dd></div>
+                </dl>
+                {error.explanation && <p>{error.explanation}</p>}
+                {error.description && <p>{error.description}</p>}
+              </details>
+            </div></li>)}</ul> : <p className="mastery-empty">Chưa ghi nhận câu trả lời sai.</p>}</section>
           </>}
   </section>
 }
