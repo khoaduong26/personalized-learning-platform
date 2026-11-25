@@ -26,6 +26,14 @@
 .learning-path-steps li > div { display: grid; gap: 4px; }
 .learning-path-steps strong { color: #393340; font-size: 11px; }
 .learning-path-steps small, .learning-path-steps em { color: #89828d; font-size: 10px; font-style: normal; line-height: 1.5; }
+.learning-path-ai-button { justify-self: start; margin-top: 5px; border: 1px solid #e2d9e9; border-radius: 7px; background: #f7f3fa; color: #624b76; padding: 7px 10px; font: inherit; font-size: 10px; font-weight: 750; cursor: pointer; }
+.learning-path-ai-button:disabled { opacity: .55; cursor: wait; }
+.learning-path-ai-result { display: grid; gap: 8px; margin-top: 12px; padding: 12px; border: 1px solid #dce7d3; border-radius: 9px; background: #f5f9f1; color: #465b3d; font-size: 11px; }
+.learning-path-ai-result > div { display: grid; gap: 3px; }
+.learning-path-ai-result span { color: #6d7865; }
+.learning-path-ai-result p { margin: 0; font-weight: 700; }
+.learning-path-ai-result a { color: #68517c; font-weight: 750; text-decoration: none; }
+.learning-path-ai-result a:hover { text-decoration: underline; }
 .learning-path-history { margin-top: 14px; color: #69577a; font-size: 11px; }
 .learning-path-history summary { cursor: pointer; font-weight: 750; }
 .learning-path-history .learning-path-card { margin-top: 8px; }

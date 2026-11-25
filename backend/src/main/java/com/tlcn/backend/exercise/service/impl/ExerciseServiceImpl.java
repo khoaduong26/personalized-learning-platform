@@ -18,6 +18,9 @@ import com.tlcn.backend.user.entity.Role;
 import jakarta.validation.Validator;
 import java.util.List;
 import java.util.Locale;
+import org.hibernate.Hibernate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ExerciseServiceImpl implements ExerciseService {
+    private static final Logger log = LoggerFactory.getLogger(ExerciseServiceImpl.class);
     private final StepExerciseRepository exercises;
     private final QuestionRepository questions;
     private final LearningStepRepository steps;
@@ -82,6 +86,7 @@ public class ExerciseServiceImpl implements ExerciseService {
         try {
             generated = generator.generate(step);
         } catch (RuntimeException exception) {
+            log.error("Configured exercise generator failed (adapter={}).", generator.getClass().getSimpleName(), exception);
             throw generationFailure("Bộ sinh bài tập hiện không khả dụng.");
         }
         if (generated == null || generated.question() == null || generated.provider() == null
@@ -117,26 +122,27 @@ public class ExerciseServiceImpl implements ExerciseService {
             throw badRequest("Không thể đổi bài học đã liên kết với bước học.");
 
         Question replacement = buildQuestion(request);
-        if (!question.getClass().equals(replacement.getClass()))
+        Question current = (Question) Hibernate.unproxy(question);
+        if (!current.getClass().equals(replacement.getClass()))
             throw badRequest("Không thể đổi dạng câu hỏi khi chỉnh sửa.");
-        question.setContent(replacement.getContent());
-        question.setDifficulty(replacement.getDifficulty());
-        question.setScore(replacement.getScore());
-        question.setExplanation(replacement.getExplanation());
-        if (question instanceof MultipleChoiceQuestion currentMultiple
+        current.setContent(replacement.getContent());
+        current.setDifficulty(replacement.getDifficulty());
+        current.setScore(replacement.getScore());
+        current.setExplanation(replacement.getExplanation());
+        if (current instanceof MultipleChoiceQuestion currentMultiple
                 && replacement instanceof MultipleChoiceQuestion nextMultiple) {
             currentMultiple.setAllowMultiple(nextMultiple.isAllowMultiple());
             currentMultiple.setOptions(nextMultiple.getOptions());
-        } else if (question instanceof FillBlankQuestion currentFill
+        } else if (current instanceof FillBlankQuestion currentFill
                 && replacement instanceof FillBlankQuestion nextFill) {
             currentFill.setCaseSensitive(nextFill.isCaseSensitive());
             currentFill.setBlanks(nextFill.getBlanks());
-        } else if (question instanceof ShortAnswerQuestion currentShort
+        } else if (current instanceof ShortAnswerQuestion currentShort
                 && replacement instanceof ShortAnswerQuestion nextShort) {
             currentShort.setCaseSensitive(nextShort.isCaseSensitive());
             currentShort.setCorrectAnswer(nextShort.getCorrectAnswer());
         }
-        return questions.save(question);
+        return questions.save(current);
     }
 
     @Transactional

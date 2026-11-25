@@ -1,11 +1,13 @@
 package com.tlcn.backend.learningpath.generation;
 
+import com.tlcn.backend.ai.DeepSeekChatClient;
+import com.tlcn.backend.ai.GeminiFallbackSupport;
 import com.tlcn.backend.learningpath.generation.LearningPathOrderer.Candidate;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -13,43 +15,57 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 @Component
-@ConditionalOnExpression("'${APP_LEARNING_PATH_GENERATOR_PROVIDER:rules}' == 'gemini' or "
-        + "'${APP_LEARNING_PATH_GENERATOR_PROVIDER:rules}' == 'combined'")
-public class GeminiLearningPathOrderer implements LearningPathOrderer, LearningPathOrderReviewer {
+@ConditionalOnProperty(prefix = "app.learning-path-generator", name = "provider", havingValue = "gemini")
+public class GeminiLearningPathOrderer implements LearningPathOrderer {
     private final String apiKey;
     private final String model;
     private final RestClient client;
     private final JsonMapper mapper;
+    private final DeepSeekChatClient deepSeekClient;
+    private final String fallbackProvider;
 
     @Autowired
     public GeminiLearningPathOrderer(@Value("${GEMINI_API_KEY:}") String apiKey,
-            @Value("${GEMINI_MODEL:gemini-3.8-flash}") String model, JsonMapper mapper) {
-        this(apiKey, model, LearningPathHttpClientSupport.createClient(), mapper);
+            @Value("${GEMINI_MODEL:gemini-3.8-flash}") String model,
+            @Value("${app.ai.fallback-provider:deepseek}") String fallbackProvider,
+            JsonMapper mapper, DeepSeekChatClient deepSeekClient) {
+        this(apiKey, model, LearningPathHttpClientSupport.createClient(), mapper,
+                fallbackProvider, deepSeekClient);
     }
 
     GeminiLearningPathOrderer(String apiKey, String model, RestClient client, JsonMapper mapper) {
+        this(apiKey, model, client, mapper, "deepseek", null);
+    }
+
+    GeminiLearningPathOrderer(String apiKey, String model, RestClient client, JsonMapper mapper,
+            String fallbackProvider, DeepSeekChatClient deepSeekClient) {
         this.apiKey = apiKey;
         this.model = model;
         this.client = client;
         this.mapper = mapper;
+        this.fallbackProvider = fallbackProvider;
+        this.deepSeekClient = deepSeekClient;
     }
 
     @Override
     public List<Integer> order(List<Candidate> candidates) {
-        String output = generateJson(LearningPathAiSupport.orderingPrompt(candidates),
-                LearningPathAiSupport.geminiOrderSchema());
-        return LearningPathAiSupport.parseOrder(output, mapper);
+        String prompt = LearningPathAiSupport.orderingPrompt(candidates);
+        try {
+            String output = generateJson(prompt, LearningPathAiSupport.geminiOrderSchema());
+            return LearningPathAiSupport.parseOrder(output, mapper);
+        } catch (RuntimeException exception) {
+            if (!canFallback(exception)) {
+                throw exception;
+            }
+            return LearningPathAiSupport.parseOrder(deepSeekClient.completeJson(prompt), mapper);
+        }
     }
 
-    @Override
-    public ReviewResult review(List<Candidate> candidates, List<Integer> orderedPositions) {
-        String output = generateJson(LearningPathAiSupport.reviewPrompt(candidates, orderedPositions),
-                LearningPathAiSupport.geminiReviewSchema());
-        try {
-            return mapper.readValue(output, ReviewResult.class);
-        } catch (RuntimeException exception) {
-            throw new IllegalStateException("Gemini trả về kết quả rà soát lộ trình không hợp lệ.", exception);
-        }
+    private boolean canFallback(RuntimeException exception) {
+        return "deepseek".equalsIgnoreCase(fallbackProvider)
+                && deepSeekClient != null
+                && deepSeekClient.isConfigured()
+                && GeminiFallbackSupport.shouldUseDeepSeek(exception);
     }
 
     private String generateJson(String prompt, Map<String, Object> schema) {

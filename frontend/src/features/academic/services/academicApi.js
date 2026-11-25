@@ -5,7 +5,7 @@ async function academicRequest(path, options = {}) {
   const headers = { ...options.headers }
   if (method !== 'GET' && method !== 'HEAD') {
     const csrf = await httpRequest('/api/csrf')
-    headers['X-XSRF-TOKEN'] = csrf.token
+    headers[csrf.headerName] = csrf.token
   }
   return httpRequest(path, { ...options, headers })
 }
