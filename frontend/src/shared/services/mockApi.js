@@ -1,4 +1,5 @@
 import fixture from '../../../tests/fixtures/mock-data.json'
+import { aggregateLessonMastery } from '../utils/mastery.js'
 
 const MODE_KEY = 'edulearn.mock.enabled'
 const ACTOR_KEY = 'edulearn.mock.actor'
@@ -408,9 +409,30 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
     return state.masteryProfiles.find(item => item.studentId === studentId)?.records || []
   }
   match = route.match(/^\/api\/mastery\/classrooms\/(\d+)\/dashboard$/)
-  if (match) return state.masteryProfiles.filter(profile => studentsFor(match[1]).some(student => student.id === profile.studentId)).flatMap(profile => profile.records)
+  if (match) {
+    const classroomId = Number(match[1])
+    const classroom = state.classrooms.find(item => item.id === classroomId)
+    if (!classroom) fail(404, 'Không tìm thấy lớp học.')
+    if (current.role !== 'ADMIN' && (current.role !== 'TEACHER' || classroom.teacherId !== current.id)) fail(403, 'Bạn không có quyền xem dashboard lớp này.')
+    const studentIds = new Set(studentsFor(classroomId).map(student => student.id))
+    const lessonRecords = state.masteryProfiles
+      .filter(profile => studentIds.has(profile.studentId))
+      .flatMap(profile => profile.records)
+    return aggregateLessonMastery(lessonRecords.map(record => ({
+      ...record,
+      lessonName: record.lessonName || lessonById(record.lessonId)?.name || '',
+    })))
+  }
   match = route.match(/^\/api\/mastery\/(\d+)\/history$/)
-  if (match) return state.masteryHistory.filter(item => item.masteryId === Number(match[1]))
+  if (match) {
+    const masteryId = Number(match[1])
+    const owner = state.masteryProfiles.find(profile => profile.records.some(record => record.id === masteryId))?.studentId
+    if (owner == null) fail(404, 'Không tìm thấy hồ sơ năng lực.')
+    if (current.role === 'STUDENT' && current.id !== owner) fail(403, 'Bạn không có quyền xem hồ sơ này.')
+    if (current.role === 'TEACHER' && !state.classrooms.some(item => item.teacherId === current.id && item.studentIds.includes(owner))) fail(403, 'Bạn không có quyền xem hồ sơ này.')
+    if (!['ADMIN', 'TEACHER', 'STUDENT'].includes(current.role)) fail(403, 'Bạn không có quyền xem hồ sơ này.')
+    return state.masteryHistory.filter(item => item.masteryId === masteryId)
+  }
 
   match = route.match(/^\/api\/students\/(\d+)\/learning-paths(?:\/(\d+)\/steps\/(\d+))?(?:\/(generate))?$/)
   if (match) {

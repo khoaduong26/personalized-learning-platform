@@ -275,7 +275,12 @@ public class MasteryServiceImpl implements MasteryService {
         if (actor.role() != Role.ADMIN && (actor.role() != Role.TEACHER
                 || !classroom.getTeacher().getId().equals(actor.id())))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem lớp học này.");
-        return mastery.findByStudentClassroomId(classroomId);
+        List<KnowledgeMastery> records = mastery.findByStudentClassroomId(classroomId);
+        records.forEach(record -> {
+            record.getLesson().getId();
+            record.getLesson().getName();
+        });
+        return records;
     }
 
     private MasteryLevel level(double score) {

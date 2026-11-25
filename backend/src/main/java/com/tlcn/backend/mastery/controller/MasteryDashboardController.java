@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/mastery/classrooms/{classroomId}/dashboard")
 public class MasteryDashboardController {
-    public record LessonSummary(Long lessonId, double averageMastery, long studentsTracked,
+    public record LessonSummary(Long lessonId, String lessonName, double averageMastery, long studentsTracked,
             long studentsNeedingReview) {}
 
     private final MasteryService service;
@@ -27,7 +27,7 @@ public class MasteryDashboardController {
         return service.classroomDashboard(classroomId, actor).stream()
                 .collect(java.util.stream.Collectors.groupingBy(value -> value.getLesson().getId()))
                 .entrySet().stream()
-                .map(entry -> new LessonSummary(entry.getKey(),
+                .map(entry -> new LessonSummary(entry.getKey(), entry.getValue().get(0).getLesson().getName(),
                         entry.getValue().stream().mapToDouble(value -> value.getMasteryScore()).average().orElse(0),
                         entry.getValue().size(),
                         entry.getValue().stream().filter(value -> value.getMasteryScore() < 70).count()))
