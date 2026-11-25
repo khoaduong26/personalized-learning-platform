@@ -11,6 +11,7 @@ import com.tlcn.backend.exercise.repository.StepExerciseRepository;
 import com.tlcn.backend.exercise.service.ExerciseGenerationResult;
 import com.tlcn.backend.exercise.service.ExerciseService;
 import com.tlcn.backend.learningpath.entity.LearningStep;
+import com.tlcn.backend.learningpath.entity.LearningStepStatus;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
@@ -249,8 +250,12 @@ public class ExerciseServiceImpl implements ExerciseService {
         requireSignedIn(actor);
         if (actor.role() == Role.ADMIN)
             return;
-        if (actor.role() == Role.STUDENT && step.getPath().getStudent().getId().equals(actor.id()))
+        if (actor.role() == Role.STUDENT && step.getPath().getStudent().getId().equals(actor.id())) {
+            if (step.getStatus() != LearningStepStatus.IN_PROGRESS)
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Bước học này chưa được mở hoặc đã hoàn thành.");
             return;
+        }
         if (actor.role() == Role.TEACHER && ownsStudent(step, actor))
             return;
         throw forbidden();

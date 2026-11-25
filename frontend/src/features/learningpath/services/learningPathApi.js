@@ -15,7 +15,3 @@ export const getLearningPaths = studentId => learningPathRequest(`/api/students/
 export const generateLearningPath = studentId => learningPathRequest(
   `/api/students/${studentId}/learning-paths/generate`, { method: 'POST' },
 )
-export const updateLearningStep = (studentId, pathId, stepId, status) => learningPathRequest(
-  `/api/students/${studentId}/learning-paths/${pathId}/steps/${stepId}`,
-  { method: 'PATCH', body: { status } },
-)

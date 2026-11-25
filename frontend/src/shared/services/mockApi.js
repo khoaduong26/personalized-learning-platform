@@ -449,14 +449,12 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
       return pathView(pathItem)
     }
     if (match[2] && match[3] && method === 'PATCH') {
+      if (current.role !== 'STUDENT') fail(403, 'Chỉ học sinh mới có thể cập nhật tiến độ của mình.')
       const pathItem = state.learningPaths.find(item => item.id === Number(match[2]) && item.studentId === studentId)
       const step = pathItem?.steps.find(item => item.id === Number(match[3]))
-      if (!step || step.status !== 'IN_PROGRESS' || body.status !== 'COMPLETED') fail(409, 'Bước học này chưa thể hoàn thành.')
-      step.status = 'COMPLETED'
-      const nextStep = pathItem.steps.find(item => item.stepOrder === step.stepOrder + 1)
-      if (nextStep) nextStep.status = 'IN_PROGRESS'
-      else pathItem.status = 'COMPLETED'
-      pathItem.updatedAt = new Date().toISOString()
+      if (!step) fail(404, 'Không tìm thấy bước học.')
+      if (body.status === 'COMPLETED') fail(409, 'Bước chỉ hoàn thành sau khi nộp bài và đạt mục tiêu.')
+      if (step.status !== 'IN_PROGRESS' || body.status !== 'IN_PROGRESS') fail(409, 'Bước học này chưa được mở.')
       return pathView(pathItem)
     }
     return state.learningPaths.filter(item => item.studentId === studentId).map(pathView)
@@ -470,6 +468,15 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
   if (match) {
     requireActor(['ADMIN', 'TEACHER', 'STUDENT'])
     const approvedOnly = current.role === 'STUDENT'
+    if (approvedOnly) {
+      const stepId = Number(match[1])
+      const ownStep = state.learningPaths
+        .filter(pathItem => pathItem.studentId === current.id)
+        .flatMap(pathItem => pathItem.steps)
+        .find(step => step.id === stepId)
+      if (!ownStep) fail(404, 'Không tìm thấy bước học.')
+      if (ownStep.status !== 'IN_PROGRESS') fail(409, 'Bước học này chưa được mở hoặc đã hoàn thành.')
+    }
     return state.generatedExercises.filter(item => item.learningStepId === Number(match[1]) && (!approvedOnly || item.approvalStatus === 'APPROVED')).map(exerciseView)
   }
   match = route.match(/^\/api\/exercises\/questions\/(\d+)(?:\/(review))?$/)
@@ -485,7 +492,15 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
   if (match && method === 'POST') {
     const user = requireActor(['STUDENT'])
     const isExercise = Boolean(match[2])
-    const exerciseIds = isExercise ? state.generatedExercises.filter(item => item.learningStepId === Number(match[2]) && item.approvalStatus === 'APPROVED').map(item => item.questionId) : []
+    const exerciseStepId = isExercise ? Number(match[2]) : null
+    const stepContext = isExercise && state.learningPaths
+      .filter(pathItem => pathItem.studentId === user.id)
+      .flatMap(pathItem => pathItem.steps.map(step => ({ pathItem, step })))
+      .find(item => item.step.id === exerciseStepId)
+    if (isExercise && !stepContext) fail(404, 'Không tìm thấy bước học.')
+    if (isExercise && stepContext.step.status !== 'IN_PROGRESS') fail(409, 'Bước học này chưa được mở hoặc đã hoàn thành.')
+    const exerciseIds = isExercise ? state.generatedExercises.filter(item => item.learningStepId === exerciseStepId && item.approvalStatus === 'APPROVED').map(item => item.questionId) : []
+    if (isExercise && !exerciseIds.length) fail(409, 'Bước học chưa có bài tập được duyệt.')
     const assessmentId = isExercise ? null : Number(match[1])
     const assessment = state.assessments.find(item => item.id === assessmentId)
     if (!isExercise && (!assessment?.published || !assessment.classroomIds.includes(user.classroomId))) fail(403, 'Bài kiểm tra chưa được giao cho em.')

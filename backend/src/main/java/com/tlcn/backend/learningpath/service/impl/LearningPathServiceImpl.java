@@ -149,35 +149,18 @@ public class LearningPathServiceImpl implements LearningPathService {
         if (status == LearningStepStatus.LOCKED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể chuyển một bước học về trạng thái khóa.");
         }
+        if (status == LearningStepStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ hoàn thành bước học sau khi nộp bài luyện tập và đạt điểm mục tiêu.");
+        }
         if (status == LearningStepStatus.IN_PROGRESS) {
             if (step.getStatus() == LearningStepStatus.IN_PROGRESS) {
                 return path;
             }
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bước học này chưa được mở hoặc đã hoàn thành.");
         }
-        if (step.getStatus() != LearningStepStatus.IN_PROGRESS) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể hoàn thành bước đang học.");
-        }
-
-        step.setStatus(LearningStepStatus.COMPLETED);
-        steps.save(step);
-        List<LearningStep> orderedSteps = steps.findByPathIdOrderByStepOrderAsc(pathId);
-        orderedSteps.stream()
-                .filter(next -> next.getStepOrder() > step.getStepOrder())
-                .filter(next -> next.getStatus() == LearningStepStatus.LOCKED)
-                .findFirst()
-                .ifPresent(next -> {
-                    next.setStatus(LearningStepStatus.IN_PROGRESS);
-                    steps.save(next);
-                });
-        boolean complete = orderedSteps.stream().allMatch(item -> item.getId().equals(stepId)
-                || item.getStatus() == LearningStepStatus.COMPLETED);
-        if (complete) {
-            path.setStatus(LearningPathStatus.COMPLETED);
-        }
-        path.setUpdatedAt(Instant.now());
-        paths.save(path);
-        return paths.findByIdAndStudentId(pathId, studentId).orElse(path);
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Chỉ có thể tiếp tục bước học đang mở.");
     }
 
     private void requireCanManage(Long studentId, UserSummary actor) {
