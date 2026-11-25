@@ -117,7 +117,7 @@ export default function ExercisesPage() {
   if (access !== 'allowed') return <main className="exercise-page"><section className="exercise-gate"><h1>{access === 'signed-out' ? 'Hãy đăng nhập' : access === 'missing-step' ? 'Chưa có bước học' : 'Không có quyền truy cập'}</h1><p>{access === 'missing-step' ? 'Mở bài tập từ một bước trong lộ trình học tập của em.' : 'Đăng nhập đúng vai trò để xem nội dung này.'}</p><Link to="/login">Đến trang đăng nhập</Link></section></main>
 
   return <main className="exercise-page">
-    <header className="exercise-header"><Link to="/" className="exercise-brand">✿ TLCN</Link><div>{user?.fullName}<span>{isTeacher ? 'Giáo viên' : 'Học sinh'}</span></div></header>
+    <header className="exercise-header"><Link to="/" className="exercise-brand">✿ TLCN</Link><div>{user?.fullName}<span>{isTeacher ? 'Giáo viên' : 'Học sinh'}</span></div>{stepId && <Link className="exercise-path-link" to="/my-learning-path">Về lộ trình</Link>}</header>
     <section className="exercise-heading"><p className="exercise-kicker">LUYỆN TẬP CÁ NHÂN HÓA</p><h1>{stepId ? 'Bài tập của em' : 'Duyệt bài tập AI'}</h1><p>{stepId ? 'Các câu hỏi đã được giáo viên kiểm tra và duyệt.' : 'Xem đáp án, chỉnh sửa nội dung rồi duyệt trước khi giao cho học sinh.'}</p></section>
     {notice && <p className="exercise-notice" role="status">{notice}</p>}
 

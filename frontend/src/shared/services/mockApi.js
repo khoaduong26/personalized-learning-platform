@@ -95,11 +95,15 @@ function studentsFor(classroomId) {
   return state.students.filter(item => classroom?.studentIds.includes(item.id))
 }
 
+function exerciseQuestion(item) {
+  return { ...item, id: item.questionId, kind: item.kind || 'MULTIPLE_CHOICE' }
+}
+
 function attemptSummary(attempt) {
   const assessment = state.assessments.find(item => item.id === attempt.assessmentId)
   const exercise = state.generatedExercises.find(item => item.questionId === attempt.exerciseQuestionIds?.[0])
   const questions = attempt.assessmentId ? assessment?.questions || []
-    : state.generatedExercises.filter(item => attempt.exerciseQuestionIds?.includes(item.questionId)).map(item => ({ ...item, id: item.questionId }))
+    : state.generatedExercises.filter(item => attempt.exerciseQuestionIds?.includes(item.questionId)).map(exerciseQuestion)
   return {
     id: attempt.id,
     assessmentId: attempt.assessmentId ?? null,
@@ -126,7 +130,8 @@ function assessmentQuestionById(assessment, questionId) {
 
 function questionForAttempt(attempt, questionId) {
   if (attempt.assessmentId) return assessmentQuestionById(state.assessments.find(item => item.id === attempt.assessmentId), questionId)
-  return state.generatedExercises.find(item => item.questionId === Number(questionId) && attempt.exerciseQuestionIds?.includes(item.questionId))
+  const item = state.generatedExercises.find(value => value.questionId === Number(questionId) && attempt.exerciseQuestionIds?.includes(value.questionId))
+  return item ? exerciseQuestion(item) : undefined
 }
 
 function answerDraftView(answer) {
@@ -137,7 +142,7 @@ function resultView(attempt) {
   const summary = attemptSummary(attempt)
   const questions = attempt.assessmentId
     ? state.assessments.find(item => item.id === attempt.assessmentId)?.questions || []
-    : state.generatedExercises.filter(item => attempt.exerciseQuestionIds?.includes(item.questionId)).map(item => ({ ...item, id: item.questionId }))
+    : state.generatedExercises.filter(item => attempt.exerciseQuestionIds?.includes(item.questionId)).map(exerciseQuestion)
   return {
     attempt: summary,
     answers: questions.map(question => {
@@ -162,7 +167,7 @@ function resultView(attempt) {
 function publishAttempt(attempt) {
   const questions = attempt.assessmentId
     ? state.assessments.find(item => item.id === attempt.assessmentId)?.questions || []
-    : state.generatedExercises.filter(item => attempt.exerciseQuestionIds?.includes(item.questionId)).map(item => ({ ...item, id: item.questionId }))
+    : state.generatedExercises.filter(item => attempt.exerciseQuestionIds?.includes(item.questionId)).map(exerciseQuestion)
   attempt.totalScore = 0
   for (const question of questions) {
     const answer = attempt.answers.find(item => item.questionId === question.id)
@@ -184,6 +189,128 @@ function publishAttempt(attempt) {
   return attempt
 }
 
+function masteryLevelForScore(score) {
+  if (score >= 90) return 'MASTERED'
+  if (score >= 75) return 'PROFICIENT'
+  if (score >= 50) return 'DEVELOPING'
+  if (score > 0) return 'BEGINNING'
+  return 'NOT_STARTED'
+}
+
+function updateMockLearningData(attempt) {
+  const questions = attempt.assessmentId
+    ? state.assessments.find(item => item.id === attempt.assessmentId)?.questions || []
+    : state.generatedExercises.filter(item => attempt.exerciseQuestionIds?.includes(item.questionId)).map(exerciseQuestion)
+  const byLesson = new Map()
+  for (const question of questions) {
+    const lessonQuestions = byLesson.get(question.lessonId) || []
+    lessonQuestions.push(question)
+    byLesson.set(question.lessonId, lessonQuestions)
+  }
+
+  const studentId = attempt.studentId
+  const recordedAt = attempt.submittedAt
+  for (const [lessonId, lessonQuestions] of byLesson) {
+    const correct = lessonQuestions.filter(question => attempt.answers.find(answer => answer.questionId === question.id)?.correct).length
+    const attemptScore = 100 * correct / lessonQuestions.length
+    let profile = state.masteryProfiles.find(item => item.studentId === studentId)
+    if (!profile) {
+      profile = { studentId, records: [] }
+      state.masteryProfiles.push(profile)
+    }
+    let record = profile.records.find(item => item.lessonId === lessonId)
+    const existed = Boolean(record)
+    if (!record) {
+      record = { id: nextId++, studentId, lessonId, score: 0, level: 'NOT_STARTED', confidence: 0 }
+      profile.records.push(record)
+    }
+    const triggerSource = attempt.assessmentId
+      ? `ASSESSMENT_${attempt.id}`
+      : `LEARNING_STEP_${attempt.learningStepId}_ATTEMPT_${attempt.id}`
+    if (state.masteryHistory.some(item => item.masteryId === record.id && item.triggerSource === triggerSource)) continue
+
+    const oldScore = existed ? Number(record.score) : null
+    const newScore = existed ? (oldScore + attemptScore) / 2 : attemptScore
+    const previousEvidence = state.masteryHistory.filter(item => item.masteryId === record.id).length
+    record.score = newScore
+    record.level = masteryLevelForScore(newScore)
+    record.confidence = Math.min(1, (previousEvidence + 1) / 5)
+    record.lastUpdated = recordedAt
+    state.masteryHistory.push({
+      id: nextId++, masteryId: record.id, oldScore, newScore, recordedAt, triggerSource,
+    })
+
+    const incorrectAnswers = lessonQuestions
+      .map(question => ({ question, answer: attempt.answers.find(item => item.questionId === question.id) }))
+      .filter(item => item.answer && !item.answer.correct)
+    for (const { answer } of incorrectAnswers) {
+      if (state.studentErrors.some(item => item.answerId === answer.id)) continue
+      answer.id ||= nextId++
+      state.studentErrors.push({
+        id: nextId++, studentId, lessonId, answerId: answer.id,
+        errorType: 'Câu trả lời chưa chính xác',
+        description: 'Câu trả lời chưa đạt đáp án chuẩn. Cần giáo viên xem lại cách làm để xác định nguyên nhân cụ thể.',
+        createdAt: recordedAt,
+      })
+    }
+
+    const recentErrors = lessonQuestions.length - correct
+    const existingGap = state.knowledgeGaps.find(item => item.studentId === studentId && item.lessonId === lessonId)
+    if (newScore < 70 || recentErrors > 0) {
+      const gap = existingGap || { id: nextId++, studentId, lessonId, identifiedAt: recordedAt }
+      gap.priority = newScore < 40 || recentErrors >= 2 ? 'HIGH' : newScore < 70 ? 'MEDIUM' : 'LOW'
+      gap.rootCause = `Điểm thành thạo hiện tại ${Math.round(newScore)}/100; có ${recentErrors} câu sai trong lượt làm này.`
+      gap.status = attempt.learningStepId ? 'IN_REMEDIATION' : 'IDENTIFIED'
+      if (!existingGap) state.knowledgeGaps.push(gap)
+    } else if (existingGap) {
+      existingGap.status = 'RESOLVED'
+      existingGap.rootCause = 'Đã đạt ngưỡng thành thạo từ 70/100 trở lên.'
+    }
+  }
+
+  if (!attempt.learningStepId) return
+  const path = state.learningPaths.find(item => item.studentId === studentId
+    && item.steps.some(step => step.id === attempt.learningStepId))
+  const step = path?.steps.find(item => item.id === attempt.learningStepId)
+  if (!path || !step) return
+  const stepQuestions = questions.filter(question => question.lessonId === step.lessonId)
+  if (!stepQuestions.length) return
+  const stepCorrect = stepQuestions.filter(question => attempt.answers.find(answer => answer.questionId === question.id)?.correct).length
+  const stepScore = 100 * stepCorrect / stepQuestions.length
+  let changed = false
+  if (stepScore >= (step.targetScore ?? 70)) {
+    if (step.status !== 'COMPLETED') {
+      step.status = 'COMPLETED'
+      changed = true
+    }
+    const nextStep = path.steps
+      .filter(item => item.stepOrder > step.stepOrder && item.status === 'LOCKED')
+      .sort((left, right) => left.stepOrder - right.stepOrder)[0]
+    if (nextStep) {
+      nextStep.status = 'IN_PROGRESS'
+      changed = true
+    }
+    const nextStatus = path.steps.every(item => item.status === 'COMPLETED') ? 'COMPLETED' : 'ACTIVE'
+    if (path.status !== nextStatus) {
+      path.status = nextStatus
+      changed = true
+    }
+  } else {
+    if (step.status !== 'IN_PROGRESS') {
+      step.status = 'IN_PROGRESS'
+      changed = true
+    }
+    if (path.status !== 'ACTIVE') {
+      path.status = 'ACTIVE'
+      changed = true
+    }
+  }
+  if (changed) {
+    path.version += 1
+    path.updatedAt = recordedAt
+  }
+}
+
 function mockQuestion(input) {
   const options = (input.options || []).map((option, index) => ({ ...option, id: nextId++, displayOrder: option.displayOrder ?? index }))
   return {
@@ -200,7 +327,7 @@ function mockQuestion(input) {
 
 function exerciseView(item) {
   return {
-    id: item.id,
+    id: item.questionId,
     questionId: item.questionId,
     learningStepId: item.learningStepId,
     lessonId: item.lessonId,
@@ -527,6 +654,7 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
     if (match[2] === 'submit' && method === 'POST') {
       if (attempt.status !== 'IN_PROGRESS') fail(409, 'Bài làm đã được nộp.')
       publishAttempt(attempt)
+      updateMockLearningData(attempt)
       return attemptSummary(attempt)
     }
     if (match[3] && method === 'PUT') {
