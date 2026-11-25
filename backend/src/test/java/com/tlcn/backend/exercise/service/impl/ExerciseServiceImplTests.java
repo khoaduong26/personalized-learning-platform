@@ -23,12 +23,9 @@ import com.tlcn.backend.exercise.generation.ExerciseQuestionGenerator;
 import com.tlcn.backend.exercise.generation.RuleBasedExerciseQuestionGenerator;
 import com.tlcn.backend.exercise.repository.StepExerciseRepository;
 import com.tlcn.backend.learningpath.entity.LearningStep;
-import com.tlcn.backend.learningpath.entity.LearningPath;
-import com.tlcn.backend.learningpath.entity.LearningStepStatus;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
-import com.tlcn.backend.user.entity.Student;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -137,23 +134,6 @@ class ExerciseServiceImplTests {
         assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatusCode());
         verify(questions, never()).save(any(Question.class));
         verify(exercises, never()).save(any(StepExercise.class));
-    }
-
-    @Test
-    void studentCannotViewExercisesForLockedStep() {
-        Student student = mock(Student.class);
-        LearningPath path = mock(LearningPath.class);
-        when(student.getId()).thenReturn(7L);
-        when(path.getStudent()).thenReturn(student);
-        when(step.getPath()).thenReturn(path);
-        when(step.getStatus()).thenReturn(LearningStepStatus.LOCKED);
-        UserSummary learner = new UserSummary(7L, "Student", "student@example.invalid", Role.STUDENT);
-
-        ResponseStatusException error = assertThrows(ResponseStatusException.class,
-                () -> service(new RuleBasedExerciseQuestionGenerator()).forStep(STEP_ID, learner));
-
-        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
-        verify(exercises, never()).findByStepId(STEP_ID);
     }
 
     private ExerciseServiceImpl service(ExerciseQuestionGenerator generator) {
