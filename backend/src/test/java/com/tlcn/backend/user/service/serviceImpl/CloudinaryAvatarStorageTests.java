@@ -41,6 +41,12 @@ class CloudinaryAvatarStorageTests {
         server.verify();
     }
 
+    @Test void missingConfigurationDoesNotRequireAnHttpClient() {
+        var storage = new CloudinaryAvatarStorage("", "", "");
+        var error = assertThrows(ProfileException.class, () -> storage.upload(42L, new byte[]{1}, "image/png"));
+        assertEquals("AVATAR_STORAGE_UNAVAILABLE", error.getCode());
+    }
+
     @Test void providerFailureDoesNotExposeResponseSecrets() {
         server.expect(requestTo("https://api.cloudinary.com/v1_1/demo/image/upload"))
                 .andRespond(withStatus(HttpStatus.UNAUTHORIZED).body("private provider detail secret"));

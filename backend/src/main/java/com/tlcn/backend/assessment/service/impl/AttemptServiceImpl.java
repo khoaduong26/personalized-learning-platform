@@ -8,6 +8,7 @@ import com.tlcn.backend.assessment.service.AttemptService;
 import com.tlcn.backend.mastery.service.MasteryService;
 import com.tlcn.backend.exercise.repository.StepExerciseRepository;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
+import com.tlcn.backend.learningpath.entity.LearningStepStatus;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.repository.StudentRepository;
@@ -73,6 +74,8 @@ public class AttemptServiceImpl implements AttemptService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bước học."));
         if (!step.getPath().getStudent().getId().equals(actor.id()))
             throw forbidden();
+        if (step.getStatus() != LearningStepStatus.IN_PROGRESS)
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Bước học này chưa được mở hoặc đã hoàn thành.");
         boolean hasApprovedExercise = stepExercises.findByStepId(stepId).stream()
                 .anyMatch(item -> item.getQuestion().getApprovalStatus() == ApprovalStatus.APPROVED);
         if (!hasApprovedExercise)
@@ -163,7 +166,7 @@ public class AttemptServiceImpl implements AttemptService {
     }
 
     private void grade(StudentAnswer answer) {
-        Question question = answer.getQuestion();
+        Question question = (Question) Hibernate.unproxy(answer.getQuestion());
         double max = question.getScore();
         if (question instanceof MultipleChoiceQuestion mc && answer instanceof MultipleChoiceAnswer selected) {
             Set<Long> expected = mc.getOptions().stream().filter(Option::isCorrect).map(Option::getId)
@@ -216,7 +219,10 @@ public class AttemptServiceImpl implements AttemptService {
         if (actor.role() == Role.TEACHER) {
             AssessmentAttempt item = attempts.findById(id).orElseThrow(() -> notFound());
             if (item.getAssessment() != null) {
-                assessments.ownedAssessment(item.getAssessment().getId(), actor);
+                boolean visibleInStudentHistory = assessments.attemptsForStudent(item.getStudent().getId(), actor)
+                        .stream().anyMatch(attempt -> attempt.getId().equals(item.getId()));
+                if (!visibleInStudentHistory)
+                    throw forbidden();
             } else if (item.getLearningStep() == null || item.getStudent().getClassroom() == null
                     || !item.getStudent().getClassroom().getTeacher().getId().equals(actor.id())) {
                 throw forbidden();

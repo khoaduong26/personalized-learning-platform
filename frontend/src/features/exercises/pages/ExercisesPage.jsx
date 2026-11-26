@@ -6,6 +6,8 @@ import {
   getExerciseResult, getPendingExercises, getStepExercises, reviewExercise, saveExerciseAnswer,
   startExerciseAttempt, submitExerciseAttempt, updateExercise,
 } from '../services/exerciseApi'
+import { createExerciseDraft, toExerciseUpdate, validateExerciseUpdate } from '../services/exerciseDraft'
+import { restoreExerciseAnswers, toExerciseAnswerPayload } from '../services/exerciseAttempt'
 import '../styles/exercises.css'
 
 const kindName = { MULTIPLE_CHOICE: 'Trắc nghiệm', FILL_BLANK: 'Điền khuyết', SHORT_ANSWER: 'Trả lời ngắn' }
@@ -75,12 +77,7 @@ function ExerciseWorkspace({ stepId }) {
   const submit = () => run(async () => {
     for (const question of questions) {
       const answer = answers[question.id] || {}
-      const payload = question.kind === 'MULTIPLE_CHOICE'
-        ? { questionId: question.id, selectedOptionIds: answer.selectedOptionIds || [] }
-        : question.kind === 'FILL_BLANK'
-          ? { questionId: question.id, blankAnswers: answer.blankAnswers || blankAnswers(question) }
-          : { questionId: question.id, content: answer.content || '' }
-      await saveExerciseAnswer(attempt.id, payload)
+      await saveExerciseAnswer(attempt.id, toExerciseAnswerPayload(question, answer))
     }
     const submitted = await submitExerciseAttempt(attempt.id)
     setSubmittedId(submitted.id)
@@ -88,38 +85,27 @@ function ExerciseWorkspace({ stepId }) {
     setResult(await getExerciseResult(submitted.id))
   })
 
+  const beginEdit = question => {
+    setEditingId(question.questionId)
+    setDraft(createExerciseDraft(question))
+    setNotice('')
+  }
+
   const saveEdit = question => run(async () => {
-    const content = window.prompt('Sửa nội dung câu hỏi', question.content)
-    if (content === null) return
-    let options = question.options.map(option => ({ name: option.name, correct: option.correct }))
-    let expectedAnswers = question.expectedAnswers
-    if (question.kind === 'MULTIPLE_CHOICE') {
-      const choices = window.prompt('Mỗi lựa chọn một dòng; thêm * trước đáp án đúng.', options.map(option => `${option.correct ? '*' : ''}${option.name}`).join('\n'))
-      if (choices === null) return
-      options = choices.split('\n').map(line => line.trim()).filter(Boolean).map(line => ({
-        name: line.replace(/^\*/, '').trim(), correct: line.startsWith('*'),
-      }))
-    } else {
-      const expected = window.prompt('Đáp án chuẩn', expectedAnswers.join('\n'))
-      if (expected === null) return
-      expectedAnswers = question.kind === 'FILL_BLANK' ? expected.split('\n').map(value => value.trim()) : [expected.trim()]
-    }
-    const explanation = window.prompt('Lời giải (có thể để trống)', question.explanation || '')
-    if (explanation === null) return
-    const body = {
-      content, difficulty: question.difficulty, score: question.score, lessonId: question.lessonId,
-      kind: question.kind, explanation, allowMultiple: question.allowMultiple,
-      options: options.map((option, displayOrder) => ({ ...option, displayOrder })),
-      blanks: expectedAnswers.map((correctAnswer, position) => ({ correctAnswer, position })),
-      correctAnswer: expectedAnswers[0] || '',
-    }
-    const updated = await updateExercise(question.questionId, body)
+    const payload = toExerciseUpdate(question, draft)
+    const validationError = validateExerciseUpdate(question, payload)
+    if (validationError) throw new Error(validationError)
+    const updated = await updateExercise(question.questionId, payload)
     setPending(items => items.map(item => item.questionId === question.questionId ? updated : item))
+    setEditingId(null)
+    setDraft(null)
+    setNotice('Đã lưu chỉnh sửa. Bài tập vẫn đang chờ duyệt.')
   })
 
   const review = (questionId, status) => run(async () => {
     const updated = await reviewExercise(questionId, status)
     setPending(items => items.filter(item => item.questionId !== questionId))
+    if (editingId === questionId) { setEditingId(null); setDraft(null) }
     setNotice(updated.status === 'APPROVED' ? 'Đã duyệt bài tập.' : 'Đã từ chối bài tập.')
   })
 
@@ -143,9 +129,17 @@ function ExerciseWorkspace({ stepId }) {
     {isTeacher && !loadError && <section className="exercise-list" aria-label="Bài tập chờ duyệt">
       {pending.length === 0 ? <p className="exercise-empty">Không có bài tập nào đang chờ duyệt.</p> : pending.map(question => <article className="exercise-card" key={question.questionId}>
         <div className="exercise-card-meta"><span>{kindName[question.kind]}</span><span>{question.difficulty} · {question.score} điểm</span></div>
-        <h2>{question.content}</h2><p className="exercise-answer">Đáp án: {question.kind === 'MULTIPLE_CHOICE' ? question.options.filter(option => option.correct).map(option => option.name).join(', ') : question.expectedAnswers.join(', ')}</p>
-        {question.explanation && <p className="exercise-explanation">{question.explanation}</p>}
-        <div className="exercise-actions"><button disabled={busy} onClick={() => saveEdit(question)} className="exercise-secondary">Sửa câu hỏi</button><button disabled={busy} onClick={() => review(question.questionId, 'REJECTED')} className="exercise-secondary">Từ chối</button><button disabled={busy} onClick={() => review(question.questionId, 'APPROVED')} className="exercise-primary">Duyệt và giao</button></div>
+        {editingId === question.questionId && draft ? <div className="exercise-edit-form">
+          <label>Nội dung câu hỏi<textarea rows="3" value={draft.content} onChange={event => setDraft(current => ({ ...current, content: event.target.value }))} /></label>
+          <div className="exercise-edit-row"><label>Mức độ<select value={draft.difficulty} onChange={event => setDraft(current => ({ ...current, difficulty: event.target.value }))}><option value="EASY">Dễ</option><option value="MEDIUM">Vừa</option><option value="HARD">Khó</option></select></label><label>Điểm<input type="number" min="0.1" step="0.1" value={draft.score} onChange={event => setDraft(current => ({ ...current, score: event.target.value }))} /></label></div>
+          {question.kind === 'MULTIPLE_CHOICE' ? <label>Các lựa chọn (mỗi dòng một lựa chọn, thêm * trước đáp án đúng)<textarea rows="4" value={draft.choices} onChange={event => setDraft(current => ({ ...current, choices: event.target.value }))} /></label> : <label>{question.kind === 'FILL_BLANK' ? 'Đáp án cho từng ô (mỗi dòng một đáp án)' : 'Đáp án chuẩn'}<textarea rows={question.kind === 'FILL_BLANK' ? 3 : 2} value={draft.expectedAnswers} onChange={event => setDraft(current => ({ ...current, expectedAnswers: event.target.value }))} /></label>}
+          <label>Lời giải<textarea rows="2" value={draft.explanation} onChange={event => setDraft(current => ({ ...current, explanation: event.target.value }))} /></label>
+          <div className="exercise-actions"><button disabled={busy} onClick={() => { setEditingId(null); setDraft(null) }} className="exercise-secondary">Hủy sửa</button><button disabled={busy || !draft.content.trim() || !Number(draft.score)} onClick={() => saveEdit(question)} className="exercise-primary">Lưu chỉnh sửa</button></div>
+        </div> : <>
+          <h2>{question.content}</h2><p className="exercise-answer">Đáp án: {question.kind === 'MULTIPLE_CHOICE' ? question.options.filter(option => option.correct).map(option => option.name).join(', ') : question.expectedAnswers.join(', ')}</p>
+          {question.explanation && <p className="exercise-explanation">{question.explanation}</p>}
+          <div className="exercise-actions"><button disabled={busy} onClick={() => beginEdit(question)} className="exercise-secondary">Sửa câu hỏi</button><button disabled={busy} onClick={() => review(question.questionId, 'REJECTED')} className="exercise-secondary">Từ chối</button><button disabled={busy} onClick={() => review(question.questionId, 'APPROVED')} className="exercise-primary">Duyệt và giao</button></div>
+        </>}
       </article>)}
     </section>}
 

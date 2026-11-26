@@ -4,6 +4,7 @@ import com.tlcn.backend.learningpath.entity.LearningPath;
 import com.tlcn.backend.learningpath.entity.LearningPathStatus;
 import com.tlcn.backend.learningpath.entity.LearningStep;
 import com.tlcn.backend.learningpath.entity.LearningStepStatus;
+import com.tlcn.backend.learningpath.generation.LearningPathOrderer;
 import com.tlcn.backend.learningpath.repository.LearningPathRepository;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.learningpath.service.LearningPathService;
@@ -16,7 +17,9 @@ import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.repository.StudentRepository;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,13 +33,15 @@ public class LearningPathServiceImpl implements LearningPathService {
     private final LearningStepRepository steps;
     private final KnowledgeGapRepository gaps;
     private final StudentRepository students;
+    private final LearningPathOrderer orderer;
 
     public LearningPathServiceImpl(LearningPathRepository paths, LearningStepRepository steps,
-            KnowledgeGapRepository gaps, StudentRepository students) {
+            KnowledgeGapRepository gaps, StudentRepository students, LearningPathOrderer orderer) {
         this.paths = paths;
         this.steps = steps;
         this.gaps = gaps;
         this.students = students;
+        this.orderer = orderer;
     }
 
     @Override
@@ -71,6 +76,30 @@ public class LearningPathServiceImpl implements LearningPathService {
                     "Học sinh hiện không có khoảng trống kiến thức cần đưa vào lộ trình.");
         }
 
+        List<LearningPathOrderer.Candidate> candidates = java.util.stream.IntStream.range(0, openGaps.size())
+                .mapToObj(position -> {
+                    KnowledgeGap gap = openGaps.get(position);
+                    return new LearningPathOrderer.Candidate(position, gap.getLesson().getName(),
+                            gap.getLesson().getDescription(), gap.getPriority().name());
+                }).toList();
+        List<Integer> positions;
+        try {
+            positions = orderer.order(candidates);
+        } catch (RuntimeException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Không thể tạo đề xuất thứ tự lộ trình. Chưa có thay đổi nào được lưu.");
+        }
+        if (positions == null || positions.size() != openGaps.size()) {
+            throw invalidOrder();
+        }
+        Set<Integer> seenPositions = new HashSet<>();
+        for (Integer position : positions) {
+            if (position == null || position < 0 || position >= openGaps.size() || !seenPositions.add(position)) {
+                throw invalidOrder();
+            }
+        }
+        List<KnowledgeGap> orderedGaps = positions.stream().map(openGaps::get).toList();
+
         paths.findByStudentIdOrderByCreatedAtDesc(studentId).stream()
                 .filter(path -> path.getStatus() == LearningPathStatus.ACTIVE)
                 .forEach(path -> {
@@ -83,11 +112,11 @@ public class LearningPathServiceImpl implements LearningPathService {
         path.setVersion(paths.findMaxVersionByStudentId(studentId) + 1);
         path.setUpdatedAt(Instant.now());
 
-        int order = 1;
-        for (KnowledgeGap gap : openGaps) {
+        for (int index = 0; index < orderedGaps.size(); index++) {
+            KnowledgeGap gap = orderedGaps.get(index);
             LearningStep step = new LearningStep();
-            step.setStepOrder(order++);
-            step.setStatus(order == 2 ? LearningStepStatus.IN_PROGRESS : LearningStepStatus.LOCKED);
+            step.setStepOrder(index + 1);
+            step.setStatus(index == 0 ? LearningStepStatus.IN_PROGRESS : LearningStepStatus.LOCKED);
             step.setTargetScore(TARGET_SCORE);
             step.setPath(path);
             step.setLesson(gap.getLesson());
@@ -95,6 +124,11 @@ public class LearningPathServiceImpl implements LearningPathService {
             gap.setStatus(GapStatus.IN_REMEDIATION);
         }
         return paths.save(path);
+    }
+
+    private ResponseStatusException invalidOrder() {
+        return new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                "AI trả về thứ tự lộ trình không hợp lệ. Chưa có thay đổi nào được lưu.");
     }
 
     @Override
@@ -115,35 +149,18 @@ public class LearningPathServiceImpl implements LearningPathService {
         if (status == LearningStepStatus.LOCKED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể chuyển một bước học về trạng thái khóa.");
         }
+        if (status == LearningStepStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ hoàn thành bước học sau khi nộp bài luyện tập và đạt điểm mục tiêu.");
+        }
         if (status == LearningStepStatus.IN_PROGRESS) {
             if (step.getStatus() == LearningStepStatus.IN_PROGRESS) {
                 return path;
             }
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bước học này chưa được mở hoặc đã hoàn thành.");
         }
-        if (step.getStatus() != LearningStepStatus.IN_PROGRESS) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể hoàn thành bước đang học.");
-        }
-
-        step.setStatus(LearningStepStatus.COMPLETED);
-        steps.save(step);
-        List<LearningStep> orderedSteps = steps.findByPathIdOrderByStepOrderAsc(pathId);
-        orderedSteps.stream()
-                .filter(next -> next.getStepOrder() > step.getStepOrder())
-                .filter(next -> next.getStatus() == LearningStepStatus.LOCKED)
-                .findFirst()
-                .ifPresent(next -> {
-                    next.setStatus(LearningStepStatus.IN_PROGRESS);
-                    steps.save(next);
-                });
-        boolean complete = orderedSteps.stream().allMatch(item -> item.getId().equals(stepId)
-                || item.getStatus() == LearningStepStatus.COMPLETED);
-        if (complete) {
-            path.setStatus(LearningPathStatus.COMPLETED);
-        }
-        path.setUpdatedAt(Instant.now());
-        paths.save(path);
-        return paths.findByIdAndStudentId(pathId, studentId).orElse(path);
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Chỉ có thể tiếp tục bước học đang mở.");
     }
 
     private void requireCanManage(Long studentId, UserSummary actor) {

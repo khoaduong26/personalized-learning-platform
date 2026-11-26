@@ -5,7 +5,7 @@ async function classroomRequest(path, options = {}) {
   const headers = { ...options.headers }
   if (!['GET', 'HEAD'].includes(method)) {
     const csrf = await httpRequest('/api/csrf')
-    headers['X-XSRF-TOKEN'] = csrf.token
+    headers[csrf.headerName] = csrf.token
   }
   return httpRequest(path, { ...options, headers })
 }

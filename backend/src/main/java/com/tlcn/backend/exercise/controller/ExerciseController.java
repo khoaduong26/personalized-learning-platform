@@ -4,6 +4,7 @@ import com.tlcn.backend.assessment.dto.QuestionRequest;
 import com.tlcn.backend.assessment.dto.QuestionView;
 import com.tlcn.backend.assessment.entity.*;
 import com.tlcn.backend.exercise.service.ExerciseService;
+import com.tlcn.backend.exercise.service.ExerciseGenerationResult;
 import com.tlcn.backend.user.dto.UserSummary;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -48,6 +49,12 @@ public class ExerciseController {
         }
     }
 
+    public record GenerationView(ReviewView question, String provider, boolean demo, String notice) {
+        static GenerationView from(ExerciseGenerationResult result) {
+            return new GenerationView(ReviewView.from(result.question()), result.provider(), result.demo(), result.notice());
+        }
+    }
+
     private final ExerciseService service;
 
     public ExerciseController(ExerciseService service) {
@@ -66,6 +73,13 @@ public class ExerciseController {
     public ReviewView createGenerated(@PathVariable Long stepId, @Valid @RequestBody QuestionRequest request,
             @AuthenticationPrincipal UserSummary actor) {
         return ReviewView.from(service.createGenerated(stepId, request, actor));
+    }
+
+    @PostMapping("/steps/{stepId}/generate")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    public GenerationView generate(@PathVariable Long stepId, @AuthenticationPrincipal UserSummary actor) {
+        return GenerationView.from(service.generateForStep(stepId, actor));
     }
 
     @GetMapping("/pending-review")

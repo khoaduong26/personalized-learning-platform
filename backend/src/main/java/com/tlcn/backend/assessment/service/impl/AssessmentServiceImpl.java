@@ -12,6 +12,7 @@ import com.tlcn.backend.classroom.repository.ClassroomRepository;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.*;
 import com.tlcn.backend.user.repository.TeacherRepository;
+import com.tlcn.backend.user.repository.StudentRepository;
 import java.util.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,17 +27,20 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final LessonRepository lessons;
     private final TeacherRepository teachers;
     private final ClassroomRepository classrooms;
+    private final StudentRepository students;
 
     public AssessmentServiceImpl(AssessmentRepository assessments, QuestionRepository questions,
             AssessmentAttemptRepository attempts, LessonRepository lessons, TeacherRepository teachers,
             MultipleChoiceQuestionRepository multipleChoiceQuestions, FillBlankQuestionRepository fillBlankQuestions,
-            ShortAnswerQuestionRepository shortAnswerQuestions, ClassroomRepository classrooms) {
+            ShortAnswerQuestionRepository shortAnswerQuestions, ClassroomRepository classrooms,
+            StudentRepository students) {
         this.assessments = assessments;
         this.questions = questions;
         this.attempts = attempts;
         this.lessons = lessons;
         this.teachers = teachers;
         this.classrooms = classrooms;
+        this.students = students;
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +74,10 @@ public class AssessmentServiceImpl implements AssessmentService {
         List<Question> attached = questions.findAllById(request.questionIds());
         if (attached.size() != new HashSet<>(request.questionIds()).size())
             throw notFound("Một số câu hỏi không tồn tại.");
+        if (attached.stream().anyMatch(question -> question.isAiGenerated()
+                && question.getApprovalStatus() != ApprovalStatus.APPROVED))
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Chỉ có thể giao bài tập AI đã được giáo viên duyệt.");
         List<Classroom> assignedClassrooms = classrooms.findAllById(request.classroomIds());
         if (assignedClassrooms.size() != new HashSet<>(request.classroomIds()).size())
             throw notFound("Một số lớp học không tồn tại.");
@@ -175,10 +183,24 @@ public class AssessmentServiceImpl implements AssessmentService {
             throw forbidden();
         if (actor.role() != Role.STUDENT && actor.role() != Role.TEACHER && actor.role() != Role.ADMIN)
             throw forbidden();
+        Classroom classroom = null;
+        if (actor.role() == Role.TEACHER) {
+            var student = students.findById(studentId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
+            classroom = student.getClassroom();
+            if (classroom == null || !classroom.getTeacher().getId().equals(actor.id()))
+                throw forbidden();
+        }
         List<AssessmentAttempt> found = attempts.findByStudentIdOrderByStartedAtDesc(studentId);
-        if (actor.role() == Role.TEACHER)
-            found = found.stream().filter(a -> a.getAssessment() != null
-                    && a.getAssessment().getTeacher().getId().equals(actor.id())).toList();
+        if (actor.role() == Role.TEACHER) {
+            Long classroomId = classroom.getId();
+            found = found.stream().filter(attempt -> {
+                if (attempt.getLearningStep() != null)
+                    return attempt.getLearningStep().getPath().getStudent().getId().equals(studentId);
+                return attempt.getAssessment() != null && attempt.getAssessment().getClassrooms().stream()
+                        .anyMatch(assigned -> assigned.getId().equals(classroomId));
+            }).toList();
+        }
         return found;
     }
 

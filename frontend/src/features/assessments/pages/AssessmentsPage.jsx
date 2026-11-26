@@ -43,6 +43,17 @@ export default function AssessmentsPage() {
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
   const isStudent = user?.role === 'STUDENT'
 
+  const changeResultClass = id => {
+    setResultClassId(id)
+    setResultStudents([]); setResultStudentId(''); setTeacherHistory([])
+  }
+  const changeResultStudent = id => { setResultStudentId(id); setTeacherHistory([]) }
+  const changeSubject = id => {
+    setSubjectId(id); setTopics([]); setTopicId(''); setLessons([]); setLessonId(''); setBank([]); setSelectedQuestions([])
+  }
+  const changeTopic = id => { setTopicId(id); setLessons([]); setLessonId(''); setBank([]); setSelectedQuestions([]) }
+  const changeLesson = id => { setLessonId(id); setBank([]); setSelectedQuestions([]) }
+
   useEffect(() => {
     document.title = 'Bài kiểm tra · EduLearn'
     let active = true
@@ -64,7 +75,7 @@ export default function AssessmentsPage() {
   }, [])
 
   useEffect(() => {
-    if (!isTeacher || !resultClassId) { setResultStudents([]); setResultStudentId(''); return }
+    if (!isTeacher || !resultClassId) return
     let active = true
     getClassroomStudents(resultClassId).then(items => {
       if (!active) return
@@ -75,26 +86,26 @@ export default function AssessmentsPage() {
     return () => { active = false }
   }, [isTeacher, resultClassId])
   useEffect(() => {
-    if (!isTeacher || !resultStudentId) { setTeacherHistory([]); return }
+    if (!isTeacher || !resultStudentId) return
     let active = true
     getAttemptHistory(resultStudentId).then(items => { if (active) setTeacherHistory(items) }).catch(error => { if (active) setNotice(error.message) })
     return () => { active = false }
   }, [isTeacher, resultStudentId])
 
   useEffect(() => {
-    if (!subjectId) { setTopics([]); setTopicId(''); return }
+    if (!subjectId) return
     let active = true
     getTopics(subjectId).then(items => { if (active) { setTopics(items); setTopicId(items[0] ? String(items[0].id) : '') } }).catch(error => { if (active) setNotice(error.message) })
     return () => { active = false }
   }, [subjectId])
   useEffect(() => {
-    if (!topicId) { setLessons([]); setLessonId(''); return }
+    if (!topicId) return
     let active = true
     getLessons(topicId).then(items => { if (active) { setLessons(items); setLessonId(items[0] ? String(items[0].id) : '') } }).catch(error => { if (active) setNotice(error.message) })
     return () => { active = false }
   }, [topicId])
   useEffect(() => {
-    if (!lessonId || !isTeacher) { setBank([]); return }
+    if (!lessonId || !isTeacher) return
     let active = true
     getQuestionBank(lessonId).then(items => { if (active) setBank(items) }).catch(error => { if (active) setNotice(error.message) })
     return () => { active = false }
@@ -183,7 +194,7 @@ export default function AssessmentsPage() {
 
     {!activeAttempt && !result && isTeacher && <div className="assessment-teacher-grid">
       <section className="assessment-panel"><PanelTitle eyebrow="BƯỚC 1 · NGÂN HÀNG" title="Tạo câu hỏi" detail="Mỗi câu hỏi gắn với một bài học để phân tích kết quả." />
-        <div className="assessment-selects"><Select label="Môn học" value={subjectId} items={subjects} onChange={setSubjectId} /><Select label="Chủ đề" value={topicId} items={topics} onChange={setTopicId} /><Select label="Bài học / kiến thức" value={lessonId} items={lessons} onChange={setLessonId} /></div>
+        <div className="assessment-selects"><Select label="Môn học" value={subjectId} items={subjects} onChange={changeSubject} /><Select label="Chủ đề" value={topicId} items={topics} onChange={changeTopic} /><Select label="Bài học / kiến thức" value={lessonId} items={lessons} onChange={changeLesson} /></div>
         {lessonId ? <form className="assessment-form" onSubmit={saveQuestion}>
           <label>Nội dung câu hỏi<textarea required maxLength="4000" value={questionForm.content} onChange={e => setQuestionForm({ ...questionForm, content: e.target.value })} placeholder="Ví dụ: 8 + 7 bằng bao nhiêu?" /></label>
           <div className="assessment-form-row"><Select label="Dạng câu hỏi" value={questionForm.kind} items={[{ id: 'MULTIPLE_CHOICE', name: 'Trắc nghiệm' }, { id: 'FILL_BLANK', name: 'Điền khuyết' }, { id: 'SHORT_ANSWER', name: 'Trả lời ngắn' }]} onChange={kind => setQuestionForm({ ...questionForm, kind })} /><Select label="Độ khó" value={questionForm.difficulty} items={[{ id: 'EASY', name: 'Dễ' }, { id: 'MEDIUM', name: 'Vừa' }, { id: 'HARD', name: 'Khó' }]} onChange={difficulty => setQuestionForm({ ...questionForm, difficulty })} /><label>Điểm<input type="number" min="0.1" max="100" step="0.1" required value={questionForm.score} onChange={e => setQuestionForm({ ...questionForm, score: e.target.value })} /></label></div>
@@ -206,7 +217,7 @@ export default function AssessmentsPage() {
       </section>
       <section className="assessment-panel assessment-tests"><PanelTitle eyebrow="ĐỀ CỦA BẠN" title="Bài kiểm tra" detail="Bài nháp chỉ hiển thị với giáo viên cho đến khi công bố." />
         {assessments.length ? <div className="assessment-test-list">{assessments.map(test => <article className="assessment-test-item" key={test.id}><div><strong>{test.title}</strong><small>{types[test.type]} · {test.questions.length} câu · {test.classroomNames?.join(', ')}</small></div><div className="assessment-test-actions"><span className={`assessment-status ${test.published ? 'is-published' : ''}`}>{test.published ? 'Đã giao' : 'Bản nháp'}</span>{!test.published && <button disabled={busy} className="assessment-secondary" onClick={() => safeAction(async () => { const updated = await publishAssessment(test.id); setAssessments(current => current.map(item => item.id === updated.id ? updated : item)); setNotice('Đã công bố bài kiểm tra cho các lớp đã chọn.') })}>Công bố</button>}</div></article>)}</div> : <Empty text="Chưa có bài kiểm tra. Hãy tạo bản nháp đầu tiên." />}
-        <div className="assessment-results-filter"><PanelTitle eyebrow="UC11 · UC12" title="Kết quả học sinh" detail="Tra cứu điểm và câu trả lời trong các lớp của bạn." /><div className="assessment-form-row assessment-result-selects"><Select label="Lớp học" value={resultClassId} items={classrooms} onChange={setResultClassId} /><Select label="Học sinh" value={resultStudentId} items={resultStudents} onChange={setResultStudentId} /></div>{teacherHistory.length ? <div className="assessment-test-list">{teacherHistory.map(item => <article className="assessment-test-item" key={item.id}><div><strong>{item.assessmentTitle}</strong><small>{item.studentName} · {new Date(item.submittedAt || item.startedAt).toLocaleDateString('vi-VN')} · {item.status === 'SUBMITTED' ? `${item.totalScore}/${item.maxScore} điểm` : 'Đang làm'}</small></div>{item.status === 'SUBMITTED' && <button className="assessment-secondary" onClick={() => openResult(item.id)}>Xem kết quả</button>}</article>)}</div> : <Empty text={resultStudentId ? 'Học sinh này chưa có kết quả cho bài kiểm tra của bạn.' : 'Chọn lớp và học sinh để xem lịch sử.'} />}</div>
+        <div className="assessment-results-filter"><PanelTitle eyebrow="UC11 · UC12" title="Kết quả học sinh" detail="Tra cứu điểm và câu trả lời trong các lớp của bạn." /><div className="assessment-form-row assessment-result-selects"><Select label="Lớp học" value={resultClassId} items={classrooms} onChange={changeResultClass} /><Select label="Học sinh" value={resultStudentId} items={resultStudents} onChange={changeResultStudent} /></div>{teacherHistory.length ? <div className="assessment-test-list">{teacherHistory.map(item => <article className="assessment-test-item" key={item.id}><div><strong>{item.assessmentTitle}</strong><small>{item.studentName} · {new Date(item.submittedAt || item.startedAt).toLocaleDateString('vi-VN')} · {item.status === 'SUBMITTED' ? `${item.totalScore}/${item.maxScore} điểm` : 'Đang làm'}</small></div>{item.status === 'SUBMITTED' && <button className="assessment-secondary" onClick={() => openResult(item.id)}>Xem kết quả</button>}</article>)}</div> : <Empty text={resultStudentId ? 'Học sinh này chưa có kết quả cho bài kiểm tra của bạn.' : 'Chọn lớp và học sinh để xem lịch sử.'} />}</div>
       </section>
     </div>}
 

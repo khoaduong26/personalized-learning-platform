@@ -22,6 +22,7 @@ export default function ClassroomsPage() {
   const [teachers, setTeachers] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [students, setStudents] = useState([])
+  const [roster, setRoster] = useState({ key: '', state: 'idle', error: '' })
   const [classForm, setClassForm] = useState({ name: '', schoolYear: currentSchoolYear(), teacherId: '' })
   const [editingClass, setEditingClass] = useState(false)
   const [studentSearch, setStudentSearch] = useState('')
@@ -29,6 +30,7 @@ export default function ClassroomsPage() {
   const [candidates, setCandidates] = useState([])
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const rosterKey = `${selectedId ?? ''}:${studentSearch}`
 
   const loadClasses = useCallback(async preferredId => {
     const items = await getClassrooms()
@@ -60,11 +62,33 @@ export default function ClassroomsPage() {
   }, [selectedId, studentSearch])
 
   useEffect(() => {
-    if (access !== 'allowed') return
+    if (access !== 'allowed' || !selectedId) return
     let active = true
-    refreshStudents().then(items => { if (active) setStudents(items) }).catch(error => { if (active) setNotice(error.message) })
+    refreshStudents().then(items => {
+      if (active) {
+        setStudents(items)
+        setRoster({ key: rosterKey, state: 'ready', error: '' })
+      }
+    }).catch(error => {
+      if (active) {
+        setStudents([])
+        setRoster({ key: rosterKey, state: 'error', error: error.message })
+      }
+    })
     return () => { active = false }
-  }, [access, refreshStudents])
+  }, [access, refreshStudents, rosterKey, selectedId])
+
+  const retryStudents = async () => {
+    setRoster({ key: rosterKey, state: 'loading', error: '' })
+    try {
+      const items = await refreshStudents()
+      setStudents(items)
+      setRoster({ key: rosterKey, state: 'ready', error: '' })
+    } catch (error) {
+      setStudents([])
+      setRoster({ key: rosterKey, state: 'error', error: error.message })
+    }
+  }
 
   const mutate = async (action, message, preferredClassId) => {
     setBusy(true); setNotice('')
@@ -102,11 +126,16 @@ export default function ClassroomsPage() {
     setCandidates(current => current.filter(item => item.id !== student.id))
     setCandidateEmail('')
     setStudents(await refreshStudents())
+    setRoster({ key: rosterKey, state: 'ready', error: '' })
   }, `Đã thêm ${student.fullName} vào lớp.`, selectedId)
 
   const dropStudent = student => {
     if (!window.confirm(`Gỡ ${student.fullName} khỏi lớp?`)) return
-    mutate(async () => { await removeStudent(selectedId, student.id); setStudents(await refreshStudents()) }, 'Đã gỡ học sinh khỏi lớp.', selectedId)
+    mutate(async () => {
+      await removeStudent(selectedId, student.id)
+      setStudents(await refreshStudents())
+      setRoster({ key: rosterKey, state: 'ready', error: '' })
+    }, 'Đã gỡ học sinh khỏi lớp.', selectedId)
   }
 
   const saveStudent = async (studentId, body) => {
@@ -114,6 +143,7 @@ export default function ClassroomsPage() {
     try {
       await updateStudent(studentId, body)
       setStudents(await refreshStudents())
+      setRoster({ key: rosterKey, state: 'ready', error: '' })
       setNotice('Đã cập nhật hồ sơ học sinh.')
     } catch (error) { setNotice(error.message); throw error }
     finally { setBusy(false) }
@@ -130,6 +160,8 @@ export default function ClassroomsPage() {
 
   
   const selected = classes.find(item => item.id === selectedId)
+  const rosterState = roster.key === rosterKey ? roster.state : 'loading'
+  const visibleStudents = rosterState === 'ready' ? students : []
 
   return <main className="classrooms-shell">
     <header className="classrooms-topbar"><Link to="/" className="classrooms-brand"><span>✳</span> TLCN</Link><WorkspaceNavigation role={user?.role} /><div className="classrooms-user"><span>{user?.fullName}</span><span className="classrooms-role">{user?.role === 'ADMIN' ? 'Quản trị viên' : 'Giáo viên'}</span></div></header>
@@ -157,10 +189,15 @@ export default function ClassroomsPage() {
             {candidates.map(student => <div key={student.id} className="classrooms-candidate"><div><strong>{student.fullName}</strong><span>{student.email}</span></div><button type="button" disabled={busy} onClick={() => addStudent(student)}>+ Thêm vào lớp</button></div>)}
             {candidateEmail && !candidates.length && <span className="classrooms-search-hint">Tìm đúng email của học sinh chưa được xếp lớp.</span>}
           </section>
-          <div className="classrooms-roster-toolbar"><div><h3>Danh sách học sinh</h3><span>{students.length} em</span></div><form onSubmit={event => { event.preventDefault(); refreshStudents().then(setStudents).catch(error => setNotice(error.message)) }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
-          {students.length ? <div className="classrooms-students">{students.map(student => <StudentRow key={student.id} student={student} busy={busy} onSave={saveStudent} onRemove={() => dropStudent(student)} />)}</div> : <p className="classrooms-empty classrooms-roster-empty">Lớp chưa có học sinh. Tra cứu email ở phía trên để thêm thành viên.</p>}
-          <MasteryPanel students={students} />
-          <LearningPathPanel students={students} />
+          <div className="classrooms-roster-toolbar"><div><h3>Danh sách học sinh</h3><span>{visibleStudents.length} em</span></div><form onSubmit={event => { event.preventDefault(); retryStudents() }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
+          {rosterState === 'loading' ? <p className="classrooms-empty classrooms-roster-empty" role="status">Đang tải danh sách học sinh…</p>
+            : rosterState === 'error' ? <div className="classrooms-notice" role="alert"><span>{roster.error}</span><button type="button" onClick={retryStudents}>Thử tải lại</button></div>
+              : visibleStudents.length ? <div className="classrooms-students">{visibleStudents.map(student => <StudentRow key={student.id} student={student} busy={busy} onSave={saveStudent} onRemove={() => dropStudent(student)} />)}</div>
+                : <p className="classrooms-empty classrooms-roster-empty">Lớp chưa có học sinh. Tra cứu email ở phía trên để thêm thành viên.</p>}
+          {rosterState === 'ready' && <>
+            <MasteryPanel students={visibleStudents} classroomId={selectedId} />
+            <LearningPathPanel students={visibleStudents} />
+          </>}
         </> : <div className="classrooms-no-selection"><span>▦</span><h2>Chọn một lớp học</h2><p>Tạo lớp mới hoặc chọn lớp ở cột bên trái để quản lý danh sách học sinh.</p></div>}
       </section>
     </div>

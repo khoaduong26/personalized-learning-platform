@@ -1,7 +1,13 @@
 package com.tlcn.backend.mastery.service.impl;
 
 import com.tlcn.backend.assessment.entity.AssessmentAttempt;
+import com.tlcn.backend.assessment.entity.FillBlankAnswer;
+import com.tlcn.backend.assessment.entity.FillBlankQuestion;
+import com.tlcn.backend.assessment.entity.MultipleChoiceAnswer;
+import com.tlcn.backend.assessment.entity.MultipleChoiceQuestion;
 import com.tlcn.backend.assessment.entity.Question;
+import com.tlcn.backend.assessment.entity.ShortAnswerAnswer;
+import com.tlcn.backend.assessment.entity.ShortAnswerQuestion;
 import com.tlcn.backend.assessment.entity.StudentAnswer;
 import com.tlcn.backend.assessment.repository.StudentAnswerRepository;
 import com.tlcn.backend.classroom.repository.ClassroomRepository;
@@ -26,6 +32,7 @@ import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.repository.StudentRepository;
 import java.time.Instant;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
@@ -77,6 +84,34 @@ public class MasteryServiceImpl implements MasteryService {
         records.forEach(record -> {
             record.getLesson().getId();
             record.getLesson().getName();
+            StudentAnswer answer = record.getAnswer();
+            if (answer == null)
+                return;
+            Question question = (Question) Hibernate.unproxy(answer.getQuestion());
+            question.getContent();
+            question.getScore();
+            question.getExplanation();
+            if (question instanceof MultipleChoiceQuestion multipleChoice)
+                multipleChoice.getOptions().forEach(option -> option.getName());
+            if (question instanceof FillBlankQuestion fillBlank)
+                fillBlank.getBlanks().forEach(blank -> blank.getCorrectAnswer());
+            if (answer instanceof MultipleChoiceAnswer selected)
+                selected.getSelectedOptions().forEach(option -> option.getName());
+            if (answer instanceof FillBlankAnswer filled)
+                filled.getAnswers().forEach(item -> {
+                    item.getContent();
+                    item.getBlank().getPosition();
+                });
+            if (answer instanceof ShortAnswerAnswer shortAnswer)
+                shortAnswer.getContent();
+            AssessmentAttempt attempt = answer.getAttempt();
+            if (attempt != null) {
+                attempt.getId();
+                if (attempt.getAssessment() != null)
+                    attempt.getAssessment().getTitle();
+                if (attempt.getLearningStep() != null)
+                    attempt.getLearningStep().getLesson().getName();
+            }
         });
         return records;
     }
@@ -275,7 +310,12 @@ public class MasteryServiceImpl implements MasteryService {
         if (actor.role() != Role.ADMIN && (actor.role() != Role.TEACHER
                 || !classroom.getTeacher().getId().equals(actor.id())))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem lớp học này.");
-        return mastery.findByStudentClassroomId(classroomId);
+        List<KnowledgeMastery> records = mastery.findByStudentClassroomId(classroomId);
+        records.forEach(record -> {
+            record.getLesson().getId();
+            record.getLesson().getName();
+        });
+        return records;
     }
 
     private MasteryLevel level(double score) {
