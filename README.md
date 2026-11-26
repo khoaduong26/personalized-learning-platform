@@ -43,9 +43,17 @@ Nếu AI không khả dụng, giáo viên có thể tự soạn câu trắc nghi
 
 Backend luôn tạo lộ trình theo quy tắc ưu tiên của khoảng trống kiến thức. Gemini hoặc DeepSeek chỉ đề xuất thứ tự trong cùng một mức ưu tiên; backend từ chối đề xuất thiếu/trùng bước hoặc đảo thứ tự ưu tiên. Nếu AI lỗi hoặc đề xuất không hợp lệ, backend vẫn lưu lộ trình theo thứ tự xác định: mức ưu tiên, thời điểm phát hiện, rồi mã bài học. Cấu hình provider bằng `APP_LEARNING_PATH_GENERATOR_PROVIDER=gemini|deepseek`; Gemini có thể fallback qua DeepSeek theo `APP_AI_FALLBACK_PROVIDER` nếu khóa DeepSeek đã cấu hình. DeepSeek dùng `https://api.deepseek.com/chat/completions`, model mặc định `deepseek-flash`.
 
+### Thông báo realtime
+
+Frontend mở kết nối WebSocket đã xác thực tại `/ws/notifications` bằng cookie đăng nhập. Chuông thông báo hiển thị sự kiện realtime trong phiên hiện tại và tự kết nối lại khi mạng gián đoạn. Giáo viên được báo khi lộ trình mới được tạo hoặc bài AI đang chờ duyệt; học sinh được báo khi có lộ trình mới hoặc bài tập được giáo viên duyệt. Thông báo hiện được giữ trong bộ nhớ giao diện, không lưu thành lịch sử trên database. Vite proxy `/ws` tới backend cùng với các API.
+
 ### Xem bài làm của học sinh
 
 Trong **Hồ sơ năng lực** của từng học sinh, giáo viên có thể mở từng câu trả lời sai để xem nội dung câu hỏi, câu trả lời của học sinh, đáp án đúng, điểm câu hỏi và lời giải (nếu có). Quyền xem vẫn được giới hạn theo lớp mà giáo viên quản lý.
+
+### Dashboard quản trị
+
+Admin mở `/admin` để xem số lượng tài khoản theo vai trò, lớp học, học sinh đã xếp lớp, bài tập chờ duyệt và tài khoản chờ xác minh. Dashboard dùng các API quản lý hiện có; quyền truy cập được kiểm tra theo phiên đăng nhập và vai trò `ADMIN`.
 
 Tạo database trước khi chạy, ví dụ:
 
@@ -68,7 +76,7 @@ npm ci
 npm run dev
 ```
 
-Mở địa chỉ Vite hiển thị trong terminal (mặc định `http://localhost:5173`). Các request `/api`, `/oauth2` và `/login/oauth2` được Vite chuyển tiếp tới backend ở `http://localhost:8080`.
+Mở địa chỉ Vite hiển thị trong terminal (mặc định `http://localhost:5173`). Các request `/api`, `/oauth2`, `/login/oauth2` và kết nối WebSocket `/ws` được Vite chuyển tiếp tới backend ở `http://localhost:8080`.
 
 ### Kiểm tra
 

@@ -10,6 +10,8 @@ import NotFoundPage from '../pages/NotFoundPage'
 import ProfilePage from '../../features/profile/pages/ProfilePage'
 import StudentLearningPathPage from '../../features/learningpath/pages/StudentLearningPathPage'
 import ExercisesPage from '../../features/exercises/pages/ExercisesPage'
+import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage'
+import { NotificationProvider } from '../../shared/components/notifications/NotificationContext'
 
 function LoginRoute() {
   const [params] = useSearchParams()
@@ -21,8 +23,9 @@ function LoginRoute() {
 
 export default function AppRoutes() {
   return (
-    <Routes>
+    <NotificationProvider><Routes>
       <Route path="classrooms" element={<ClassroomsPage />} />
+      <Route path="admin" element={<AdminDashboardPage />} />
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
         <Route path="profile" element={<ProfilePage key="profile" />} />
@@ -40,6 +43,6 @@ export default function AppRoutes() {
       <Route path="my-learning-path" element={<StudentLearningPathPage />} />
       <Route path="exercises/review" element={<ExercisesPage />} />
       <Route path="exercises/steps/:stepId" element={<ExercisesPage />} />
-    </Routes>
+    </Routes></NotificationProvider>
   )
 }

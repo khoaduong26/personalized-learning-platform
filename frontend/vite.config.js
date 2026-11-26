@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => {
         '/api': apiTarget,
         '/oauth2': apiTarget,
         '/login/oauth2': apiTarget,
+        '/ws': { target: apiTarget, changeOrigin: true, ws: true },
       },
     },
   }

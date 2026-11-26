@@ -34,8 +34,8 @@ export default function HomePage() {
           <h1 id="hero-title">{isTeacher ? 'Góc làm việc của thầy cô' : isAdmin ? 'Quản trị EduLearn' : 'Cùng em học Toán lớp 2!'}</h1>
           <p className="home-lead">{isTeacher ? 'Quản lý lớp, giao bài kiểm tra và xem từng em cần luyện thêm phần nào.' : isAdmin ? 'Quản lý tài khoản, lớp học và chương trình Toán lớp 2.' : 'Làm bài thầy cô giao, luyện thêm theo từng bước hoặc thử một bài Toán ngay.'}</p>
           <div className="home-hero-actions">
-            <Link className="home-button" to={isAdmin ? '/admin/accounts' : isTeacher ? '/classrooms' : '/my-learning-path'}>
-              {isAdmin ? 'Quản lý tài khoản' : isTeacher ? 'Mở lớp học' : 'Lộ trình của em'} <span aria-hidden="true">→</span>
+            <Link className="home-button" to={isAdmin ? '/admin' : isTeacher ? '/classrooms' : '/my-learning-path'}>
+              {isAdmin ? 'Mở dashboard' : isTeacher ? 'Mở lớp học' : 'Lộ trình của em'} <span aria-hidden="true">→</span>
             </Link>
             {user ? <Link className="home-text-link" to={isAdmin ? '/academic' : '/assessments'}>
               {isAdmin ? 'Chương trình học' : isTeacher ? 'Mở bài kiểm tra' : 'Bài kiểm tra của em'}

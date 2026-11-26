@@ -93,11 +93,13 @@ export default function LearningPathPanel({ students }) {
       : isLoading ? <p className="learning-path-empty" role="status">Đang tải lộ trình của {selected?.fullName}…</p>
         : <>
           {message && <p className={state === 'error' ? 'learning-path-error' : 'learning-path-message'} role={state === 'error' ? 'alert' : 'status'}>{message}</p>}
-          <div className="learning-path-toolbar"><p>{activePath ? `Phiên bản ${activePath.version} · ${activePath.progress?.percentage ?? 0}% hoàn thành` : 'Chưa có lộ trình đang học.'}</p><button type="button" disabled={state === 'saving'} onClick={createPath}>{state === 'saving' ? 'Đang tạo…' : 'Tạo lộ trình từ khoảng trống'}</button></div>
+          <div className="learning-path-toolbar"><p>{activePath ? `Phiên bản ${activePath.version} · ${activePath.progress?.percentage ?? 0}% hoàn thành` : 'Chưa có lộ trình đang học.'}</p><button type="button" disabled={state === 'saving'} onClick={createPath}>{state === 'saving' ? 'Đang tạo lộ trình…' : 'Tạo lộ trình từ khoảng trống'}</button></div>
+          {state === 'saving' && <p className="learning-path-message" role="status">Backend đang sắp xếp theo mức độ ưu tiên; AI chỉ đề xuất thứ tự khi khả dụng.</p>}
           {activePath ? <PathSummary path={activePath} onGenerate={createExercise} generatingStepId={generatingStepId}
             failedStepId={failedStepId} manualStepId={manualStepId} onToggleManual={stepId => { setManualExerciseError(''); setManualStepId(current => current === stepId ? null : stepId) }}
             onCreateManual={saveManualExercise} savingManualStepId={savingManualStepId} manualExerciseError={manualExerciseError} />
             : <p className="learning-path-empty">Tạo lộ trình để sắp xếp các kiến thức cần ôn theo thứ tự ưu tiên.</p>}
+          {generatingStepId !== null && <p className="learning-path-message" role="status">AI đang soạn bài tập. Nội dung sẽ được lưu ở trạng thái chờ thầy cô duyệt.</p>}
           {generationError && <p className="learning-path-error" role="alert">AI chưa tạo được bài tập: {generationError} Thầy cô có thể soạn thủ công ngay tại bước học.</p>}
           {generatedExercise && <div className="learning-path-ai-result" role="status">
             <div><strong>{generatedExercise.demo ? 'Bài minh họa' : `Đã gọi ${generatedExercise.provider}`}</strong><span>{generatedExercise.notice}</span></div>
