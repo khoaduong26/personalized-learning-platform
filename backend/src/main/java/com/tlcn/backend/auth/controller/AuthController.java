@@ -3,6 +3,8 @@ package com.tlcn.backend.auth.controller;
 import com.tlcn.backend.auth.dto.*;
 import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.service.*;
+import com.tlcn.backend.auth.service.serviceImpl.PasswordResetRequests;
+import com.tlcn.backend.auth.service.serviceImpl.PasswordResetService;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.dto.UserSummary;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,7 +13,9 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Map;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,14 +29,19 @@ public class AuthController {
     private final AuthService service;
     private final LoginService login;
     private final LoginTokenService tokens;
+    private final PasswordResetRequests resetRequests;
+    private final PasswordResetService passwordResets;
     private final ObjectProvider<ClientRegistrationRepository> clients;
 
     public AuthController(AuthService service, ObjectProvider<ClientRegistrationRepository> clients,
-            LoginService login, LoginTokenService tokens) {
+            LoginService login, LoginTokenService tokens,
+            PasswordResetRequests resetRequests, PasswordResetService passwordResets) {
         this.service = service;
         this.clients = clients;
         this.login = login;
         this.tokens = tokens;
+        this.resetRequests = resetRequests;
+        this.passwordResets = passwordResets;
     }
 
     @PostMapping("/register")
@@ -49,6 +58,28 @@ public class AuthController {
     @PostMapping("/resend-otp")
     public RegistrationResponse resend(@Valid @RequestBody EmailRequest request) {
         return service.resend(request);
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public Map<String, String> forgotPassword(@Valid @RequestBody EmailRequest body, HttpServletRequest request) {
+        resetRequests.requestOtp(body.email(), request.getRemoteAddr());
+        return Map.of("message", "Nếu email đủ điều kiện, bạn sẽ nhận được mã xác thực.");
+    }
+
+    @PostMapping("/verify-reset-otp")
+    public ResponseEntity<PasswordResetService.ResetGrant> verifyResetOtp(
+            @Valid @RequestBody VerifyOtpRequest body, HttpServletRequest request) {
+        resetRequests.limitVerification(request.getRemoteAddr());
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(passwordResets.verifyOtp(body));
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest body, HttpServletRequest request) {
+        resetRequests.limitVerification(request.getRemoteAddr());
+        String email = passwordResets.resetPassword(body);
+        resetRequests.notifyPasswordChanged(email);
     }
 
     @GetMapping("/options")

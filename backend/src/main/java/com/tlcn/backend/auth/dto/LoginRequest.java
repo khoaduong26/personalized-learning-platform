@@ -8,4 +8,9 @@ public record LoginRequest(@NotBlank @Email @Size(max = 190) String email,
     public LoginRequest {
         email = email == null ? null : email.strip().toLowerCase(Locale.ROOT);
     }
+
+    @Override
+    public String toString() {
+        return "LoginRequest[redacted]";
+    }
 }

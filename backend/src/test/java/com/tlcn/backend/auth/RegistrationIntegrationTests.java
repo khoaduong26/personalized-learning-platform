@@ -2,9 +2,11 @@ package com.tlcn.backend.auth;
 
 import com.tlcn.backend.auth.dto.*;
 import com.tlcn.backend.auth.entity.UserOtpState;
+import com.tlcn.backend.auth.entity.UserOtpState.Purpose;
 import com.tlcn.backend.auth.repository.UserOtpStateRepository;
 import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.service.*;
+import com.tlcn.backend.auth.service.serviceImpl.PasswordResetService;
 import com.tlcn.backend.user.entity.*;
 import com.tlcn.backend.user.repository.*;
 import java.time.Clock;
@@ -32,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class RegistrationIntegrationTests {
     @Autowired AuthService auth;
+    @Autowired PasswordResetService resets;
     @Autowired UserRepository users;
     @Autowired UserOtpStateRepository otpStates;
     @Autowired JdbcTemplate jdbc;
@@ -85,6 +88,32 @@ class RegistrationIntegrationTests {
         assertNull(otpState().getOtpCode());
         assertNull(otpState().getOtpExpiredAt());
         assertCode("REGISTRATION_NOT_PENDING", () -> auth.verify(new VerifyOtpRequest(email, sentOtp.get())));
+    }
+
+    @Test
+    void sharedOtpStateSupportsLegacyRegistrationThenPasswordResetForTheSameAccount() {
+        auth.register(request(Role.STUDENT));
+        Long userId = user().getId();
+        String registrationOtp = sentOtp.get();
+        jdbc.update("update user_otp_state set purpose = null where user_id = ?", userId);
+
+        assertTrue(resets.issueOtp(email).isEmpty());
+        auth.verify(new VerifyOtpRequest(email, registrationOtp));
+        assertTrue(otpState().isFor(Purpose.REGISTRATION));
+        assertCode("OTP_INVALID", () -> resets.verifyOtp(new VerifyOtpRequest(email, registrationOtp)));
+
+        // A registration send just occurred, but its cooldown does not apply to password reset.
+        String otp = resets.issueOtp(email).orElseThrow().otp();
+        assertTrue(otpStates.findById(userId).orElseThrow().isFor(Purpose.PASSWORD_RESET));
+        assertEquals(1, otpState().getOtpSendCount());
+        String token = resets.verifyOtp(new VerifyOtpRequest(email, otp)).resetToken();
+        resets.resetPassword(new ResetPasswordRequest(token, "new-password", "new-password"));
+        assertTrue(encoder.matches("new-password", user().getPassword()));
+        assertNull(otpState().getResetTokenHash());
+        assertEquals(0, jdbc.queryForObject("""
+                select count(*) from information_schema.tables
+                where table_schema = 'PUBLIC' and table_name = 'PASSWORD_RESET_STATES'
+                """, Integer.class));
     }
 
     @Test

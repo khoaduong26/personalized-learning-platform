@@ -6,6 +6,7 @@ import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.exception.InvalidOtpException;
 import com.tlcn.backend.auth.entity.UserGoogleIdentity;
 import com.tlcn.backend.auth.entity.UserOtpState;
+import com.tlcn.backend.auth.entity.UserOtpState.Purpose;
 import com.tlcn.backend.auth.repository.UserGoogleIdentityRepository;
 import com.tlcn.backend.auth.repository.UserOtpStateRepository;
 
@@ -65,7 +66,7 @@ public class AuthServiceImpl implements AuthService {
         user.setStatus(UserStatus.PENDING_OTP);
         users.saveAndFlush(user); // Enforce email uniqueness before sending mail.
         accountDetails.save(new UserAccountDetails(user, clock.instant()));
-        UserOtpState otpState = new UserOtpState(user);
+        UserOtpState otpState = new UserOtpState(user, Purpose.REGISTRATION);
         issueOtp(user, otpState);
         return pending(user, otpState);
     }
@@ -74,8 +75,9 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(noRollbackFor = InvalidOtpException.class)
     public RegistrationResponse verify(VerifyOtpRequest request) {
         User user = pendingUser(request.email());
-        UserOtpState otpState = otpStates.findById(user.getId()).orElseThrow(() ->
-                error(HttpStatus.BAD_REQUEST, "OTP_EXPIRED", "Mã OTP đã hết hạn. Hãy yêu cầu mã mới."));
+        UserOtpState otpState = otpStates.findForUpdate(user.getId())
+                .filter(state -> state.isFor(Purpose.REGISTRATION))
+                .orElseThrow(() -> error(HttpStatus.BAD_REQUEST, "OTP_EXPIRED", "Mã OTP đã hết hạn. Hãy yêu cầu mã mới."));
         Instant now = clock.instant();
         if (otpState.getOtpAttempts() >= 5) {
             throw error(HttpStatus.TOO_MANY_REQUESTS, "OTP_ATTEMPTS_EXCEEDED",
@@ -89,6 +91,7 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidOtpException("Mã OTP không đúng. Vui lòng kiểm tra lại email.");
         }
         user.setStatus(UserStatus.ACTIVE);
+        otpState.usePurpose(Purpose.REGISTRATION);
         otpState.clearChallenge();
         return new RegistrationResponse(user.getEmail(), user.getStatus(), null, null,
                 "Đăng ký thành công! Bạn có thể đăng nhập.");
@@ -98,7 +101,8 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public RegistrationResponse resend(EmailRequest request) {
         User user = pendingUser(request.email());
-        UserOtpState otpState = otpStates.findById(user.getId()).orElseGet(() -> new UserOtpState(user));
+        UserOtpState otpState = otpStates.findForUpdate(user.getId())
+                .orElseGet(() -> new UserOtpState(user, Purpose.REGISTRATION));
         issueOtp(user, otpState);
         return pending(user, otpState);
     }
@@ -147,6 +151,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void issueOtp(User user, UserOtpState otpState) {
+        otpState.usePurpose(Purpose.REGISTRATION);
         Instant now = clock.instant();
         if (otpState.getOtpSentAt() != null && now.isBefore(otpState.getOtpSentAt().plus(COOLDOWN))) {
             throw error(HttpStatus.TOO_MANY_REQUESTS, "OTP_COOLDOWN", "Vui lòng đợi 60 giây giữa hai lần gửi OTP.");

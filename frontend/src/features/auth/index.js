@@ -1,4 +1,5 @@
 export { default as RegistrationPage } from './pages/RegistrationPage'
 export { default as RegistrationCompletePage } from './pages/RegistrationCompletePage'
 export { default as LoginPage } from './pages/LoginPage'
+export { default as ForgotPasswordPage } from './pages/ForgotPasswordPage'
 export { getCurrentUser } from './services/authApi'

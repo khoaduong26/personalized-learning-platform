@@ -26,7 +26,7 @@ public class AuthExceptionHandler {
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> fields.putIfAbsent(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.badRequest()
-                .body(new ApiError("VALIDATION_ERROR", "Vui lòng kiểm tra thông tin đăng ký.", fields));
+                .body(new ApiError("VALIDATION_ERROR", "Vui lòng kiểm tra thông tin đã nhập.", fields));
     }
 
     @ExceptionHandler({ HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class })

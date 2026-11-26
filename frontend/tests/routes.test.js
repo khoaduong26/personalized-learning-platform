@@ -27,6 +27,7 @@ const routes = [
   ['/register?google=success', 'Đang kiểm tra tài khoản', 'ĐĂNG KÝ VỚI GOOGLE'],
   ['/register/complete', 'Tài khoản đã sẵn sàng!', 'Đến trang đăng nhập'],
   ['/login', 'Đăng nhập', 'Đăng nhập với Google'],
+  ['/forgot-password', 'Quên mật khẩu', 'Gửi mã xác thực'],
   ['/profile', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
   ['/profile/teacher', 'Hồ sơ giáo viên', 'TÀI KHOẢN GIÁO VIÊN'],
   ['/profile/student', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
@@ -42,6 +43,7 @@ for (const [url, heading, content] of routes) {
     assert.ok(html.includes(heading), `Expected ${heading}`)
     assert.ok(html.includes(content), `Expected ${content}`)
     if (url.startsWith('/register') || url === '/login') assert.ok(!html.includes('home-header'))
+    if (url === '/login') assert.ok(html.includes('href="/forgot-password"'))
     if (url === '/does-not-exist') assert.ok(!html.includes('home-hero-copy'))
   })
 }

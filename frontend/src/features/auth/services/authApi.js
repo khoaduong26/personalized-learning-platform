@@ -19,3 +19,6 @@ async function authenticatedPost(path, body) {
 
 export const loginAccount = body => authenticatedPost('login', body)
 export const logoutAccount = () => authenticatedPost('logout')
+export const requestPasswordReset = email => authenticatedPost('forgot-password', { email })
+export const verifyPasswordResetOtp = body => authenticatedPost('verify-reset-otp', body)
+export const resetPassword = body => authenticatedPost('reset-password', body)

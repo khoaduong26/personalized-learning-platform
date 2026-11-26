@@ -1,5 +1,6 @@
 package com.tlcn.backend.auth.service.serviceImpl;
 
+import com.tlcn.backend.auth.exception.AuthException;
 import com.tlcn.backend.auth.service.LoginTokenService;
 import com.tlcn.backend.auth.util.LoginTokenCookie;
 
@@ -12,6 +13,7 @@ import java.time.*;
 import java.util.*;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
@@ -57,6 +59,12 @@ public class LoginTokenServiceImpl implements LoginTokenService {
     @Override
     @Transactional
     public void issue(User user, boolean rememberMe, HttpServletResponse response) {
+        // Serialize session issuance with password changes to reject a login verified using the previous password.
+        User current = users.findByIdForUpdate(user.getId()).orElse(null);
+        if (current == null || current.getStatus() != UserStatus.ACTIVE
+                || !Objects.equals(current.getPassword(), user.getPassword())) {
+            throw new AuthException(HttpStatus.UNAUTHORIZED, "LOGIN_CHANGED", "Vui lòng đăng nhập lại.");
+        }
         Instant now = clock.instant();
         sessions.deleteExpired(now);
         Duration lifetime = rememberMe ? Duration.ofDays(30) : Duration.ofHours(8);

@@ -427,6 +427,9 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
     return withProfile(current)
   }
   if (route.startsWith('/api/auth/register') || route.startsWith('/api/auth/verify-otp') || route.startsWith('/api/auth/resend-otp')) fail(400, 'Đăng ký/OTP chưa được mô phỏng trong chế độ demo.')
+  if (route === '/api/auth/forgot-password' || route === '/api/auth/verify-reset-otp' || route === '/api/auth/reset-password') {
+    fail(400, 'Chức năng quên mật khẩu cần kết nối backend và dịch vụ email.')
+  }
   if (!current) fail(401, 'Hãy chọn một tài khoản demo để tiếp tục.', 'UNAUTHORIZED')
 
   if (/^\/api\/admin\/accounts(?:\/\d+(?:\/status)?)?$/.test(route)) {

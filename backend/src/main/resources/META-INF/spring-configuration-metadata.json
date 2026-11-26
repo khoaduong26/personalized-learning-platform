@@ -17,6 +17,11 @@
       "description": "Base64-encoded JWT signing key containing at least 32 random bytes. Configured through JWT_SECRET; a blank value uses an ephemeral development key."
     },
     {
+      "name": "app.auth.password-reset-secret",
+      "type": "java.lang.String",
+      "description": "Base64-encoded key containing at least 32 random bytes for password reset codes and tokens. Configured through PASSWORD_RESET_SECRET. A blank value uses an ephemeral key."
+    },
+    {
       "name": "app.cloudinary.cloud-name",
       "type": "java.lang.String",
       "description": "Cloudinary cloud name for avatar uploads. Configured through CLOUDINARY_CLOUD_NAME."

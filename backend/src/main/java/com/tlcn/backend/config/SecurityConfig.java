@@ -51,6 +51,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(rules -> rules
                 .requestMatchers("/ws/notifications").authenticated()
                 .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp",
+                        "/api/auth/forgot-password", "/api/auth/verify-reset-otp", "/api/auth/reset-password",
                         "/api/auth/options", "/api/auth/google", "/api/auth/google-login",
                         "/api/auth/login", "/api/auth/logout", "/api/auth/csrf", "/api/csrf", "/oauth2/authorization/google",
                         "/login/oauth2/code/google", "/error").permitAll()
