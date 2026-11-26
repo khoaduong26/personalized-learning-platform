@@ -90,7 +90,15 @@ Backend test dùng H2 trong bộ nhớ qua profile `test`, không cần MySQL. N
 
 ## Kịch bản demo
 
-Để chạy dữ liệu tổng hợp, xem [hướng dẫn seed demo](./backend/DEMO_DATA.md). Seed chỉ chạy khi bật rõ profile `demo` và `app.demo-seed.enabled=true`; không dùng database production hoặc database có dữ liệu học sinh thật.
+Seeder chỉ thêm dữ liệu tổng hợp khi bật đồng thời profile `demo` và `app.demo-seed.enabled=true`. Chỉ chạy trên database phát triển, không dùng database production hoặc nơi có dữ liệu học sinh thật. Từ thư mục `backend`, chạy trong PowerShell:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = 'demo'
+$env:APP_DEMO_SEED_ENABLED = 'true'
+.\mvnw.cmd spring-boot:run
+```
+
+Tài khoản demo dùng mật khẩu `Demo123!`: giáo viên `teacher.demo@example.test`, học sinh `student.an@example.test` và `student.binh@example.test`. Nếu tài khoản giáo viên demo đã tồn tại, seeder bỏ qua toàn bộ dữ liệu và không xóa hoặc ghi đè dữ liệu có sẵn. Bỏ hai biến bật demo trước lần chạy bình thường tiếp theo.
 
 1. Đăng nhập bằng tài khoản giáo viên demo, mở lớp để xem hồ sơ năng lực/lộ trình của học sinh.
 2. Mở **Kiểm tra và đánh giá** để xem bài đã giao, lịch sử và kết quả.
