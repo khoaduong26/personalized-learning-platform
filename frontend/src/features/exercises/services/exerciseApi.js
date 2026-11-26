@@ -12,6 +12,7 @@ async function request(path, options = {}) {
 
 export const getStepExercises = stepId => request(`/api/exercises/steps/${stepId}`)
 export const generateStepExercise = stepId => request(`/api/exercises/steps/${stepId}/generate`, { method: 'POST' })
+export const createManualStepExercise = (stepId, body) => request(`/api/exercises/steps/${stepId}/manual`, { method: 'POST', body })
 export const getPendingExercises = () => request('/api/exercises/pending-review')
 export const updateExercise = (questionId, body) => request(`/api/exercises/questions/${questionId}`, { method: 'PATCH', body })
 export const reviewExercise = (questionId, status) => request(`/api/exercises/questions/${questionId}/review`, { method: 'PATCH', body: { status } })

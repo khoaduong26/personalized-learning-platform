@@ -77,6 +77,25 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Transactional
+    public Question createManual(Long stepId, QuestionRequest request, UserSummary actor) {
+        requireTeacher(actor);
+        LearningStep step = getStep(stepId);
+        requireCanManageStep(step, actor);
+        if (!step.getLesson().getId().equals(request.lessonId()))
+            throw badRequest("Bài tập phải gắn với bài học của bước đang chọn.");
+
+        Question question = buildQuestion(request);
+        question.setAiGenerated(false);
+        question.setApprovalStatus(ApprovalStatus.PENDING);
+        question = questions.save(question);
+        StepExercise exercise = new StepExercise();
+        exercise.setStep(step);
+        exercise.setQuestion(question);
+        exercises.save(exercise);
+        return question;
+    }
+
+    @Transactional
     public ExerciseGenerationResult generateForStep(Long stepId, UserSummary actor) {
         requireTeacher(actor);
         LearningStep step = getStep(stepId);
@@ -169,8 +188,6 @@ public class ExerciseServiceImpl implements ExerciseService {
                 .orElseThrow(() -> notFound("Không tìm thấy bài tập."));
         requireCanManageStep(exercise.getStep(), actor);
         Question question = exercise.getQuestion();
-        if (!question.isAiGenerated())
-            throw badRequest("Chỉ có thể duyệt bài tập được sinh tự động.");
         return question;
     }
 

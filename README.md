@@ -39,7 +39,9 @@ Các biến cấu hình chính gồm `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB
 
 `POST /api/exercises/steps/{stepId}/generate` tạo câu hỏi trắc nghiệm Toán lớp 2 bằng Gemini hoặc DeepSeek. Cấu hình `APP_EXERCISE_GENERATOR_PROVIDER=gemini|deepseek` cùng khóa và model tương ứng trong môi trường backend (`GEMINI_API_KEY`/`GEMINI_MODEL` hoặc `DEEPSEEK_API_KEY`/`DEEPSEEK_MODEL`). Mặc định vẫn là Gemini. Khi Gemini hết hạn mức/quá tải/lỗi kết nối, backend có thể tự chuyển sang DeepSeek nếu `APP_AI_FALLBACK_PROVIDER=deepseek` (mặc định) và `DEEPSEEK_API_KEY` đã cấu hình. Không đưa khóa thật vào Git hoặc frontend. Mọi bài tập do AI sinh đều ở trạng thái `PENDING` để giáo viên rà soát và duyệt; kết quả model phải qua validation backend.
 
-Gemini hoặc DeepSeek sắp xếp các khoảng trống đang mở qua `APP_LEARNING_PATH_GENERATOR_PROVIDER=gemini|deepseek`. Khi chọn Gemini, backend cũng tự chuyển sang DeepSeek theo `APP_AI_FALLBACK_PROVIDER` nếu Gemini hết hạn mức, quá tải hoặc mất kết nối và `DEEPSEEK_API_KEY` đã cấu hình. Backend chỉ chấp nhận thứ tự chứa đúng một lần từng khoảng trống hợp lệ; bài học, trạng thái và điểm mục tiêu vẫn do backend quản lý. DeepSeek dùng endpoint tương thích Chat Completions tại `https://api.deepseek.com/chat/completions` và model mặc định `deepseek-flash`.
+Nếu AI không khả dụng, giáo viên có thể tự soạn câu trắc nghiệm, điền khuyết hoặc trả lời ngắn ngay trên từng bước của lộ trình. Bài thủ công được liên kết đúng với bài học của bước, chờ duyệt rồi mới xuất hiện với học sinh.
+
+Backend luôn tạo lộ trình theo quy tắc ưu tiên của khoảng trống kiến thức. Gemini hoặc DeepSeek chỉ đề xuất thứ tự trong cùng một mức ưu tiên; backend từ chối đề xuất thiếu/trùng bước hoặc đảo thứ tự ưu tiên. Nếu AI lỗi hoặc đề xuất không hợp lệ, backend vẫn lưu lộ trình theo thứ tự xác định: mức ưu tiên, thời điểm phát hiện, rồi mã bài học. Cấu hình provider bằng `APP_LEARNING_PATH_GENERATOR_PROVIDER=gemini|deepseek`; Gemini có thể fallback qua DeepSeek theo `APP_AI_FALLBACK_PROVIDER` nếu khóa DeepSeek đã cấu hình. DeepSeek dùng `https://api.deepseek.com/chat/completions`, model mặc định `deepseek-flash`.
 
 ### Xem bài làm của học sinh
 

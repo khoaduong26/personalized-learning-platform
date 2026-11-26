@@ -6,11 +6,13 @@ Endpoint `POST /api/exercises/steps/{stepId}/generate` nhận mã bước học.
 
 Gemini không được chọn `lessonId`; backend gắn câu hỏi vào bài học của bước. Câu hỏi mới luôn ở trạng thái `PENDING`; học sinh chỉ nhận bài sau khi giáo viên duyệt.
 
+Khi dịch vụ AI không khả dụng, giáo viên có thể tự tạo bài tập cho một bước qua `POST /api/exercises/steps/{stepId}/manual`. Backend kiểm tra quyền quản lý học sinh và bảo đảm `lessonId` khớp với bài học của bước, lưu bài với `aiGenerated=false`, trạng thái `PENDING`, sau đó đưa vào cùng hàng chờ duyệt. Chỉ câu hỏi `APPROVED` mới được trả về cho học sinh.
+
 `GeminiExerciseQuestionGenerator.java` gọi Gemini Interactions API (`/v1beta/interactions`) và yêu cầu JSON theo schema. `DeepSeekExerciseQuestionGenerator.java` dùng DeepSeek Chat Completions JSON Output. Cả hai adapter dùng `ExerciseGeneratorSupport.java` để giới hạn prompt vào nội dung bài học và gắn `lessonId` từ backend.
 
 ## Sắp xếp lộ trình
 
-`GeminiLearningPathOrderer.java` và `DeepSeekLearningPathOrderer.java` có thể đề xuất thứ tự cho các khoảng trống kiến thức hiện có. Backend kiểm tra danh sách vị trí trả về đầy đủ, không trùng và không có mục lạ trước khi lưu. AI không thể thêm/bỏ bài học hoặc thay đổi mục tiêu và trạng thái lộ trình.
+Backend tự sắp xếp khoảng trống theo mức ưu tiên, thời điểm phát hiện và mã bài học. `GeminiLearningPathOrderer.java` và `DeepSeekLearningPathOrderer.java` chỉ gửi đề xuất trong cùng mức ưu tiên; backend kiểm tra danh sách vị trí đầy đủ, không trùng, không có mục lạ và không đảo thứ tự ưu tiên. Nếu provider lỗi hoặc đề xuất không hợp lệ, backend lưu thứ tự tính được theo quy tắc. AI không thể thêm/bỏ bài học hoặc thay đổi mục tiêu và trạng thái lộ trình.
 
 ## Cấu hình
 

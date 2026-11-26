@@ -119,8 +119,8 @@ function ExerciseWorkspace({ stepId }) {
   return <main className={stepId ? 'exercise-page exercise-student' : 'exercise-page'}>
     <header className="exercise-header"><Link to="/" className="exercise-brand">EduLearn</Link><WorkspaceNavigation role={user.role} /><div>{user.fullName}</div></header>
     <section className="exercise-heading">
-      <h1>{stepId ? 'Bài luyện tập của em' : 'Duyệt bài tập AI'}</h1>
-      <p>{stepId ? 'Em làm từng câu rồi nộp bài để xem kết quả nhé.' : 'Xem đáp án, chỉnh sửa nội dung rồi duyệt trước khi giao cho học sinh.'}</p>
+      <h1>{stepId ? 'Bài luyện tập của em' : 'Duyệt bài tập'}</h1>
+      <p>{stepId ? 'Em làm từng câu rồi nộp bài để xem kết quả nhé.' : 'Xem bài tập AI tạo hoặc giáo viên tự soạn, chỉnh sửa rồi duyệt trước khi giao cho học sinh.'}</p>
     </section>
     {notice && <p className="exercise-notice" role="status">{notice}</p>}
     {actionError && <p className="exercise-error" role="alert">{actionError}</p>}
@@ -128,7 +128,7 @@ function ExerciseWorkspace({ stepId }) {
 
     {isTeacher && !loadError && <section className="exercise-list" aria-label="Bài tập chờ duyệt">
       {pending.length === 0 ? <p className="exercise-empty">Không có bài tập nào đang chờ duyệt.</p> : pending.map(question => <article className="exercise-card" key={question.questionId}>
-        <div className="exercise-card-meta"><span>{kindName[question.kind]}</span><span>{question.difficulty} · {question.score} điểm</span></div>
+        <div className="exercise-card-meta"><span>{question.aiGenerated ? 'AI tạo' : 'Giáo viên tự soạn'} · {kindName[question.kind]}</span><span>{question.difficulty} · {question.score} điểm</span></div>
         {editingId === question.questionId && draft ? <div className="exercise-edit-form">
           <label>Nội dung câu hỏi<textarea rows="3" value={draft.content} onChange={event => setDraft(current => ({ ...current, content: event.target.value }))} /></label>
           <div className="exercise-edit-row"><label>Mức độ<select value={draft.difficulty} onChange={event => setDraft(current => ({ ...current, difficulty: event.target.value }))}><option value="EASY">Dễ</option><option value="MEDIUM">Vừa</option><option value="HARD">Khó</option></select></label><label>Điểm<input type="number" min="0.1" step="0.1" value={draft.score} onChange={event => setDraft(current => ({ ...current, score: event.target.value }))} /></label></div>
