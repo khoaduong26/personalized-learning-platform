@@ -13,13 +13,13 @@ public interface StepExerciseRepository extends JpaRepository<StepExercise, Long
 
     Optional<StepExercise> findByQuestionId(Long questionId);
 
-    @Query("select e.question from StepExercise e where e.question.aiGenerated = true " +
-            "and e.question.approvalStatus = com.tlcn.backend.assessment.entity.ApprovalStatus.PENDING " +
+    @Query("select e.question from StepExercise e where " +
+            "e.question.approvalStatus = com.tlcn.backend.assessment.entity.ApprovalStatus.PENDING " +
             "order by e.generatedAt desc")
     List<Question> findAllPendingReview();
 
-    @Query("select e.question from StepExercise e where e.question.aiGenerated = true " +
-            "and e.question.approvalStatus = com.tlcn.backend.assessment.entity.ApprovalStatus.PENDING " +
+    @Query("select e.question from StepExercise e where " +
+            "e.question.approvalStatus = com.tlcn.backend.assessment.entity.ApprovalStatus.PENDING " +
             "and e.step.path.student.classroom.teacher.id = :teacherId order by e.generatedAt desc")
     List<Question> findPendingReviewForTeacher(@Param("teacherId") Long teacherId);
 }

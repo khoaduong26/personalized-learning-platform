@@ -24,26 +24,27 @@ public class ExerciseController {
     }
 
     public record ReviewView(Long questionId, String content, String difficulty, Double score, Long lessonId,
+            boolean aiGenerated,
             String kind, String status, String explanation, boolean allowMultiple, List<ReviewOption> options,
             List<String> expectedAnswers) {
         static ReviewView from(Question question) {
             question = (Question) Hibernate.unproxy(question);
             if (question instanceof MultipleChoiceQuestion multiple) {
                 return new ReviewView(question.getId(), question.getContent(), question.getDifficulty().name(),
-                        question.getScore(), question.getLesson().getId(), "MULTIPLE_CHOICE",
+                        question.getScore(), question.getLesson().getId(), question.isAiGenerated(), "MULTIPLE_CHOICE",
                         question.getApprovalStatus().name(), question.getExplanation(), multiple.isAllowMultiple(),
                         multiple.getOptions().stream().map(option -> new ReviewOption(option.getId(), option.getName(),
                                 option.isCorrect(), option.getDisplayOrder())).toList(), List.of());
             }
             if (question instanceof FillBlankQuestion fill) {
                 return new ReviewView(question.getId(), question.getContent(), question.getDifficulty().name(),
-                        question.getScore(), question.getLesson().getId(), "FILL_BLANK",
+                        question.getScore(), question.getLesson().getId(), question.isAiGenerated(), "FILL_BLANK",
                         question.getApprovalStatus().name(), question.getExplanation(), false, List.of(),
                         fill.getBlanks().stream().map(Blank::getCorrectAnswer).toList());
             }
             ShortAnswerQuestion shortAnswer = (ShortAnswerQuestion) question;
             return new ReviewView(question.getId(), question.getContent(), question.getDifficulty().name(),
-                    question.getScore(), question.getLesson().getId(), "SHORT_ANSWER",
+                    question.getScore(), question.getLesson().getId(), question.isAiGenerated(), "SHORT_ANSWER",
                     question.getApprovalStatus().name(), question.getExplanation(), false, List.of(),
                     List.of(shortAnswer.getCorrectAnswer()));
         }
@@ -73,6 +74,14 @@ public class ExerciseController {
     public ReviewView createGenerated(@PathVariable Long stepId, @Valid @RequestBody QuestionRequest request,
             @AuthenticationPrincipal UserSummary actor) {
         return ReviewView.from(service.createGenerated(stepId, request, actor));
+    }
+
+    @PostMapping("/steps/{stepId}/manual")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    public ReviewView createManual(@PathVariable Long stepId, @Valid @RequestBody QuestionRequest request,
+            @AuthenticationPrincipal UserSummary actor) {
+        return ReviewView.from(service.createManual(stepId, request, actor));
     }
 
     @PostMapping("/steps/{stepId}/generate")

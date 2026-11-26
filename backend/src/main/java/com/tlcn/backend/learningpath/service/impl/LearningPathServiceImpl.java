@@ -20,6 +20,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class LearningPathServiceImpl implements LearningPathService {
     private static final double TARGET_SCORE = 70.0;
+    private static final Logger log = LoggerFactory.getLogger(LearningPathServiceImpl.class);
 
     private final LearningPathRepository paths;
     private final LearningStepRepository steps;
@@ -82,23 +85,23 @@ public class LearningPathServiceImpl implements LearningPathService {
                     return new LearningPathOrderer.Candidate(position, gap.getLesson().getName(),
                             gap.getLesson().getDescription(), gap.getPriority().name());
                 }).toList();
-        List<Integer> positions;
+        List<KnowledgeGap> orderedGaps = openGaps;
         try {
-            positions = orderer.order(candidates);
-        } catch (RuntimeException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Không thể tạo đề xuất thứ tự lộ trình. Chưa có thay đổi nào được lưu.");
-        }
-        if (positions == null || positions.size() != openGaps.size()) {
-            throw invalidOrder();
-        }
-        Set<Integer> seenPositions = new HashSet<>();
-        for (Integer position : positions) {
-            if (position == null || position < 0 || position >= openGaps.size() || !seenPositions.add(position)) {
-                throw invalidOrder();
+            List<Integer> positions = orderer.order(candidates);
+            List<KnowledgeGap> suggestedOrder = validateSuggestion(positions, openGaps);
+            if (suggestedOrder == null) {
+                log.warn("Learning path order suggestion from {} was invalid; using backend priority order.",
+                        orderer.getClass().getSimpleName());
+            } else if (!preservesPriority(suggestedOrder)) {
+                log.warn("Learning path order suggestion from {} violated backend priority rules; using backend priority order.",
+                        orderer.getClass().getSimpleName());
+            } else {
+                orderedGaps = suggestedOrder;
             }
+        } catch (RuntimeException exception) {
+            log.warn("Learning path order suggestion from {} failed; using backend priority order.",
+                    orderer.getClass().getSimpleName());
         }
-        List<KnowledgeGap> orderedGaps = positions.stream().map(openGaps::get).toList();
 
         paths.findByStudentIdOrderByCreatedAtDesc(studentId).stream()
                 .filter(path -> path.getStatus() == LearningPathStatus.ACTIVE)
@@ -126,9 +129,29 @@ public class LearningPathServiceImpl implements LearningPathService {
         return paths.save(path);
     }
 
-    private ResponseStatusException invalidOrder() {
-        return new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                "AI trả về thứ tự lộ trình không hợp lệ. Chưa có thay đổi nào được lưu.");
+    private List<KnowledgeGap> validateSuggestion(List<Integer> positions, List<KnowledgeGap> backendOrder) {
+        if (positions == null || positions.size() != backendOrder.size()) {
+            return null;
+        }
+        Set<Integer> seenPositions = new HashSet<>();
+        for (Integer position : positions) {
+            if (position == null || position < 0 || position >= backendOrder.size() || !seenPositions.add(position)) {
+                return null;
+            }
+        }
+        return positions.stream().map(backendOrder::get).toList();
+    }
+
+    private boolean preservesPriority(List<KnowledgeGap> suggestion) {
+        int previousPriority = -1;
+        for (KnowledgeGap gap : suggestion) {
+            int currentPriority = priorityOrder(gap.getPriority());
+            if (currentPriority < previousPriority) {
+                return false;
+            }
+            previousPriority = currentPriority;
+        }
+        return true;
     }
 
     @Override
