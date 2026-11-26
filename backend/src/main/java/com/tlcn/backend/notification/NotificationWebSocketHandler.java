@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -26,7 +27,8 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        if (session.getPrincipal() instanceof UserSummary user) {
+        UserSummary user = authenticatedUser(session);
+        if (user != null) {
             sessions.computeIfAbsent(user.id(), ignored -> new CopyOnWriteArraySet<>()).add(session);
             return;
         }
@@ -78,7 +80,8 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void removeSession(WebSocketSession session) {
-        if (!(session.getPrincipal() instanceof UserSummary user)) {
+        UserSummary user = authenticatedUser(session);
+        if (user == null) {
             return;
         }
         Set<WebSocketSession> userSessions = sessions.get(user.id());
@@ -88,5 +91,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
                 sessions.remove(user.id(), userSessions);
             }
         }
+    }
+
+    private UserSummary authenticatedUser(WebSocketSession session) {
+        if (session.getPrincipal() instanceof Authentication authentication
+                && authentication.getPrincipal() instanceof UserSummary user) {
+            return user;
+        }
+        return null;
     }
 }
