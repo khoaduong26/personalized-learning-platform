@@ -5,6 +5,7 @@ const MODE_KEY = 'edulearn.mock.enabled'
 const ACTOR_KEY = 'edulearn.mock.actor'
 const clone = value => value == null ? value : structuredClone(value)
 const state = clone(fixture)
+for (const exercise of state.generatedExercises) exercise.kind ??= 'MULTIPLE_CHOICE'
 let nextId = 9900
 
 function fail(status, message, code = 'MOCK_ERROR') {
@@ -29,6 +30,64 @@ function requireActor(roles = ['ADMIN', 'TEACHER', 'STUDENT']) {
 
 function withProfile(user) {
   return user && { ...user, avatarUrl: user.avatarUrl || '', phone: user.phone || '', address: user.address || '', city: user.city || '', passwordChangeAllowed: true }
+}
+
+function accountView({ id, fullName, email, phone = null, role, status, createdAt = null }) {
+  return { id, fullName, email, phone, role, status, createdAt }
+}
+
+function manageAccounts(route, params, method, body) {
+  const admin = requireActor(['ADMIN'])
+  const [, , , , accountId, action] = route.split('/')
+  if (!accountId && method === 'GET') {
+    const keyword = (params.get('keyword') || '').toLowerCase()
+    const role = params.get('role')
+    const status = params.get('status')
+    const page = Number(params.get('page') || 0)
+    const size = Number(params.get('size') || 20)
+    const matches = state.actors.filter(item => (
+      (!role || item.role === role) && (!status || item.status === status)
+      && [item.fullName, item.email].some(value => value.toLowerCase().includes(keyword))
+    )).sort((first, second) => second.id - first.id)
+    return { items: matches.slice(page * size, (page + 1) * size).map(accountView), page, size,
+      totalElements: matches.length, totalPages: Math.ceil(matches.length / size) }
+  }
+
+  const account = accountId ? state.actors.find(item => item.id === Number(accountId)) : null
+  if (accountId && !account) fail(404, 'Không tìm thấy tài khoản.', 'ACCOUNT_NOT_FOUND')
+  if (account && !action && method === 'GET') return accountView(account)
+  if (account && action === 'status' && method === 'PATCH') {
+    if (account.id === admin.id && body.locked) fail(409, 'Bạn không thể tự khóa tài khoản.', 'SELF_LOCK')
+    if (body.locked && account.status !== 'LOCKED') {
+      account.statusBeforeLock = account.status
+      account.status = 'LOCKED'
+    } else if (!body.locked && account.status === 'LOCKED') {
+      account.status = account.statusBeforeLock || 'ACTIVE'
+      delete account.statusBeforeLock
+    }
+    return accountView(account)
+  }
+  if ((!accountId && method === 'POST') || (account && !action && method === 'PUT')) {
+    const { fullName, phone, role } = body
+    const email = body.email.trim().toLowerCase()
+    if (state.actors.some(item => item.id !== account?.id && item.email === email)) {
+      fail(409, 'Email đã được sử dụng.', 'EMAIL_EXISTS')
+    }
+    const fields = { fullName, email, phone, role }
+    if (account) {
+      if (account.role !== role) {
+        if (account.id === admin.id) fail(409, 'Bạn không thể tự đổi vai trò quản trị.', 'SELF_ROLE_CHANGE')
+        const assigned = state.classrooms.some(item => item.teacherId === account.id || item.studentIds.includes(account.id))
+        if (assigned) fail(409, 'Không thể đổi vai trò khi tài khoản còn liên kết với lớp học.', 'ROLE_IN_USE')
+      }
+      Object.assign(account, fields)
+      return accountView(account)
+    }
+    const created = { ...fields, id: nextId++, status: 'ACTIVE', createdAt: new Date().toISOString() }
+    state.actors.push(created)
+    return accountView(created)
+  }
+  fail(404, 'Không tìm thấy thao tác tài khoản.')
 }
 
 function lessonById(id) {
@@ -334,7 +393,7 @@ function exerciseView(item) {
     content: item.content,
     difficulty: item.difficulty,
     score: item.score,
-    kind: item.kind || 'MULTIPLE_CHOICE',
+    kind: item.kind,
     allowMultiple: Boolean(item.allowMultiple),
     options: clone(item.options || []),
     blankCount: item.blankCount || 0,
@@ -357,6 +416,7 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
   if (route === '/api/auth/login' && method === 'POST') {
     const selected = state.actors.find(item => item.email.toLowerCase() === String(body?.email || '').trim().toLowerCase())
     if (!selected) fail(401, 'Không tìm thấy tài khoản demo.', 'INVALID_CREDENTIALS')
+    if (selected.status === 'LOCKED') fail(403, 'Tài khoản đã bị khóa.', 'ACCOUNT_LOCKED')
     window.sessionStorage.setItem(MODE_KEY, '1')
     window.sessionStorage.setItem(ACTOR_KEY, String(selected.id))
     return withProfile(selected)
@@ -368,6 +428,10 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
   }
   if (route.startsWith('/api/auth/register') || route.startsWith('/api/auth/verify-otp') || route.startsWith('/api/auth/resend-otp')) fail(400, 'Đăng ký/OTP chưa được mô phỏng trong chế độ demo.')
   if (!current) fail(401, 'Hãy chọn một tài khoản demo để tiếp tục.', 'UNAUTHORIZED')
+
+  if (/^\/api\/admin\/accounts(?:\/\d+(?:\/status)?)?$/.test(route)) {
+    return manageAccounts(route, url.searchParams, method, body)
+  }
 
   if (route === '/api/users/me' && method === 'PUT') {
     Object.assign(current, body)
@@ -595,16 +659,9 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
   if (match) {
     requireActor(['ADMIN', 'TEACHER', 'STUDENT'])
     const approvedOnly = current.role === 'STUDENT'
-    if (approvedOnly) {
-      const stepId = Number(match[1])
-      const ownStep = state.learningPaths
-        .filter(pathItem => pathItem.studentId === current.id)
-        .flatMap(pathItem => pathItem.steps)
-        .find(step => step.id === stepId)
-      if (!ownStep) fail(404, 'Không tìm thấy bước học.')
-      if (ownStep.status !== 'IN_PROGRESS') fail(409, 'Bước học này chưa được mở hoặc đã hoàn thành.')
-    }
-    return state.generatedExercises.filter(item => item.learningStepId === Number(match[1]) && (!approvedOnly || item.approvalStatus === 'APPROVED')).map(exerciseView)
+    return state.generatedExercises
+      .filter(item => item.learningStepId === Number(match[1]) && (!approvedOnly || item.approvalStatus === 'APPROVED'))
+      .map(item => approvedOnly ? questionView({ ...item, id: item.questionId }) : exerciseView(item))
   }
   match = route.match(/^\/api\/exercises\/questions\/(\d+)(?:\/(review))?$/)
   if (match) {

@@ -9,7 +9,7 @@
 .workspace-navigation a {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 10px;
   border-radius: 8px;
   color: #716a78;
@@ -26,10 +26,22 @@
   background: #f1edf5;
 }
 
+.workspace-navigation a:focus-visible {
+  outline: 3px solid #604773;
+  outline-offset: -3px;
+}
+
+.workspace-navigation[data-role="STUDENT"] a {
+  font-size: 14px;
+}
+
 @media (max-width: 760px) {
   .academic-topbar,
   .classrooms-topbar,
-  .assessment-topbar {
+  .accounts-topbar,
+  .assessment-topbar,
+  .student-learning-topbar,
+  .exercise-header {
     height: auto;
     min-height: 64px;
     flex-wrap: wrap;
@@ -42,12 +54,11 @@
     flex: 1 0 100%;
     justify-content: flex-start;
     gap: 2px;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    flex-wrap: wrap;
   }
 
   .workspace-navigation a {
     padding-inline: 9px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }

@@ -41,6 +41,7 @@ export default function AssessmentsPage() {
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
+  const isStudent = user?.role === 'STUDENT'
 
   const changeResultClass = id => {
     setResultClassId(id)
@@ -54,7 +55,7 @@ export default function AssessmentsPage() {
   const changeLesson = id => { setLessonId(id); setBank([]); setSelectedQuestions([]) }
 
   useEffect(() => {
-    document.title = 'Kiểm tra và đánh giá · TLCN'
+    document.title = 'Bài kiểm tra · EduLearn'
     let active = true
     getAssessmentSession().then(async session => {
       if (!active) return
@@ -170,15 +171,23 @@ export default function AssessmentsPage() {
   if (access === 'loading') return <main className="assessment-shell"><p className="assessment-state">Đang kiểm tra phiên đăng nhập…</p></main>
   if (access !== 'allowed') return <main className="assessment-shell"><div className="assessment-gate"><span className="assessment-kicker">KIỂM TRA VÀ ĐÁNH GIÁ</span><h1>{access === 'signed-out' ? 'Đăng nhập để tiếp tục' : 'Khu vực dành cho thành viên'}</h1><p>{access === 'signed-out' ? 'Đăng nhập để xem bài kiểm tra, lưu câu trả lời và theo dõi kết quả.' : 'Tài khoản này chưa có quyền truy cập nội dung đánh giá.'}</p>{access === 'signed-out' && <Link className="assessment-primary" to="/login?returnTo=/assessments">Đi đến đăng nhập</Link>}<Link className="assessment-back" to="/">Về trang chủ</Link></div></main>
 
-  return <main className="assessment-shell">
-    <header className="assessment-topbar"><Link to="/" className="assessment-brand"><span>✳</span> TLCN</Link><WorkspaceNavigation role={user?.role} /><div className="assessment-user"><span>{user?.fullName}</span><span className="assessment-role">{roles[user?.role]}</span>{isTeacher && <Link to="/exercises/review">Duyệt bài tập</Link>}</div></header>
-    <section className="assessment-heading"><div><p className="assessment-kicker">NGÂN HÀNG CÂU HỎI · KIỂM TRA · KẾT QUẢ</p><h1>{activeAttempt ? 'Bài làm của em' : result ? 'Kết quả bài kiểm tra' : 'Kiểm tra và đánh giá'}</h1><p>{activeAttempt ? `Làm từng câu rồi lưu tạm hoặc nộp bài. Thời gian: ${activeAttempt.assessment.durationMinutes || 'không giới hạn'} phút.` : 'Tạo câu hỏi theo bài học, tổ chức bài kiểm tra và theo dõi tiến độ học tập.'}</p></div><span className="assessment-heading-mark" aria-hidden="true">✎</span></section>
+  return <main className={isStudent ? 'assessment-shell assessment-student' : 'assessment-shell'}>
+    <header className="assessment-topbar"><Link to="/" className="assessment-brand">EduLearn</Link><WorkspaceNavigation role={user?.role} /><div className="assessment-user"><span>{user?.fullName}</span>{isTeacher && <span className="assessment-role">{roles[user?.role]}</span>}</div></header>
+    <section className="assessment-heading">
+      <div>
+        {!isStudent && <p className="assessment-kicker">KIỂM TRA VÀ ĐÁNH GIÁ</p>}
+        <h1>{activeAttempt ? 'Bài làm của em' : result ? 'Kết quả bài kiểm tra' : isStudent ? 'Bài kiểm tra của em' : 'Kiểm tra và đánh giá'}</h1>
+        {activeAttempt && <p>{activeAttempt.assessment.durationMinutes ? `Em có ${activeAttempt.assessment.durationMinutes} phút để làm bài.` : 'Bài này không giới hạn thời gian.'} Em có thể lưu bài để làm tiếp sau hoặc nộp khi đã xong.</p>}
+        {!activeAttempt && !result && <p>{isStudent ? 'Làm bài thầy cô đã giao hoặc xem lại bài em đã nộp.' : 'Tạo câu hỏi theo bài học, tổ chức bài kiểm tra và theo dõi tiến độ học tập.'}</p>}
+      </div>
+      <span className="assessment-heading-mark" aria-hidden="true">✎</span>
+    </section>
     {notice && <div className="assessment-notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Đóng">×</button></div>}
 
     {activeAttempt && <section className="assessment-panel assessment-take"><div className="assessment-panel-title"><div><p className="assessment-kicker">{types[activeAttempt.assessment.type]}</p><h2>{activeAttempt.assessment.title}</h2></div><span className="assessment-count">{currentQuestions.length} câu</span></div>
       {currentQuestions.map((question, index) => <QuestionCard key={question.id} question={question} index={index} draft={answerDrafts[question.id] || {}} onChange={update => setDraft(question.id, update)} />)}
       {!currentQuestions.length && <Empty text="Bài kiểm tra chưa có câu hỏi." />}
-      <div className="assessment-actions"><button className="assessment-secondary" disabled={busy} onClick={saveDraft}>Lưu tạm</button><button className="assessment-primary" disabled={busy} onClick={finishAttempt}>Nộp bài</button></div>
+      <div className="assessment-actions"><button className="assessment-secondary" disabled={busy} onClick={saveDraft}>Lưu để làm sau</button><button className="assessment-primary" disabled={busy} onClick={finishAttempt}>Nộp bài</button></div>
     </section>}
 
     {result && <ResultCard result={result} onClose={() => setResult(null)} />}
@@ -213,15 +222,15 @@ export default function AssessmentsPage() {
     </div>}
 
     {!activeAttempt && !result && !isTeacher && <div className="assessment-student-grid">
-      <section className="assessment-panel"><PanelTitle eyebrow="BÀI ĐƯỢC GIAO" title="Bài kiểm tra của em" detail="Chọn bài được giao cho lớp của em để bắt đầu." />{assessments.length ? <div className="assessment-test-list">{assessments.map(test => <article className="assessment-test-item" key={test.id}><div><strong>{test.title}</strong><small>{types[test.type]} · {test.questions.length} câu · {test.durationMinutes} phút</small></div><button className="assessment-primary" disabled={busy} onClick={() => openAttempt(test)}>Bắt đầu</button></article>)}</div> : <Empty text="Chưa có bài kiểm tra được giao. Em hãy hỏi giáo viên khi nào có bài mới nhé!" />}</section>
-      <section className="assessment-panel"><PanelTitle eyebrow="LỊCH SỬ HỌC TẬP" title="Các lần làm bài" detail="Xem lại điểm và đáp án sau khi nộp bài." />{history.length ? <div className="assessment-test-list">{history.map(item => <article className="assessment-test-item" key={item.id}><div><strong>{item.assessmentTitle}</strong><small>{new Date(item.submittedAt || item.startedAt).toLocaleDateString('vi-VN')} · {item.status === 'SUBMITTED' ? `${item.totalScore}/${item.maxScore} điểm` : 'Đang làm'}</small></div>{item.status === 'SUBMITTED' ? <button className="assessment-secondary" onClick={() => openResult(item.id)}>Xem kết quả</button> : <button className="assessment-primary" onClick={() => openAttempt(item)}>Tiếp tục</button>}</article>)}</div> : <Empty text="Bài đã nộp sẽ xuất hiện ở đây." />}</section>
+      <section className="assessment-panel"><PanelTitle title="Bài thầy cô giao" />{assessments.length ? <div className="assessment-test-list">{assessments.map(test => <article className="assessment-test-item" key={test.id}><div><strong>{test.title}</strong><small>{test.questions.length} câu{test.durationMinutes ? ` · ${test.durationMinutes} phút` : ''}</small></div><button className="assessment-primary" disabled={busy} onClick={() => openAttempt(test)}>Bắt đầu làm bài</button></article>)}</div> : <Empty text="Khi thầy cô giao bài kiểm tra, em sẽ thấy bài ở đây." />}</section>
+      <section className="assessment-panel"><PanelTitle title="Các lần làm bài" />{history.length ? <div className="assessment-test-list">{history.map(item => <article className="assessment-test-item" key={item.id}><div><strong>{item.assessmentTitle}</strong><small>{new Date(item.submittedAt || item.startedAt).toLocaleDateString('vi-VN')} · {item.status === 'SUBMITTED' ? `${item.totalScore}/${item.maxScore} điểm` : 'Đang làm'}</small></div>{item.status === 'SUBMITTED' ? <button className="assessment-secondary" disabled={busy} onClick={() => openResult(item.id)}>Xem kết quả</button> : <button className="assessment-primary" disabled={busy} onClick={() => openAttempt(item)}>Làm tiếp</button>}</article>)}</div> : <Empty text="Các bài em đã bắt đầu hoặc đã nộp sẽ hiện ở đây." />}</section>
     </div>}
     <footer className="assessment-footer">Câu trả lời được chấm theo đáp án và quy tắc của từng dạng câu hỏi.</footer>
   </main>
 }
 
 function Select({ label, value, items, onChange }) { return <label>{label}<select value={value} onChange={event => onChange(event.target.value)}><option value="">Chọn</option>{items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> }
-function PanelTitle({ eyebrow, title, detail }) { return <header className="assessment-panel-title"><div><p className="assessment-kicker">{eyebrow}</p><h2>{title}</h2><p>{detail}</p></div></header> }
+function PanelTitle({ eyebrow, title, detail }) { return <header className="assessment-panel-title"><div>{eyebrow && <p className="assessment-kicker">{eyebrow}</p>}<h2>{title}</h2>{detail && <p>{detail}</p>}</div></header> }
 function Empty({ text }) { return <p className="assessment-empty">{text}</p> }
 function QuestionCard({ question, index, draft, onChange }) {
   const selected = draft.selectedOptionIds || []

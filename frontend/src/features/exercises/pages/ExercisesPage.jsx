@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getAssessmentSession, getAttemptDraft, getAttemptHistory } from '../../assessments/services/assessmentApi'
+import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
+import { getAssessmentSession } from '../../assessments/services/assessmentApi'
 import {
   getExerciseResult, getPendingExercises, getStepExercises, reviewExercise, saveExerciseAnswer,
   startExerciseAttempt, submitExerciseAttempt, updateExercise,
@@ -14,23 +15,30 @@ const blankAnswers = question => question.blankCount ? Array(question.blankCount
 
 export default function ExercisesPage() {
   const { stepId } = useParams()
+  return <ExerciseWorkspace key={stepId ?? 'review'} stepId={stepId} />
+}
+
+function ExerciseWorkspace({ stepId }) {
   const [user, setUser] = useState(null)
   const [access, setAccess] = useState('loading')
   const [questions, setQuestions] = useState([])
   const [pending, setPending] = useState([])
   const [answers, setAnswers] = useState({})
   const [attempt, setAttempt] = useState(null)
-  const [resumedAttempt, setResumedAttempt] = useState(false)
-  const [confirmSubmit, setConfirmSubmit] = useState(false)
+  const [submittedId, setSubmittedId] = useState(null)
   const [result, setResult] = useState(null)
   const [notice, setNotice] = useState('')
+  const [actionError, setActionError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [editingId, setEditingId] = useState(null)
-  const [draft, setDraft] = useState(null)
+  const [questionIndex, setQuestionIndex] = useState(0)
+  const [loadError, setLoadError] = useState('')
+  const questionHeading = useRef(null)
+  const resultHeading = useRef(null)
+  const question = questions[questionIndex]
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
 
   useEffect(() => {
-    document.title = 'Bài tập cá nhân hóa · TLCN'
+    document.title = stepId ? 'Bài luyện tập · EduLearn' : 'Duyệt bài tập · EduLearn'
     let active = true
     getAssessmentSession().then(async session => {
       if (!active) return
@@ -38,55 +46,43 @@ export default function ExercisesPage() {
       if (!['ADMIN', 'TEACHER', 'STUDENT'].includes(session?.role)) { setAccess('forbidden'); return }
       if (stepId && session.role !== 'STUDENT') { setAccess('forbidden'); return }
       if (!stepId && session.role === 'STUDENT') { setAccess('missing-step'); return }
-      setAccess('allowed')
       try {
-        if (stepId) {
-          const available = await getStepExercises(stepId)
-          if (!active) return
-          setQuestions(available)
-          try {
-            const history = await getAttemptHistory(session.id)
-            const current = history.find(item => String(item.learningStepId) === String(stepId) && item.status === 'IN_PROGRESS')
-            if (current) {
-              const saved = await getAttemptDraft(current.id)
-              if (!active) return
-              setAttempt(current)
-              setAnswers(restoreExerciseAnswers(saved))
-              setResumedAttempt(true)
-            }
-          } catch (error) { if (active) setNotice(error.message) }
-        } else setPending(await getPendingExercises())
-      } catch (error) { if (active) setNotice(error.message) }
+        const items = await (stepId ? getStepExercises(stepId) : getPendingExercises())
+        if (!active) return
+        if (stepId) setQuestions(items)
+        else setPending(items)
+      } catch {
+        if (active) setLoadError('Chưa tải được bài tập. Hãy tải lại trang để thử lại.')
+      }
+      if (active) setAccess('allowed')
     }).catch(error => { if (active) setAccess(error.status === 403 ? 'forbidden' : 'signed-out') })
     return () => { active = false }
   }, [stepId])
 
+  useEffect(() => {
+    if (attempt) questionHeading.current?.focus()
+    if (result) resultHeading.current?.focus()
+  }, [attempt, questionIndex, result])
+
   const run = async action => {
-    setBusy(true); setNotice('')
-    try { await action() } catch (error) { setNotice(error.message) } finally { setBusy(false) }
+    setBusy(true); setNotice(''); setActionError('')
+    try { await action() } catch (error) { setActionError(error.message) } finally { setBusy(false) }
   }
 
   const change = (id, update) => setAnswers(current => ({ ...current, [id]: { ...current[id], ...update } }))
   const start = () => run(async () => {
     const active = await startExerciseAttempt(stepId)
-    setAttempt(active); setResult(null); setAnswers({}); setResumedAttempt(false)
-  })
-  const saveDraft = () => run(async () => {
-    for (const question of questions) {
-      const answer = answers[question.id] || {}
-      await saveExerciseAnswer(attempt.id, toExerciseAnswerPayload(question, answer))
-    }
-    setNotice('Đã lưu tạm bài làm. Em có thể quay lại để làm tiếp.')
+    setAttempt(active); setResult(null); setAnswers({}); setQuestionIndex(0)
   })
   const submit = () => run(async () => {
     for (const question of questions) {
       const answer = answers[question.id] || {}
       await saveExerciseAnswer(attempt.id, toExerciseAnswerPayload(question, answer))
     }
-    await submitExerciseAttempt(attempt.id)
-    setResult(await getExerciseResult(attempt.id))
+    const submitted = await submitExerciseAttempt(attempt.id)
+    setSubmittedId(submitted.id)
     setAttempt(null)
-    setConfirmSubmit(false)
+    setResult(await getExerciseResult(submitted.id))
   })
 
   const beginEdit = question => {
@@ -113,15 +109,24 @@ export default function ExercisesPage() {
     setNotice(updated.status === 'APPROVED' ? 'Đã duyệt bài tập.' : 'Đã từ chối bài tập.')
   })
 
-  if (access === 'loading') return <main className="exercise-page"><p>Đang tải…</p></main>
-  if (access !== 'allowed') return <main className="exercise-page"><section className="exercise-gate"><h1>{access === 'signed-out' ? 'Hãy đăng nhập' : access === 'missing-step' ? 'Chưa có bước học' : 'Không có quyền truy cập'}</h1><p>{access === 'missing-step' ? 'Mở bài tập từ một bước trong lộ trình học tập của em.' : 'Đăng nhập đúng vai trò để xem nội dung này.'}</p><Link to="/login">Đến trang đăng nhập</Link></section></main>
+  if (access === 'loading') return <main className="exercise-page"><p role="status">Đang mở bài tập…</p></main>
+  if (access !== 'allowed') return <main className="exercise-page"><section className="exercise-gate">
+    <h1>{access === 'signed-out' ? 'Đăng nhập để mở bài tập' : access === 'missing-step' ? 'Mở bài từ lộ trình của em' : 'Trang dành cho vai trò khác'}</h1>
+    {access === 'signed-out' && <Link to={stepId ? '/login?returnTo=/my-learning-path' : '/login?returnTo=/exercises/review'}>Đăng nhập</Link>}
+    {access === 'missing-step' ? <Link to="/my-learning-path">Về lộ trình của em</Link> : <Link to="/">Về trang chủ</Link>}
+  </section></main>
 
-  return <main className="exercise-page">
-    <header className="exercise-header"><Link to="/" className="exercise-brand">✿ TLCN</Link><div>{user?.fullName}<span>{isTeacher ? 'Giáo viên' : 'Học sinh'}</span></div>{stepId && <Link className="exercise-path-link" to="/my-learning-path">Về lộ trình</Link>}</header>
-    <section className="exercise-heading"><p className="exercise-kicker">LUYỆN TẬP CÁ NHÂN HÓA</p><h1>{stepId ? 'Bài tập của em' : 'Duyệt bài tập AI'}</h1><p>{stepId ? 'Các câu hỏi đã được giáo viên kiểm tra và duyệt.' : 'Xem đáp án, chỉnh sửa nội dung rồi duyệt trước khi giao cho học sinh.'}</p></section>
+  return <main className={stepId ? 'exercise-page exercise-student' : 'exercise-page'}>
+    <header className="exercise-header"><Link to="/" className="exercise-brand">EduLearn</Link><WorkspaceNavigation role={user.role} /><div>{user.fullName}</div></header>
+    <section className="exercise-heading">
+      <h1>{stepId ? 'Bài luyện tập của em' : 'Duyệt bài tập AI'}</h1>
+      <p>{stepId ? 'Em làm từng câu rồi nộp bài để xem kết quả nhé.' : 'Xem đáp án, chỉnh sửa nội dung rồi duyệt trước khi giao cho học sinh.'}</p>
+    </section>
     {notice && <p className="exercise-notice" role="status">{notice}</p>}
+    {actionError && <p className="exercise-error" role="alert">{actionError}</p>}
+    {loadError && <p className="exercise-error" role="alert">{loadError}</p>}
 
-    {isTeacher && <section className="exercise-list" aria-label="Bài tập chờ duyệt">
+    {isTeacher && !loadError && <section className="exercise-list" aria-label="Bài tập chờ duyệt">
       {pending.length === 0 ? <p className="exercise-empty">Không có bài tập nào đang chờ duyệt.</p> : pending.map(question => <article className="exercise-card" key={question.questionId}>
         <div className="exercise-card-meta"><span>{kindName[question.kind]}</span><span>{question.difficulty} · {question.score} điểm</span></div>
         {editingId === question.questionId && draft ? <div className="exercise-edit-form">
@@ -138,32 +143,54 @@ export default function ExercisesPage() {
       </article>)}
     </section>}
 
-    {stepId && !attempt && !result && <section className="exercise-list">
-      {questions.length === 0 ? <p className="exercise-empty">Bước học này chưa có bài tập được duyệt.</p> : <>
-        <p className="exercise-count">Có {questions.length} câu hỏi trong bước học này.</p><button className="exercise-primary" onClick={start} disabled={busy}>Bắt đầu làm bài</button>
+    {stepId && !loadError && !attempt && !submittedId && <section className="exercise-list">
+      {questions.length === 0 ? <>
+        <p className="exercise-empty">Bước học này chưa có bài tập. Em hãy quay lại sau khi thầy cô giao bài nhé.</p>
+        <Link className="exercise-secondary" to="/my-learning-path">Về lộ trình của em</Link>
+      </> : <>
+        <p className="exercise-count">Bài này có {questions.length} câu hỏi.</p>
+        <button type="button" className="exercise-primary" onClick={start} disabled={busy}>{busy ? 'Đang mở bài…' : 'Bắt đầu làm bài'}</button>
+      </>}
+    </section>}
+
+    {submittedId && !result && <section className="exercise-list">
+      {busy ? <p className="exercise-count" role="status">Đã nộp bài. Đang tải kết quả…</p> : <>
+        <p className="exercise-count">Em đã nộp bài. Hãy mở lại kết quả để xem điểm nhé.</p>
+        <button type="button" className="exercise-primary" onClick={() => run(async () => setResult(await getExerciseResult(submittedId)))}>Mở lại kết quả</button>
       </>}
     </section>}
 
     {stepId && attempt && <section className="exercise-list">
-      {resumedAttempt && <p className="exercise-notice" role="status">Đã mở lại bài làm đang lưu. Em có thể tiếp tục từ phần đã làm.</p>}
-      {questions.map((question, index) => <article className="exercise-card" key={question.id}>
-        <div className="exercise-card-meta"><span>Câu {index + 1} · {kindName[question.kind]}</span><span>{question.score} điểm</span></div><h2>{question.content}</h2>
-        {question.kind === 'MULTIPLE_CHOICE' && <fieldset className="exercise-options"><legend>Chọn câu trả lời</legend>{question.options.map(option => <label key={option.id}><input type={question.allowMultiple ? 'checkbox' : 'radio'} name={`question-${question.id}`} checked={(answers[question.id]?.selectedOptionIds || []).includes(option.id)} onChange={event => {
+      <article className="exercise-card" key={question.id}>
+        <h2 ref={questionHeading} tabIndex={-1}><span className="exercise-question-number">Câu {questionIndex + 1} / {questions.length}</span>{question.content}</h2>
+        {question.kind === 'MULTIPLE_CHOICE' && <fieldset className="exercise-options" disabled={busy}><legend>{question.allowMultiple ? 'Chọn tất cả đáp án đúng' : 'Chọn một đáp án'}</legend>{question.options.map(option => <label key={option.id}><input type={question.allowMultiple ? 'checkbox' : 'radio'} name={`question-${question.id}`} checked={(answers[question.id]?.selectedOptionIds || []).includes(option.id)} onChange={event => {
           const existing = answers[question.id]?.selectedOptionIds || []
           change(question.id, { selectedOptionIds: question.allowMultiple ? (event.target.checked ? [...existing, option.id] : existing.filter(id => id !== option.id)) : [option.id] })
         }} />{option.name}</label>)}</fieldset>}
-        {question.kind === 'FILL_BLANK' && <div className="exercise-answer-fields">{blankAnswers(question).map((_, position) => <label key={position}>Ô {position + 1}<input value={(answers[question.id]?.blankAnswers || blankAnswers(question))[position]} onChange={event => {
+        {question.kind === 'FILL_BLANK' && <div className="exercise-answer-fields">{blankAnswers(question).map((_, position) => <label key={position}>Ô {position + 1}<input disabled={busy} value={(answers[question.id]?.blankAnswers || blankAnswers(question))[position]} onChange={event => {
           const values = [...(answers[question.id]?.blankAnswers || blankAnswers(question))]; values[position] = event.target.value; change(question.id, { blankAnswers: values })
         }} /></label>)}</div>}
-        {question.kind === 'SHORT_ANSWER' && <label className="exercise-answer-fields">Câu trả lời<input value={answers[question.id]?.content || ''} onChange={event => change(question.id, { content: event.target.value })} /></label>}
-      </article>)}
-      <div className="exercise-attempt-actions"><button className="exercise-secondary" disabled={busy} onClick={saveDraft}>Lưu tạm</button><button className="exercise-primary" disabled={busy} onClick={() => setConfirmSubmit(true)}>Nộp bài</button></div>
-      {confirmSubmit && <section className="exercise-confirm" role="alertdialog" aria-labelledby="exercise-confirm-title" aria-describedby="exercise-confirm-description">
-        <div><h2 id="exercise-confirm-title">Nộp bài nhé?</h2><p id="exercise-confirm-description">Sau khi nộp, em sẽ xem được điểm và đáp án. Em có thể quay lại kiểm tra câu trả lời trước.</p></div>
-        <div className="exercise-actions"><button className="exercise-secondary" disabled={busy} onClick={() => setConfirmSubmit(false)}>Xem lại bài</button><button className="exercise-primary" disabled={busy} onClick={submit}>{busy ? 'Đang nộp…' : 'Xác nhận nộp bài'}</button></div>
-      </section>}
+        {question.kind === 'SHORT_ANSWER' && <label className="exercise-answer-fields">Câu trả lời<input disabled={busy} value={answers[question.id]?.content || ''} onChange={event => change(question.id, { content: event.target.value })} /></label>}
+      </article>
+      <div className="exercise-actions">
+        {questionIndex > 0 && <button type="button" className="exercise-secondary" disabled={busy} onClick={() => setQuestionIndex(index => index - 1)}>Câu trước</button>}
+        {questionIndex < questions.length - 1
+          ? <button type="button" className="exercise-primary" onClick={() => setQuestionIndex(index => index + 1)}>Câu tiếp theo</button>
+          : <button type="button" className="exercise-primary" disabled={busy} onClick={submit}>{busy ? 'Đang nộp…' : 'Nộp bài'}</button>}
+      </div>
     </section>}
 
-    {result && <section className="exercise-list"><article className="exercise-card exercise-result"><p className="exercise-kicker">KẾT QUẢ CỦA EM</p><h2>{result.attempt.totalScore} / {result.attempt.maxScore} điểm</h2>{result.answers.map((answer, index) => <div key={answer.questionId} className="exercise-result-item"><strong>{index + 1}. {answer.correct ? 'Chính xác!' : 'Mình cùng ôn lại nhé.'}</strong><p>{answer.questionContent}</p>{!answer.correct && <p>Đáp án: {answer.expected.join(', ')}</p>}</div>)}</article></section>}
+    {result && <section className="exercise-list">
+      <article className="exercise-card exercise-result">
+        <h2 ref={resultHeading} tabIndex={-1}>Kết quả của em · {result.attempt.totalScore} / {result.attempt.maxScore} điểm</h2>
+        {result.answers.map((answer, index) => <div key={answer.questionId} className="exercise-result-item">
+          <strong>Câu {index + 1} · {answer.correct ? 'Chính xác!' : 'Mình cùng ôn lại nhé.'}</strong>
+          <p>{answer.questionContent}</p>
+          {!answer.correct && <p>Đáp án đúng là {answer.expected.join(', ')}.</p>}
+          {answer.explanation && <p>{answer.explanation}</p>}
+        </div>)}
+      </article>
+      <Link className="exercise-primary" to="/my-learning-path">Về lộ trình của em</Link>
+    </section>}
   </main>
 }

@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 
 const guides = [
-  ['Dành cho giáo viên', 'Chức năng đánh giá, theo dõi tiến độ và đề xuất bài học đang được phát triển.'],
-  ['Dành cho học sinh', 'Chọn chủ đề, thử bài toán và xem phản hồi ngay. Có gợi ý khi em cần.'],
+  ['Dành cho giáo viên', 'Mở Lớp học để xem tiến độ, Kiểm tra để giao bài và Duyệt bài tập để xem đề xuất.'],
+  ['Dành cho học sinh', 'Đăng nhập để xem lộ trình của em và bài kiểm tra thầy cô giao. Em cũng có thể thử bài Toán ngay trên trang chủ.'],
   ['Câu hỏi thường gặp', 'Em có thể luyện thử mà không cần tài khoản. Kết quả luyện thử không được lưu.'],
 ]
 

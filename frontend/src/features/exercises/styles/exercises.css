@@ -42,4 +42,20 @@
 .exercise-result-item p { color: #716a76; line-height: 1.5; }
 .exercise-gate { margin-top: 70px; }
 .exercise-gate a { display: inline-block; margin-top: 12px; color: #705788; font-weight: 750; }
-@media (max-width: 640px) { .exercise-page { padding: 0 16px 38px; } .exercise-header > div { gap: 7px; font-size: 11px; } .exercise-card { padding: 16px; } .exercise-actions { justify-content: stretch; } .exercise-actions button { flex: 1; } .exercise-confirm { align-items: stretch; flex-direction: column; } .exercise-confirm .exercise-actions { flex-wrap: nowrap; } }
+.exercise-page .exercise-header { height: auto; min-height: 72px; gap: 8px 14px; }
+.exercise-header > div { overflow-wrap: anywhere; }
+.exercise-gate a { min-height: 44px; margin-right: 18px; }
+.exercise-error { color: #863d36; background: #fff1ef; padding: 12px; border-radius: 9px; }
+.exercise-student { max-width: 800px; }
+.exercise-student .exercise-heading p,
+.exercise-student :is(.exercise-count, .exercise-empty, .exercise-result-item) { color: #514b59; font-size: 16px; line-height: 1.6; }
+.exercise-student h1 { font-weight: 800; }
+.exercise-student .exercise-card h2 { margin: 0 0 14px; font-size: clamp(20px, 4vw, 26px); font-weight: 750; }
+.exercise-question-number { display: block; margin-bottom: 6px; color: #6a517c; font-size: 15px; }
+.exercise-student .exercise-list > :is(.exercise-primary, .exercise-secondary) { justify-self: start; }
+.exercise-student :is(.exercise-primary, .exercise-secondary, .exercise-options label, .exercise-answer-fields input) { min-height: 48px; font-size: 16px; }
+.exercise-student :is(.exercise-options legend, .exercise-answer-fields) { font-size: 15px; color: #514b59; }
+.exercise-options label:has(input:checked) { border-color: #8b71a2; background: #f2eaf8; }
+.exercise-options input { width: 18px; height: 18px; flex-shrink: 0; }
+.exercise-page :is(a, button, input):focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
+@media (max-width: 640px) { .exercise-page { padding: 0 16px 38px; } .exercise-header > div { gap: 7px; font-size: 11px; } .exercise-card { padding: 16px; } .exercise-actions { justify-content: stretch; } .exercise-actions button { flex: 1; } }
