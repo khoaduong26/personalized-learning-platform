@@ -8,6 +8,7 @@ import com.tlcn.backend.learningpath.generation.LearningPathOrderer;
 import com.tlcn.backend.learningpath.repository.LearningPathRepository;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.learningpath.service.LearningPathService;
+import com.tlcn.backend.notification.NotificationService;
 import com.tlcn.backend.mastery.entity.GapPriority;
 import com.tlcn.backend.mastery.entity.GapStatus;
 import com.tlcn.backend.mastery.entity.KnowledgeGap;
@@ -37,14 +38,17 @@ public class LearningPathServiceImpl implements LearningPathService {
     private final KnowledgeGapRepository gaps;
     private final StudentRepository students;
     private final LearningPathOrderer orderer;
+    private final NotificationService notifications;
 
     public LearningPathServiceImpl(LearningPathRepository paths, LearningStepRepository steps,
-            KnowledgeGapRepository gaps, StudentRepository students, LearningPathOrderer orderer) {
+            KnowledgeGapRepository gaps, StudentRepository students, LearningPathOrderer orderer,
+            NotificationService notifications) {
         this.paths = paths;
         this.steps = steps;
         this.gaps = gaps;
         this.students = students;
         this.orderer = orderer;
+        this.notifications = notifications;
     }
 
     @Override
@@ -126,7 +130,13 @@ public class LearningPathServiceImpl implements LearningPathService {
             path.getSteps().add(step);
             gap.setStatus(GapStatus.IN_REMEDIATION);
         }
-        return paths.save(path);
+        LearningPath saved = paths.save(path);
+        notifications.notifyAfterCommit(actor.id(), "LEARNING_PATH_READY", "Lộ trình đã sẵn sàng",
+                "Đã tạo lộ trình học tập cho " + student.getFullName() + " từ các khoảng trống kiến thức.",
+                "/classrooms");
+        notifications.notifyAfterCommit(student.getId(), "LEARNING_PATH_READY", "Lộ trình học tập mới",
+                "Thầy cô đã tạo lộ trình học tập cá nhân cho em.", "/my-learning-path");
+        return saved;
     }
 
     private List<KnowledgeGap> validateSuggestion(List<Integer> positions, List<KnowledgeGap> backendOrder) {

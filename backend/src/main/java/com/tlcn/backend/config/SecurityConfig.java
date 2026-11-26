@@ -49,6 +49,7 @@ public class SecurityConfig {
             // These public endpoints do not use cookie-based authentication. Keep CSRF for other routes.
             .csrf(csrf -> csrf.ignoringRequestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp"))
             .authorizeHttpRequests(rules -> rules
+                .requestMatchers("/ws/notifications").authenticated()
                 .requestMatchers("/api/auth/register", "/api/auth/verify-otp", "/api/auth/resend-otp",
                         "/api/auth/options", "/api/auth/google", "/api/auth/google-login",
                         "/api/auth/login", "/api/auth/logout", "/api/auth/csrf", "/api/csrf", "/oauth2/authorization/google",

@@ -13,6 +13,7 @@ import com.tlcn.backend.exercise.service.ExerciseService;
 import com.tlcn.backend.learningpath.entity.LearningStep;
 import com.tlcn.backend.learningpath.entity.LearningStepStatus;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
+import com.tlcn.backend.notification.NotificationService;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import jakarta.validation.Validator;
@@ -35,16 +36,18 @@ public class ExerciseServiceImpl implements ExerciseService {
     private final LessonRepository lessons;
     private final ExerciseQuestionGenerator generator;
     private final Validator validator;
+    private final NotificationService notifications;
 
     public ExerciseServiceImpl(StepExerciseRepository exercises, QuestionRepository questions,
             LearningStepRepository steps, LessonRepository lessons, ExerciseQuestionGenerator generator,
-            Validator validator) {
+            Validator validator, NotificationService notifications) {
         this.exercises = exercises;
         this.questions = questions;
         this.steps = steps;
         this.lessons = lessons;
         this.generator = generator;
         this.validator = validator;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -123,6 +126,8 @@ public class ExerciseServiceImpl implements ExerciseService {
 
         try {
             Question question = savePendingExercise(step, request);
+            notifications.notifyAfterCommit(actor.id(), "AI_EXERCISE_READY", "Bài tập AI đã sẵn sàng",
+                    "Bài tập cho " + step.getLesson().getName() + " đang chờ thầy cô duyệt.", "/exercises/review");
             return new ExerciseGenerationResult(question, generated.provider(), generated.demo(), generated.notice());
         } catch (ResponseStatusException exception) {
             if (exception.getStatusCode() == HttpStatus.BAD_REQUEST || exception.getStatusCode() == HttpStatus.NOT_FOUND)
@@ -173,7 +178,15 @@ public class ExerciseServiceImpl implements ExerciseService {
         if (question.getApprovalStatus() != ApprovalStatus.PENDING)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Bài tập này đã được xử lý.");
         question.setApprovalStatus(decision);
-        return questions.save(question);
+        Question saved = questions.save(question);
+        if (decision == ApprovalStatus.APPROVED) {
+            StepExercise exercise = exercises.findByQuestionId(questionId).orElseThrow();
+            Long studentId = exercise.getStep().getPath().getStudent().getId();
+            notifications.notifyAfterCommit(studentId, "EXERCISE_APPROVED", "Có bài luyện tập mới",
+                    "Thầy cô đã duyệt bài tập cho " + exercise.getStep().getLesson().getName() + ".",
+                    "/my-learning-path");
+        }
+        return saved;
     }
 
     @Transactional

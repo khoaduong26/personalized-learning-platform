@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import NotificationCenter from '../notifications/NotificationCenter'
 import './workspace-navigation.css'
 
 const links = [
@@ -8,6 +9,7 @@ const links = [
   { to: '/academic', label: 'Chương trình', staffOnly: true },
   { to: '/assessments', label: 'Kiểm tra' },
   { to: '/exercises/review', label: 'Duyệt bài tập', staffOnly: true },
+  { to: '/admin', label: 'Tổng quan', adminOnly: true, end: true },
   { to: '/admin/accounts', label: 'Tài khoản', adminOnly: true },
 ]
 
@@ -25,6 +27,7 @@ export default function WorkspaceNavigation({ role }) {
           {role === 'STUDENT' && link.to === '/assessments' ? 'Bài kiểm tra' : link.label}
         </NavLink>
       ))}
+      <NotificationCenter />
     </nav>
   )
 }
