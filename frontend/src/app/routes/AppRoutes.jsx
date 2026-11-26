@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
-import { LoginPage, RegistrationPage, RegistrationCompletePage } from '../../features/auth'
+import { ForgotPasswordPage, LoginPage, RegistrationPage, RegistrationCompletePage } from '../../features/auth'
 import { HomePage } from '../../features/home'
 import AcademicPage from '../../features/academic/pages/AcademicPage'
 import AccountsPage from '../../features/accounts/pages/AccountsPage'
@@ -34,6 +34,7 @@ export default function AppRoutes() {
       <Route path="register" element={<RegistrationPage />} />
       <Route path="register/complete" element={<RegistrationCompletePage />} />
       <Route path="login" element={<LoginRoute />} />
+      <Route path="forgot-password" element={<ForgotPasswordPage />} />
       <Route path="academic" element={<AcademicPage />} />
       <Route path="admin/accounts" element={<AccountsPage />} />
       <Route path="assessments" element={<AssessmentsPage />} />

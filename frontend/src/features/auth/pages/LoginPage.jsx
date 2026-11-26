@@ -135,6 +135,7 @@ export default function LoginPage() {
           <button className="registration-primary" type="submit">{busy ? 'Đang đăng nhập…' : 'Đăng nhập'}</button>
         </fieldset>
       </form>
+      <Link className="registration-text-link" to="/forgot-password">Quên mật khẩu?</Link>
       {code === 'EMAIL_NOT_VERIFIED' && <Link className="registration-text-link" to="/register">Xác minh email / gửi lại OTP</Link>}
       <div className="registration-divider"><span>hoặc</span></div>
       <button className="registration-google" disabled={busy || checking || !googleEnabled}
