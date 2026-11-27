@@ -321,9 +321,8 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     private boolean ownsStudent(LearningStep step, UserSummary teacher) {
-        var student = step.getPath().getStudent();
-        return student.getClassroom() != null
-                && student.getClassroom().getTeacher().getId().equals(teacher.id());
+        var classroom = step.getPath().getClassroom();
+        return classroom != null && classroom.getTeacher().getId().equals(teacher.id());
     }
 
     private void requireTeacher(UserSummary actor) {

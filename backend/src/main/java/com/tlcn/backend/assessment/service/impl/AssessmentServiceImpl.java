@@ -180,28 +180,39 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<AssessmentAttempt> attemptsForStudent(Long studentId, UserSummary actor) {
+    public List<AssessmentAttempt> attemptsForStudent(Long studentId, Long requestedClassroomId, UserSummary actor) {
         requireSignedIn(actor);
         if (actor.role() == Role.STUDENT && !actor.id().equals(studentId))
             throw forbidden();
         if (actor.role() != Role.STUDENT && actor.role() != Role.TEACHER && actor.role() != Role.ADMIN)
             throw forbidden();
-        Classroom classroom = null;
+        List<Classroom> teacherClassrooms = List.of();
         if (actor.role() == Role.TEACHER) {
             var student = students.findById(studentId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
-            classroom = student.getClassroom();
-            if (classroom == null || !classroom.getTeacher().getId().equals(actor.id()))
+            teacherClassrooms = student.getClassrooms().stream()
+                    .filter(classroom -> classroom.getTeacher().getId().equals(actor.id())).toList();
+            if (requestedClassroomId != null)
+                teacherClassrooms = teacherClassrooms.stream()
+                        .filter(classroom -> classroom.getId().equals(requestedClassroomId)).toList();
+            if (teacherClassrooms.isEmpty())
                 throw forbidden();
+        } else if (actor.role() == Role.ADMIN && requestedClassroomId != null) {
+            var student = students.findById(studentId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
+            teacherClassrooms = student.getClassrooms().stream()
+                    .filter(classroom -> classroom.getId().equals(requestedClassroomId)).toList();
+            if (teacherClassrooms.isEmpty()) throw forbidden();
         }
         List<AssessmentAttempt> found = attempts.findByStudentIdOrderByStartedAtDesc(studentId);
-        if (actor.role() == Role.TEACHER) {
-            Long classroomId = classroom.getId();
+        if (actor.role() == Role.TEACHER || (actor.role() == Role.ADMIN && requestedClassroomId != null)) {
+            List<Long> classroomIds = teacherClassrooms.stream().map(Classroom::getId).toList();
             found = found.stream().filter(attempt -> {
                 if (attempt.getLearningStep() != null)
-                    return attempt.getLearningStep().getPath().getStudent().getId().equals(studentId);
+                    return attempt.getLearningStep().getPath().getClassroom() != null
+                            && classroomIds.contains(attempt.getLearningStep().getPath().getClassroom().getId());
                 return attempt.getAssessment() != null && attempt.getAssessment().getClassrooms().stream()
-                        .anyMatch(assigned -> assigned.getId().equals(classroomId));
+                        .anyMatch(assigned -> classroomIds.contains(assigned.getId()));
             }).toList();
         }
         return found;

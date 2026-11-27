@@ -202,7 +202,7 @@ export default function ClassroomsPage() {
           <div id="class-panel-roster" role="tabpanel" aria-labelledby="class-tab-roster" hidden={classroomTab !== 'roster'}>
             <section className="classrooms-add-student"><div><span className="classrooms-section-step">01</span><div><h3>Thêm học sinh</h3><p>Tìm tài khoản học sinh bằng email để thêm vào lớp.</p></div></div><form onSubmit={searchCandidate}><label className="classrooms-sr-only" htmlFor="student-email">Email học sinh</label><input id="student-email" type="email" required value={candidateEmail} onChange={event => setCandidateEmail(event.target.value)} placeholder="hoc.sinh@email.com" /><button className="classrooms-secondary">Tìm học sinh</button></form>
               {candidates.map(student => <div key={student.id} className="classrooms-candidate"><div><strong>{student.fullName}</strong><span>{student.email}</span></div><button type="button" disabled={busy} onClick={() => addStudent(student)}>+ Thêm vào lớp</button></div>)}
-              {candidateEmail && !candidates.length && <span className="classrooms-search-hint">Tìm đúng email của học sinh chưa được xếp lớp.</span>}
+              {candidateEmail && !candidates.length && <span className="classrooms-search-hint">Không tìm thấy tài khoản học sinh đang hoạt động với email này.</span>}
             </section>
             <div className="classrooms-roster-toolbar"><div><span className="classrooms-section-step">02</span><div><h3>Danh sách học sinh</h3><small>{selected.studentCount || 0} học sinh trong lớp</small></div></div><form onSubmit={event => { event.preventDefault(); retryStudents() }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
             {rosterState === 'loading' ? <p className="classrooms-empty classrooms-roster-empty" role="status">Đang tải danh sách học sinh…</p>
@@ -215,7 +215,7 @@ export default function ClassroomsPage() {
               : <p className="classrooms-empty" role={rosterState === 'error' ? 'alert' : 'status'}>{rosterState === 'error' ? roster.error : 'Đang tải danh sách học sinh…'}</p>}
           </div>
           <div id="class-panel-plan" role="tabpanel" aria-labelledby="class-tab-plan" hidden={classroomTab !== 'plan'}>
-            {rosterState === 'ready' ? <LearningPathPanel students={visibleStudents} />
+            {rosterState === 'ready' ? <LearningPathPanel students={visibleStudents} classroomId={selectedId} classroomName={selected.name} />
               : <p className="classrooms-empty" role={rosterState === 'error' ? 'alert' : 'status'}>{rosterState === 'error' ? roster.error : 'Đang tải danh sách học sinh…'}</p>}
           </div>
         </> : <div className="classrooms-no-selection"><span>▦</span><h2>Chọn một lớp học</h2><p>Tạo lớp mới hoặc chọn lớp ở cột bên trái để quản lý danh sách học sinh.</p></div>}

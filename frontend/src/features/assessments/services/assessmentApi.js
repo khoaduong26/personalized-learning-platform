@@ -23,4 +23,6 @@ export const saveAnswer = (attemptId, body) => request(`/api/attempts/${attemptI
 export const submitAttempt = attemptId => request(`/api/attempts/${attemptId}/submit`, { method: 'POST' })
 export const getAttemptResult = attemptId => request(`/api/attempts/${attemptId}/result`)
 export const getAttemptDraft = attemptId => request(`/api/attempts/${attemptId}/draft`)
-export const getAttemptHistory = studentId => request(`/api/attempts/student/${studentId}`)
+export const getAttemptHistory = (studentId, classroomId) => request(
+  `/api/attempts/student/${studentId}${classroomId ? `?classroomId=${classroomId}` : ''}`,
+)

@@ -7,6 +7,8 @@ import com.tlcn.backend.learningpath.entity.LearningStepStatus;
 import com.tlcn.backend.learningpath.generation.LearningPathOrderer;
 import com.tlcn.backend.learningpath.repository.LearningPathRepository;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
+import com.tlcn.backend.classroom.entity.Classroom;
+import com.tlcn.backend.classroom.repository.ClassroomRepository;
 import com.tlcn.backend.learningpath.service.LearningPathService;
 import com.tlcn.backend.notification.NotificationService;
 import com.tlcn.backend.mastery.entity.GapPriority;
@@ -40,46 +42,73 @@ public class LearningPathServiceImpl implements LearningPathService {
     private final StudentRepository students;
     private final LearningPathOrderer orderer;
     private final NotificationService notifications;
+    private final ClassroomRepository classrooms;
 
     public LearningPathServiceImpl(LearningPathRepository paths, LearningStepRepository steps,
             KnowledgeGapRepository gaps, StudentRepository students, LearningPathOrderer orderer,
-            NotificationService notifications) {
+            NotificationService notifications, ClassroomRepository classrooms) {
         this.paths = paths;
         this.steps = steps;
         this.gaps = gaps;
         this.students = students;
         this.orderer = orderer;
         this.notifications = notifications;
+        this.classrooms = classrooms;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<LearningPath> forStudent(Long studentId, UserSummary actor) {
-        requireCanView(studentId, actor);
-        return paths.findByStudentIdOrderByCreatedAtDesc(studentId);
+    public List<LearningPath> forStudent(Long studentId, Long classroomId, UserSummary actor) {
+        requireCanView(studentId, classroomId, actor);
+        List<LearningPath> result = paths.findByStudentIdOrderByCreatedAtDesc(studentId);
+        if (classroomId != null) result = result.stream()
+                .filter(path -> path.getClassroom() != null && classroomId.equals(path.getClassroom().getId())).toList();
+        else if (actor.role() == Role.TEACHER) result = result.stream()
+                .filter(path -> path.getClassroom() != null
+                        ? path.getClassroom().getTeacher().getId().equals(actor.id())
+                        : students.hasClassroomOwnedBy(studentId, actor.id())).toList();
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Classroom> classroomsForStudent(Long studentId, UserSummary actor) {
+        if (actor == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập.");
+        if (actor.role() != Role.STUDENT || !actor.id().equals(studentId))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ học sinh mới xem được danh sách lớp của mình.");
+        var student = students.findById(studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
+        return student.getClassrooms().stream().sorted(Comparator.comparing(Classroom::getName)).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public LearningPath get(Long studentId, Long pathId, UserSummary actor) {
-        requireCanView(studentId, actor);
-        return paths.findByIdAndStudentId(pathId, studentId)
+        requireCanView(studentId, null, actor);
+        LearningPath path = paths.findByIdAndStudentId(pathId, studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lộ trình."));
+        if (actor.role() == Role.TEACHER && path.getClassroom() != null
+                && !path.getClassroom().getTeacher().getId().equals(actor.id()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem lộ trình của lớp này.");
+        return path;
     }
 
     @Override
     @Transactional
-    public LearningPath generate(Long studentId, UserSummary actor) {
-        requireCanManage(studentId, actor);
+    public LearningPath generate(Long studentId, Long requestedClassroomId, UserSummary actor) {
+        Long classroomId = resolveClassroomId(studentId, requestedClassroomId, actor);
+        requireCanManage(studentId, classroomId, actor);
         var student = students.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
+        Classroom classroom = classrooms.findById(classroomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp học."));
         List<KnowledgeGap> openGaps = gaps.findByStudentId(studentId).stream()
                 .filter(gap -> gap.getStatus() == GapStatus.IDENTIFIED || gap.getStatus() == GapStatus.IN_REMEDIATION)
                 .sorted(Comparator.comparingInt((KnowledgeGap gap) -> priorityOrder(gap.getPriority()))
                         .thenComparing(KnowledgeGap::getIdentifiedAt)
                         .thenComparing(gap -> gap.getLesson().getId()))
                 .toList();
-        List<LearningPath> history = paths.findByStudentIdOrderByCreatedAtDesc(studentId);
+        List<LearningPath> history = paths.findByStudentIdAndClassroomIdOrderByCreatedAtDesc(studentId, classroomId);
         LearningPath activePath = history.stream()
                 .filter(path -> path.getStatus() == LearningPathStatus.ACTIVE)
                 .findFirst()
@@ -128,7 +157,8 @@ public class LearningPathServiceImpl implements LearningPathService {
 
         LearningPath path = new LearningPath();
         path.setStudent(student);
-        path.setVersion(paths.findMaxVersionByStudentId(studentId) + 1);
+        path.setClassroom(classroom);
+        path.setVersion(paths.findMaxVersionByStudentIdAndClassroomId(studentId, classroomId) + 1);
         path.setUpdatedAt(Instant.now());
 
         for (int index = 0; index < orderedGaps.size(); index++) {
@@ -212,7 +242,7 @@ public class LearningPathServiceImpl implements LearningPathService {
     @Transactional
     public LearningPath updateStepStatus(Long studentId, Long pathId, Long stepId, LearningStepStatus status,
             UserSummary actor) {
-        requireCanView(studentId, actor);
+        requireCanView(studentId, null, actor);
         if (actor.role() != Role.STUDENT || !actor.id().equals(studentId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ học sinh mới có thể cập nhật tiến độ của mình.");
         }
@@ -240,30 +270,51 @@ public class LearningPathServiceImpl implements LearningPathService {
                 "Chỉ có thể tiếp tục bước học đang mở.");
     }
 
-    private void requireCanManage(Long studentId, UserSummary actor) {
-        requireCanView(studentId, actor);
+    private void requireCanManage(Long studentId, Long classroomId, UserSummary actor) {
+        requireCanView(studentId, classroomId, actor);
         if (actor.role() == Role.STUDENT) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Học sinh không thể tạo lộ trình.");
         }
     }
 
-    private void requireCanView(Long studentId, UserSummary actor) {
+    private void requireCanView(Long studentId, Long classroomId, UserSummary actor) {
         if (actor == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập.");
         }
         if (actor.role() == Role.ADMIN) {
+            if (classroomId != null && !students.isMemberOfClassroom(studentId, classroomId))
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh trong lớp này.");
             return;
         }
         var student = students.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
         if (actor.role() == Role.STUDENT && actor.id().equals(studentId)) {
+            if (classroomId != null && !students.isMemberOfClassroom(studentId, classroomId))
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Em không thuộc lớp học này.");
             return;
         }
-        if (actor.role() == Role.TEACHER && student.getClassroom() != null
-                && student.getClassroom().getTeacher().getId().equals(actor.id())) {
-            return;
+        if (actor.role() == Role.TEACHER) {
+            boolean canView = classroomId == null ? students.hasClassroomOwnedBy(studentId, actor.id())
+                    : classrooms.findByIdAndTeacherId(classroomId, actor.id()).isPresent()
+                            && students.isMemberOfClassroom(studentId, classroomId);
+            if (canView) return;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem lộ trình này.");
+    }
+
+    private Long resolveClassroomId(Long studentId, Long requestedClassroomId, UserSummary actor) {
+        if (actor == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập.");
+        if (actor.role() == Role.STUDENT)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Học sinh không thể tạo lộ trình.");
+        if (requestedClassroomId != null) return requestedClassroomId;
+        var student = students.findById(studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy học sinh."));
+        List<Classroom> available = student.getClassrooms().stream()
+                .filter(classroom -> actor.role() == Role.ADMIN || classroom.getTeacher().getId().equals(actor.id()))
+                .toList();
+        if (available.size() == 1) return available.get(0).getId();
+        if (available.isEmpty()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Học sinh không thuộc lớp của bạn.");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn lớp cho lộ trình.");
     }
 
     private int priorityOrder(GapPriority priority) {

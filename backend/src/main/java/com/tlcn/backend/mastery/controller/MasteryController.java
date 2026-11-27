@@ -25,13 +25,14 @@ public class MasteryController {
             String questionKind, List<String> studentAnswers, List<String> correctAnswers, double awardedScore,
             double score, String explanation, Instant createdAt) {
         static ErrorView from(StudentError e) {
-            StudentAnswer answer = e.getAnswer();
+            StudentAnswer answer = e.getAnswer() == null ? null
+                    : (StudentAnswer) org.hibernate.Hibernate.unproxy(e.getAnswer());
             if (answer == null) {
                 return new ErrorView(e.getId(), e.getLesson().getId(), e.getLesson().getName(), e.getErrorType(),
                         e.getDescription(), null, null, null, null, null, null, List.of(), List.of(), 0, 0, null,
                         e.getCreatedAt());
             }
-            Question question = answer.getQuestion();
+            Question question = (Question) org.hibernate.Hibernate.unproxy(answer.getQuestion());
             List<String> studentAnswers = new java.util.ArrayList<>();
             List<String> correctAnswers = new java.util.ArrayList<>();
             String kind;

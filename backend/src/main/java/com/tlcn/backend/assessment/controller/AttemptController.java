@@ -74,8 +74,10 @@ public class AttemptController {
 
     @GetMapping("/attempts/student/{studentId}")
     @Transactional(readOnly = true)
-    public List<AttemptResult> byStudent(@PathVariable Long studentId, @AuthenticationPrincipal UserSummary actor) {
-        return assessments.attemptsForStudent(studentId, actor).stream()
+    public List<AttemptResult> byStudent(@PathVariable Long studentId,
+            @RequestParam(required = false) Long classroomId,
+            @AuthenticationPrincipal UserSummary actor) {
+        return assessments.attemptsForStudent(studentId, classroomId, actor).stream()
                 .map(attempt -> AttemptResult.from(attempt, attempts.questionsForAttempt(attempt))).toList();
     }
 

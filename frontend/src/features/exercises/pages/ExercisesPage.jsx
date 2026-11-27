@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import HomeHeader from '../../home/components/HomeHeader'
 import { getAssessmentSession } from '../../assessments/services/assessmentApi'
+import { getClassrooms } from '../../classrooms/services/classroomApi'
 import {
   getExerciseResult, getPendingExercises, getStepExercises, reviewExercise, saveExerciseAnswer,
   startExerciseAttempt, submitExerciseAttempt, updateExercise,
@@ -23,7 +24,9 @@ function ExerciseWorkspace({ stepId }) {
   const [access, setAccess] = useState('loading')
   const [questions, setQuestions] = useState([])
   const [pending, setPending] = useState([])
+  const [reviewClassrooms, setReviewClassrooms] = useState([])
   const [pendingStudentId, setPendingStudentId] = useState(null)
+  const [pendingClassroomId, setPendingClassroomId] = useState(null)
   const [answers, setAnswers] = useState({})
   const [attempt, setAttempt] = useState(null)
   const [submittedId, setSubmittedId] = useState(null)
@@ -39,7 +42,20 @@ function ExerciseWorkspace({ stepId }) {
   const resultHeading = useRef(null)
   const question = questions[questionIndex]
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
-  const pendingByStudent = Object.values(pending.reduce((groups, item) => {
+  const reviewClassroomGroups = reviewClassrooms.reduce((groups, classroom) => {
+    const id = String(classroom.id)
+    groups[id] = { id, name: classroom.name, items: [] }
+    return groups
+  }, {})
+  const pendingByClassroom = Object.values(pending.reduce((groups, item) => {
+    const id = item.classroomId == null ? 'unassigned' : String(item.classroomId)
+    if (!groups[id]) groups[id] = { id, name: item.classroomName || 'Chưa gắn lớp', items: [] }
+    groups[id].items.push(item)
+    return groups
+  }, reviewClassroomGroups)).sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  const activePendingClassroom = pendingByClassroom.find(group => group.id === pendingClassroomId) || pendingByClassroom[0]
+  const classroomPending = activePendingClassroom?.items || []
+  const pendingByStudent = Object.values(classroomPending.reduce((groups, item) => {
     const id = item.studentId == null ? 'unknown' : String(item.studentId)
     if (!groups[id]) groups[id] = { id, name: item.studentName || 'Học sinh chưa xác định', items: [] }
     groups[id].items.push(item)
@@ -61,7 +77,13 @@ function ExerciseWorkspace({ stepId }) {
         if (!active) return
         if (stepId) setQuestions(items)
         else {
+          const classes = await getClassrooms().catch(() => [])
+          if (!active) return
+          setReviewClassrooms(classes)
           setPending(items)
+          setPendingClassroomId(items[0]?.classroomId == null
+            ? String(classes[0]?.id ?? 'unassigned')
+            : String(items[0].classroomId))
           setPendingStudentId(items[0]?.studentId == null ? null : String(items[0].studentId))
         }
       } catch {
@@ -142,9 +164,22 @@ function ExerciseWorkspace({ stepId }) {
     {actionError && <p className="exercise-error" role="alert">{actionError}</p>}
     {loadError && <p className="exercise-error" role="alert">{loadError}</p>}
 
-    {isTeacher && !loadError && <section className="exercise-review-workspace" aria-label="Duyệt bài tập theo từng học sinh">
-      {pending.length === 0 ? <p className="exercise-empty">Không có bài tập nào đang chờ duyệt.</p> : <>
-        <div className="exercise-student-tabs" role="tablist" aria-label="Học sinh có bài tập chờ duyệt">
+    {isTeacher && !loadError && <section className="exercise-review-workspace" aria-label="Duyệt bài tập theo lớp và học sinh">
+      {pending.length === 0 && reviewClassrooms.length === 0 ? <p className="exercise-empty">Không có bài tập nào đang chờ duyệt.</p> : <>
+        {pendingByClassroom.length > 0 && <div className="exercise-student-tabs" role="tablist" aria-label="Lớp có bài tập chờ duyệt">
+          {pendingByClassroom.map(group => <button key={group.id} type="button" role="tab"
+            id={`exercise-class-tab-${group.id}`} aria-controls={`exercise-class-panel-${group.id}`}
+            aria-selected={activePendingClassroom?.id === group.id}
+            className={activePendingClassroom?.id === group.id ? 'is-active' : ''}
+            onClick={() => { setPendingClassroomId(group.id); setPendingStudentId(group.items[0]?.studentId == null ? null : String(group.items[0].studentId)); setEditingId(null); setDraft(null) }}>
+            <span>{group.name}</span><small>{group.items.length} bài tập</small>
+          </button>)}
+        </div>}
+        {activePendingClassroom && <div id={`exercise-class-panel-${activePendingClassroom.id}`} role="tabpanel"
+          aria-labelledby={`exercise-class-tab-${activePendingClassroom.id}`}>
+        <div className="exercise-review-class-heading"><span>LỚP ĐANG DUYỆT</span><h2>{activePendingClassroom.name}</h2></div>
+        {classroomPending.length === 0 ? <p className="exercise-empty">Lớp này hiện không có bài tập chờ duyệt.</p> : <>
+        <div className="exercise-student-tabs" role="tablist" aria-label="Học sinh có bài tập chờ duyệt trong lớp">
           {pendingByStudent.map(group => <button key={group.id} type="button" role="tab"
             id={`exercise-student-tab-${group.id}`} aria-controls={`exercise-student-panel-${group.id}`}
             aria-selected={activePendingStudent?.id === group.id}
@@ -172,6 +207,8 @@ function ExerciseWorkspace({ stepId }) {
             </>}
           </article>)}
         </section>}
+        </>}
+        </div>}
       </>}
     </section>}
 

@@ -11,9 +11,12 @@ async function learningPathRequest(path, options = {}) {
 }
 
 export const getMySession = () => httpRequest('/api/auth/me')
-export const getLearningPaths = studentId => learningPathRequest(`/api/students/${studentId}/learning-paths`)
-export const generateLearningPath = studentId => learningPathRequest(
-  `/api/students/${studentId}/learning-paths/generate`, { method: 'POST' },
+export const getLearningPaths = (studentId, classroomId) => learningPathRequest(
+  `/api/students/${studentId}/learning-paths${classroomId ? `?classroomId=${classroomId}` : ''}`,
+)
+export const getStudentClassrooms = studentId => learningPathRequest(`/api/students/${studentId}/learning-paths/classrooms`)
+export const generateLearningPath = (studentId, classroomId) => learningPathRequest(
+  `/api/students/${studentId}/learning-paths/generate${classroomId ? `?classroomId=${classroomId}` : ''}`, { method: 'POST' },
 )
 export const updateLearningStep = (studentId, pathId, stepId, status) => learningPathRequest(
   `/api/students/${studentId}/learning-paths/${pathId}/steps/${stepId}`, { method: 'PATCH', body: { status } },

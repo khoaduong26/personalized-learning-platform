@@ -67,7 +67,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     public List<StudentSummary> students(Long classroomId, String search, UserSummary actor) {
         requireAccessible(classroomId, actor);
         String query = search == null ? "" : search.strip().toLowerCase(Locale.ROOT);
-        return students.findByClassroomIdOrderByFullNameAsc(classroomId).stream()
+        return students.findMembersOfClassroom(classroomId).stream()
                 .filter(student -> query.isEmpty() || student.getFullName().toLowerCase(Locale.ROOT).contains(query)
                         || student.getEmail().toLowerCase(Locale.ROOT).contains(query))
                 .map(StudentSummary::from).toList();
@@ -83,7 +83,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     public List<StudentCandidate> findCandidate(String email, UserSummary actor) {
         requireStaff(actor);
         String normalizedEmail = normalize(email, "Vui lòng nhập email học sinh.").toLowerCase(Locale.ROOT);
-        return students.findByEmailIgnoreCaseAndClassroomIsNullAndStatus(normalizedEmail, UserStatus.ACTIVE)
+        return students.findByEmailIgnoreCaseAndStatus(normalizedEmail, UserStatus.ACTIVE)
                 .map(StudentCandidate::from).stream().toList();
     }
 
@@ -95,10 +95,9 @@ public class ClassroomServiceImpl implements ClassroomService {
         if (student.getStatus() != UserStatus.ACTIVE) {
             throw new ClassroomConflictException("Chỉ có thể thêm học sinh đã kích hoạt tài khoản.");
         }
-        if (student.getClassroom() != null && !student.getClassroom().getId().equals(classroomId)) {
-            throw new ClassroomConflictException("Học sinh đã thuộc một lớp khác.");
-        }
-        student.setClassroom(classroom);
+        if (student.belongsToClassroom(classroomId))
+            throw new ClassroomConflictException("Học sinh đã thuộc lớp này.");
+        student.addClassroom(classroom);
         return StudentSummary.from(students.save(student));
     }
 
@@ -106,10 +105,12 @@ public class ClassroomServiceImpl implements ClassroomService {
     public StudentSummary getStudent(Long studentId, UserSummary actor) {
         Student student = students.findById(studentId)
                 .orElseThrow(() -> new ClassroomNotFoundException("Không tìm thấy học sinh."));
-        Classroom classroom = student.getClassroom();
-        if (classroom == null)
+        if (student.getClassrooms().isEmpty())
             throw new ClassroomNotFoundException("Học sinh chưa thuộc lớp nào.");
-        requireAccessible(classroom.getId(), actor);
+        if (student.getClassrooms().stream().noneMatch(classroom -> {
+            try { requireAccessible(classroom.getId(), actor); return true; }
+            catch (ClassroomNotFoundException exception) { return false; }
+        })) throw new ClassroomNotFoundException("Không tìm thấy học sinh.");
         return StudentSummary.from(student);
     }
 
@@ -118,10 +119,10 @@ public class ClassroomServiceImpl implements ClassroomService {
         requireAccessible(classroomId, actor);
         Student student = students.findByIdForUpdate(studentId)
                 .orElseThrow(() -> new ClassroomNotFoundException("Không tìm thấy học sinh."));
-        if (student.getClassroom() == null || !student.getClassroom().getId().equals(classroomId)) {
+        if (!student.belongsToClassroom(classroomId)) {
             throw new ClassroomNotFoundException("Học sinh không thuộc lớp này.");
         }
-        student.setClassroom(null);
+        student.removeClassroom(classroomId);
         students.save(student);
     }
 
@@ -129,10 +130,12 @@ public class ClassroomServiceImpl implements ClassroomService {
     public StudentSummary updateStudent(Long studentId, StudentUpdateRequest request, UserSummary actor) {
         Student student = students.findById(studentId)
                 .orElseThrow(() -> new ClassroomNotFoundException("Không tìm thấy học sinh."));
-        Classroom classroom = student.getClassroom();
-        if (classroom == null)
+        if (student.getClassrooms().isEmpty())
             throw new ClassroomNotFoundException("Học sinh chưa thuộc lớp nào.");
-        requireAccessible(classroom.getId(), actor);
+        if (student.getClassrooms().stream().noneMatch(classroom -> {
+            try { requireAccessible(classroom.getId(), actor); return true; }
+            catch (ClassroomNotFoundException exception) { return false; }
+        })) throw new ClassroomNotFoundException("Không tìm thấy học sinh.");
         student.setFullName(normalize(request.fullName(), "Tên học sinh không được để trống."));
         student.setSex(request.sex() == null || request.sex().isBlank() ? null : request.sex().strip());
         student.setDateOfBirth(request.dateOfBirth());
@@ -140,7 +143,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     }
 
     private ClassroomResponse toResponse(Classroom classroom) {
-        return ClassroomResponse.from(classroom, Math.toIntExact(students.countByClassroomId(classroom.getId())));
+        return ClassroomResponse.from(classroom, Math.toIntExact(students.countMembersOfClassroom(classroom.getId())));
     }
 
     private Classroom requireAccessible(Long classroomId, UserSummary actor) {

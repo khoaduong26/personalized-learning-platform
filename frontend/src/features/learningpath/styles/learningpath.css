@@ -4,6 +4,9 @@
 .learning-path-heading p { margin: 5px 0 0; color: #89828d; font-size: 11px; }
 .learning-path-heading label { display: grid; gap: 5px; color: #655f69; font-size: 10px; font-weight: 700; }
 .learning-path-heading select { max-width: 220px; border: 1px solid #e3dfe6; border-radius: 8px; background: #fff; color: #302b35; padding: 8px 10px; font: inherit; font-size: 11px; }
+.learning-path-student-tools { display: grid; gap: 8px; min-width: 190px; }
+.learning-path-results-link { justify-self: start; color: #6e5486; font-size: 11px; font-weight: 750; text-decoration: none; }
+.learning-path-results-link:hover { text-decoration: underline; }
 .learning-path-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 17px 0 12px; }
 .learning-path-toolbar p { color: #756d7c; font-size: 11px; }
 .learning-path-toolbar button { border: 0; border-radius: 8px; background: #705788; color: #fff; padding: 9px 12px; font: inherit; font-size: 11px; font-weight: 750; cursor: pointer; }
@@ -151,3 +154,6 @@
 .learning-path-manual-error { margin: 0; }
 .learning-path-message a { margin-left: 4px; color: #426536; font-weight: 750; }
 @media (max-width: 620px) { .learning-path-manual-row { grid-template-columns: 1fr; }.learning-path-manual-option { grid-template-columns: minmax(0, 1fr) auto auto; }.learning-path-manual-blank { grid-column: 1 / -2; } }
+.student-learning-class-picker { display: grid; gap: 8px; max-width: 420px; margin: 0 0 10px; color: #625b6b; font-weight: 700; }
+.student-learning-class-picker select { width: 100%; padding: 12px 14px; border: 1px solid #ded8e5; border-radius: 12px; background: #fff; color: #302a3c; font: inherit; }
+.student-learning-class-context { margin: 10px 0 18px; color: #766d80; }

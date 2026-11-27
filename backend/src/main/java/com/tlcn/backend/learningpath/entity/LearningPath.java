@@ -1,6 +1,7 @@
 package com.tlcn.backend.learningpath.entity;
 
 import com.tlcn.backend.user.entity.Student;
+import com.tlcn.backend.classroom.entity.Classroom;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -24,6 +25,9 @@ public class LearningPath {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id")
     private Student student;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "classroom_id")
+    private Classroom classroom;
     @OneToMany(mappedBy = "path", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepOrder ASC")
     private List<LearningStep> steps = new ArrayList<>();
@@ -70,6 +74,10 @@ public class LearningPath {
     public void setStudent(Student value) {
         student = value;
     }
+
+    public Classroom getClassroom() { return classroom; }
+
+    public void setClassroom(Classroom value) { classroom = value; }
 
     public List<LearningStep> getSteps() {
         return steps;

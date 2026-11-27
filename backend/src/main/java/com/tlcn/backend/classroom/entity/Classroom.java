@@ -21,6 +21,8 @@ public class Classroom {
     private Teacher teacher;
     @OneToMany(mappedBy = "classroom")
     private Set<Student> students = new HashSet<>();
+    @ManyToMany(mappedBy = "additionalClassrooms")
+    private Set<Student> additionalStudents = new HashSet<>();
 
     protected Classroom() {
     }
@@ -60,6 +62,8 @@ public class Classroom {
     }
 
     public Set<Student> getStudents() {
-        return students;
+        Set<Student> members = new HashSet<>(students);
+        members.addAll(additionalStudents);
+        return members;
     }
 }

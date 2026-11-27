@@ -24,36 +24,40 @@ public class ExerciseController {
     public record ReviewOption(Long id, String name, boolean correct, Integer displayOrder) {
     }
 
-    public record ReviewView(Long questionId, Long studentId, String studentName, String content, String difficulty,
+    public record ReviewView(Long questionId, Long studentId, String studentName, Long classroomId,
+            String classroomName, String content, String difficulty,
             Double score, Long lessonId, boolean aiGenerated,
             String kind, String status, String explanation, boolean allowMultiple, List<ReviewOption> options,
             List<String> expectedAnswers) {
         static ReviewView from(Question question) {
-            return from(question, null, null);
+            return from(question, null, null, null, null);
         }
 
         static ReviewView from(StepExercise exercise) {
             var student = exercise.getStep().getPath().getStudent();
-            return from(exercise.getQuestion(), student.getId(), student.getFullName());
+            var classroom = exercise.getStep().getPath().getClassroom();
+            return from(exercise.getQuestion(), student.getId(), student.getFullName(),
+                    classroom == null ? null : classroom.getId(), classroom == null ? "Chưa gắn lớp" : classroom.getName());
         }
 
-        private static ReviewView from(Question question, Long studentId, String studentName) {
+        private static ReviewView from(Question question, Long studentId, String studentName,
+                Long classroomId, String classroomName) {
             question = (Question) Hibernate.unproxy(question);
             if (question instanceof MultipleChoiceQuestion multiple) {
-                return new ReviewView(question.getId(), studentId, studentName, question.getContent(), question.getDifficulty().name(),
+                return new ReviewView(question.getId(), studentId, studentName, classroomId, classroomName, question.getContent(), question.getDifficulty().name(),
                         question.getScore(), question.getLesson().getId(), question.isAiGenerated(), "MULTIPLE_CHOICE",
                         question.getApprovalStatus().name(), question.getExplanation(), multiple.isAllowMultiple(),
                         multiple.getOptions().stream().map(option -> new ReviewOption(option.getId(), option.getName(),
                                 option.isCorrect(), option.getDisplayOrder())).toList(), List.of());
             }
             if (question instanceof FillBlankQuestion fill) {
-                return new ReviewView(question.getId(), studentId, studentName, question.getContent(), question.getDifficulty().name(),
+                return new ReviewView(question.getId(), studentId, studentName, classroomId, classroomName, question.getContent(), question.getDifficulty().name(),
                         question.getScore(), question.getLesson().getId(), question.isAiGenerated(), "FILL_BLANK",
                         question.getApprovalStatus().name(), question.getExplanation(), false, List.of(),
                         fill.getBlanks().stream().map(Blank::getCorrectAnswer).toList());
             }
             ShortAnswerQuestion shortAnswer = (ShortAnswerQuestion) question;
-            return new ReviewView(question.getId(), studentId, studentName, question.getContent(), question.getDifficulty().name(),
+            return new ReviewView(question.getId(), studentId, studentName, classroomId, classroomName, question.getContent(), question.getDifficulty().name(),
                     question.getScore(), question.getLesson().getId(), question.isAiGenerated(), "SHORT_ANSWER",
                     question.getApprovalStatus().name(), question.getExplanation(), false, List.of(),
                     List.of(shortAnswer.getCorrectAnswer()));

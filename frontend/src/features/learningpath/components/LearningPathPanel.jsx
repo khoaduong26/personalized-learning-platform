@@ -5,12 +5,13 @@ import { createManualStepExercise, generateStepExercise } from '../../exercises/
 import ManualExerciseForm from './ManualExerciseForm'
 import '../styles/learningpath.css'
 
-export default function LearningPathPanel({ students }) {
+export default function LearningPathPanel({ students, classroomId, classroomName }) {
   const [studentId, setStudentId] = useState('')
   const [paths, setPaths] = useState([])
   const [state, setState] = useState('idle')
   const [message, setMessage] = useState('')
   const [loadedStudentId, setLoadedStudentId] = useState('')
+  const [loadedClassroomId, setLoadedClassroomId] = useState(null)
   const [generatingStepId, setGeneratingStepId] = useState(null)
   const [generatedExercise, setGeneratedExercise] = useState(null)
   const [generationError, setGenerationError] = useState('')
@@ -27,16 +28,16 @@ export default function LearningPathPanel({ students }) {
   useEffect(() => {
     if (!selectedStudentId) return
     let active = true
-    getLearningPaths(selectedStudentId)
-      .then(result => { if (active) { setPaths(result); setMessage(''); setState('ready'); setLoadedStudentId(selectedStudentId) } })
-      .catch(error => { if (active) { setMessage(error.message); setState('error'); setLoadedStudentId(selectedStudentId) } })
+    getLearningPaths(selectedStudentId, classroomId)
+      .then(result => { if (active) { setPaths(result); setMessage(''); setState('ready'); setLoadedStudentId(selectedStudentId); setLoadedClassroomId(classroomId) } })
+      .catch(error => { if (active) { setMessage(error.message); setState('error'); setLoadedStudentId(selectedStudentId); setLoadedClassroomId(classroomId) } })
     return () => { active = false }
-  }, [selectedStudentId])
+  }, [selectedStudentId, classroomId])
 
   const createPath = async () => {
     setState('saving'); setMessage('')
     try {
-      const created = await generateLearningPath(selectedStudentId)
+      const created = await generateLearningPath(selectedStudentId, classroomId)
       const unchanged = paths.some(path => path.status === 'ACTIVE' && String(path.id) === String(created.id))
       setPaths(current => current.some(path => String(path.id) === String(created.id))
         ? current.map(path => String(path.id) === String(created.id) ? created : path)
@@ -83,16 +84,22 @@ export default function LearningPathPanel({ students }) {
   }
 
   const selected = students.find(student => String(student.id) === selectedStudentId)
-  const isLoading = Boolean(selectedStudentId) && loadedStudentId !== selectedStudentId
-  const visiblePaths = loadedStudentId === selectedStudentId ? paths : []
+  const isLoading = Boolean(selectedStudentId) && (loadedStudentId !== selectedStudentId || loadedClassroomId !== classroomId)
+  const visiblePaths = loadedStudentId === selectedStudentId && loadedClassroomId === classroomId ? paths : []
   const activePath = visiblePaths.find(path => path.status === 'ACTIVE')
 
   return <section className="learning-path-panel" aria-labelledby="learning-path-title">
     <div className="learning-path-heading">
-      <div><span className="classrooms-kicker">KẾ HOẠCH CỦNG CỐ</span><h3 id="learning-path-title">Lộ trình học tập</h3><p>Xếp bước theo mức độ ưu tiên của khoảng trống kiến thức.</p></div>
-      <label>Chọn học sinh<select aria-label="Chọn học sinh xem lộ trình" value={selectedStudentId} onChange={event => { setStudentId(event.target.value); setPaths([]); setGeneratedExercise(null); setGenerationError(''); setFailedStepId(null); setManualStepId(null); setManualExerciseNotice(''); setManualExerciseError('') }}>
-        {students.map(student => <option key={student.id} value={student.id}>{student.fullName}</option>)}
-      </select></label>
+      <div><span className="classrooms-kicker">KẾ HOẠCH CỦNG CỐ · {classroomName}</span><h3 id="learning-path-title">Lộ trình học tập</h3><p>Lộ trình riêng của lớp {classroomName}, xếp bước theo mức độ ưu tiên của khoảng trống kiến thức.</p></div>
+      <div className="learning-path-student-tools">
+        <label>Chọn học sinh<select aria-label="Chọn học sinh xem lộ trình" value={selectedStudentId} onChange={event => { setStudentId(event.target.value); setPaths([]); setGeneratedExercise(null); setGenerationError(''); setFailedStepId(null); setManualStepId(null); setManualExerciseNotice(''); setManualExerciseError('') }}>
+          {students.map(student => <option key={student.id} value={student.id}>{student.fullName}</option>)}
+        </select></label>
+        {selectedStudentId && <Link className="learning-path-results-link"
+          to={`/assessments?classroomId=${classroomId}&studentId=${selectedStudentId}`}>
+          Xem kết quả kiểm tra <span aria-hidden="true">→</span>
+        </Link>}
+      </div>
     </div>
     {!students.length ? <p className="learning-path-empty">Thêm học sinh vào lớp để tạo lộ trình cá nhân.</p>
       : isLoading ? <p className="learning-path-empty" role="status">Đang tải lộ trình của {selected?.fullName}…</p>
@@ -120,7 +127,7 @@ export default function LearningPathPanel({ students }) {
 function PathSummary({ path, onGenerate, generatingStepId, failedStepId, manualStepId, onToggleManual, onCreateManual, savingManualStepId, manualExerciseError }) {
   const progress = path.progress || { completed: 0, total: path.steps.length, percentage: 0 }
   return <article className="learning-path-card">
-    <div className="learning-path-card-heading"><strong>Phiên bản {path.version}</strong><span>{path.status === 'COMPLETED' ? 'Đã hoàn thành' : path.status === 'ARCHIVED' ? 'Đã lưu trữ' : 'Đang học'}</span></div>
+    <div className="learning-path-card-heading"><strong>Phiên bản {path.version} · {path.classroomName || 'Chưa gắn lớp'}</strong><span>{path.status === 'COMPLETED' ? 'Đã hoàn thành' : path.status === 'ARCHIVED' ? 'Đã lưu trữ' : 'Đang học'}</span></div>
     <div className="learning-path-progress"><span style={{ width: `${progress.percentage}%` }} /></div>
     <p>{progress.completed}/{progress.total} bước · {progress.percentage}%</p>
     <ol className="learning-path-steps">{path.steps.map(step => <li key={step.id} className={`step-${step.status.toLowerCase()}`}>

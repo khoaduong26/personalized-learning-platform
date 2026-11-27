@@ -19,6 +19,6 @@ public interface StepExerciseRepository extends JpaRepository<StepExercise, Long
 
     @Query("select e from StepExercise e where " +
             "e.question.approvalStatus = com.tlcn.backend.assessment.entity.ApprovalStatus.PENDING " +
-            "and e.step.path.student.classroom.teacher.id = :teacherId order by e.generatedAt desc")
+            "and e.step.path.classroom.teacher.id = :teacherId order by e.generatedAt desc")
     List<StepExercise> findPendingReviewForTeacher(@Param("teacherId") Long teacherId);
 }

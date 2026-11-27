@@ -87,7 +87,10 @@ public class MasteryServiceImpl implements MasteryService {
             StudentAnswer answer = record.getAnswer();
             if (answer == null)
                 return;
+            answer = (StudentAnswer) Hibernate.unproxy(answer);
+            record.setAnswer(answer);
             Question question = (Question) Hibernate.unproxy(answer.getQuestion());
+            answer.setQuestion(question);
             question.getContent();
             question.getScore();
             question.getExplanation();
@@ -288,8 +291,7 @@ public class MasteryServiceImpl implements MasteryService {
         var student = students.findById(studentId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (actor.role() == Role.STUDENT && actor.id().equals(studentId))
             return;
-        if (actor.role() == Role.TEACHER && student.getClassroom() != null
-                && student.getClassroom().getTeacher().getId().equals(actor.id()))
+        if (actor.role() == Role.TEACHER && students.hasClassroomOwnedBy(studentId, actor.id()))
             return;
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem hồ sơ năng lực này.");
     }

@@ -102,7 +102,7 @@ public class AccountService {
             throw new AccountException(HttpStatus.CONFLICT, "SELF_ROLE_CHANGE", "Bạn không thể tự đổi vai trò quản trị.");
         }
         if (roleChanged && user instanceof Student student) {
-            if (student.getClassroom() != null) throw roleInUse();
+            if (!student.getClassrooms().isEmpty()) throw roleInUse();
             details.rememberStudentDetails(student.getSex(), student.getDateOfBirth());
         }
 

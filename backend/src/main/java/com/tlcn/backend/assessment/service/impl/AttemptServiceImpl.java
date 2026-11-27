@@ -219,12 +219,12 @@ public class AttemptServiceImpl implements AttemptService {
         if (actor.role() == Role.TEACHER) {
             AssessmentAttempt item = attempts.findById(id).orElseThrow(() -> notFound());
             if (item.getAssessment() != null) {
-                boolean visibleInStudentHistory = assessments.attemptsForStudent(item.getStudent().getId(), actor)
+                boolean visibleInStudentHistory = assessments.attemptsForStudent(item.getStudent().getId(), null, actor)
                         .stream().anyMatch(attempt -> attempt.getId().equals(item.getId()));
                 if (!visibleInStudentHistory)
                     throw forbidden();
-            } else if (item.getLearningStep() == null || item.getStudent().getClassroom() == null
-                    || !item.getStudent().getClassroom().getTeacher().getId().equals(actor.id())) {
+            } else if (item.getLearningStep() == null || item.getLearningStep().getPath().getClassroom() == null
+                    || !item.getLearningStep().getPath().getClassroom().getTeacher().getId().equals(actor.id())) {
                 throw forbidden();
             }
             return item;

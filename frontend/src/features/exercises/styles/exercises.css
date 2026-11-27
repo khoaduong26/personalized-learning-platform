@@ -60,6 +60,9 @@
 .exercise-page :is(a, button, input):focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
 @media (max-width: 640px) { .exercise-page { padding: 0 16px 38px; } .exercise-header > div { gap: 7px; font-size: 11px; } .exercise-card { padding: 16px; } .exercise-actions { justify-content: stretch; } .exercise-actions button { flex: 1; } }
 .exercise-review-workspace { display: grid; gap: 16px; }
+.exercise-review-class-heading { padding: 4px 2px; color: #736e78; }
+.exercise-review-class-heading span { color: #827095; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+.exercise-review-class-heading h2 { margin: 4px 0 0; color: #302a3c; font-size: 20px; }
 .exercise-page > .home-header { width: 100vw; margin-inline: calc(50% - 50vw); padding-inline: clamp(16px, 5vw, 72px); box-sizing: border-box; }
 .exercise-review-page { box-sizing: border-box; width: 100%; max-width: none; margin: 0; padding: 0 clamp(16px, 5vw, 72px) 56px; background: #f6f5f1; color: #2c2933; }
 .exercise-review-page .exercise-header { min-height: 72px; border-color: #e7e3dc; gap: 12px; }

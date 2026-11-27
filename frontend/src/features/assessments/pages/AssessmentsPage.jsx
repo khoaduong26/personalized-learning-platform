@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import HomeHeader from '../../home/components/HomeHeader'
 import { getLessons, getSubjects, getTopics } from '../../academic/services/academicApi'
 import { getClassroomStudents } from '../../classrooms/services/classroomApi'
@@ -14,6 +14,9 @@ const types = { DIAGNOSTIC: 'Khảo sát đầu vào', PERIODIC: 'Định kỳ',
 const emptyOption = () => ({ name: '', correct: false })
 
 export default function AssessmentsPage() {
+  const [searchParams] = useSearchParams()
+  const requestedClassroomId = searchParams.get('classroomId') || ''
+  const requestedStudentId = searchParams.get('studentId') || ''
   const [user, setUser] = useState(null)
   const [access, setAccess] = useState('loading')
   const [assessments, setAssessments] = useState([])
@@ -37,16 +40,62 @@ export default function AssessmentsPage() {
   const [resultStudents, setResultStudents] = useState([])
   const [resultStudentId, setResultStudentId] = useState('')
   const [teacherHistory, setTeacherHistory] = useState([])
+  const [resultStudentsLoading, setResultStudentsLoading] = useState(false)
+  const [teacherHistoryLoading, setTeacherHistoryLoading] = useState(false)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
   const isStudent = user?.role === 'STUDENT'
+  const questionSubjects = subjects.filter(subject => !subject.shared)
+  const groupedTeacherHistory = useMemo(() => {
+    const groups = teacherHistory.reduce((result, attempt) => {
+      const key = attempt.assessmentId == null
+        ? `learning-step-${attempt.learningStepId ?? 'unknown'}`
+        : `assessment-${attempt.assessmentId}`
+      if (!result[key]) result[key] = {
+        id: key,
+        title: attempt.assessmentTitle || 'Bài luyện tập theo lộ trình',
+        attempts: [],
+      }
+      result[key].attempts.push(attempt)
+      return result
+    }, {})
+    return Object.values(groups).map(group => ({
+      ...group,
+      attempts: group.attempts.sort((a, b) =>
+        new Date(b.submittedAt || b.startedAt) - new Date(a.submittedAt || a.startedAt)),
+    })).sort((a, b) => new Date(b.attempts[0]?.submittedAt || b.attempts[0]?.startedAt)
+      - new Date(a.attempts[0]?.submittedAt || a.attempts[0]?.startedAt))
+  }, [teacherHistory])
+  const classAssessmentGroups = useMemo(() => {
+    const groups = Object.fromEntries(classrooms.map(classroom => [String(classroom.id), {
+      id: String(classroom.id), name: classroom.name, schoolYear: classroom.schoolYear, assessments: [],
+    }]))
+    assessments.forEach(test => {
+      const ids = test.classroomIds || []
+      if (!ids.length) {
+        if (!groups.unassigned) groups.unassigned = { id: 'unassigned', name: 'Chưa gắn lớp', assessments: [] }
+        groups.unassigned.assessments.push(test)
+        return
+      }
+      ids.forEach((classroomId, index) => {
+        const key = String(classroomId)
+        if (!groups[key]) groups[key] = {
+          id: key, name: test.classroomNames?.[index] || 'Lớp học', assessments: [],
+        }
+        if (!groups[key].assessments.some(item => item.id === test.id)) groups[key].assessments.push(test)
+      })
+    })
+    return Object.values(groups).filter(group => group.assessments.length)
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  }, [classrooms, assessments])
 
   const changeResultClass = id => {
     setResultClassId(id)
     setResultStudents([]); setResultStudentId(''); setTeacherHistory([])
+    setResultStudentsLoading(Boolean(id)); setTeacherHistoryLoading(false)
   }
-  const changeResultStudent = id => { setResultStudentId(id); setTeacherHistory([]) }
+  const changeResultStudent = id => { setResultStudentId(id); setTeacherHistory([]); setTeacherHistoryLoading(false) }
   const changeSubject = id => {
     setSubjectId(id); setTopics([]); setTopicId(''); setLessons([]); setLessonId(''); setBank([]); setSelectedQuestions([])
   }
@@ -65,31 +114,46 @@ export default function AssessmentsPage() {
         const [tests, subjectItems] = await Promise.all([getAssessments(), session.role === 'STUDENT' ? Promise.resolve([]) : getSubjects()])
         if (!active) return
         setAssessments(tests); setSubjects(subjectItems)
-        if (subjectItems[0]) setSubjectId(String(subjectItems[0].id))
-        if (session.role !== 'STUDENT') setClassrooms(await getAssessmentClassrooms())
-        else setHistory(await getAttemptHistory(session.id))
+        const ownedSubjects = subjectItems.filter(subject => !subject.shared)
+        setSubjectId(current => ownedSubjects.some(subject => String(subject.id) === current)
+          ? current
+          : String(ownedSubjects[0]?.id ?? ''))
+        if (session.role !== 'STUDENT') {
+          const classItems = await getAssessmentClassrooms()
+          if (!active) return
+          setClassrooms(classItems)
+          setResultClassId(current => classItems.some(item => String(item.id) === current)
+            ? current
+            : String(classItems.find(item => String(item.id) === requestedClassroomId)?.id ?? classItems[0]?.id ?? ''))
+        } else setHistory(await getAttemptHistory(session.id))
       } catch (error) { if (active) setNotice(error.message) }
     }).catch(error => { if (active) setAccess(error.status === 403 ? 'forbidden' : 'signed-out') })
     return () => { active = false }
-  }, [])
+  }, [requestedClassroomId])
 
   useEffect(() => {
     if (!isTeacher || !resultClassId) return
     let active = true
+    setResultStudentsLoading(true)
     getClassroomStudents(resultClassId).then(items => {
       if (!active) return
       const options = items.map(item => ({ ...item, name: item.fullName }))
       setResultStudents(options)
-      setResultStudentId(current => options.some(item => String(item.id) === current) ? current : (options[0] ? String(options[0].id) : ''))
+      setResultStudentId(current => options.some(item => String(item.id) === current) ? current
+        : String(options.find(item => String(item.id) === requestedStudentId)?.id ?? options[0]?.id ?? ''))
     }).catch(error => { if (active) setNotice(error.message) })
+      .finally(() => { if (active) setResultStudentsLoading(false) })
     return () => { active = false }
-  }, [isTeacher, resultClassId])
+  }, [isTeacher, resultClassId, requestedStudentId])
   useEffect(() => {
     if (!isTeacher || !resultStudentId) return
     let active = true
-    getAttemptHistory(resultStudentId).then(items => { if (active) setTeacherHistory(items) }).catch(error => { if (active) setNotice(error.message) })
+    setTeacherHistoryLoading(true)
+    getAttemptHistory(resultStudentId, resultClassId).then(items => { if (active) setTeacherHistory(items) })
+      .catch(error => { if (active) setNotice(error.message) })
+      .finally(() => { if (active) setTeacherHistoryLoading(false) })
     return () => { active = false }
-  }, [isTeacher, resultStudentId])
+  }, [isTeacher, resultStudentId, resultClassId])
 
   useEffect(() => {
     if (!subjectId) return
@@ -193,7 +257,15 @@ export default function AssessmentsPage() {
 
     {!activeAttempt && !result && isTeacher && <div className="assessment-teacher-grid">
       <section className="assessment-panel"><PanelTitle eyebrow="BƯỚC 1 · NGÂN HÀNG" title="Tạo câu hỏi" detail="Mỗi câu hỏi gắn với một bài học để phân tích kết quả." />
-        <div className="assessment-selects"><Select label="Môn học" value={subjectId} items={subjects} onChange={changeSubject} /><Select label="Chủ đề" value={topicId} items={topics} onChange={changeTopic} /><Select label="Bài học / kiến thức" value={lessonId} items={lessons} onChange={changeLesson} /></div>
+        {!questionSubjects.length ? <div className="assessment-private-subject-empty">
+          <strong>Chưa có chương trình riêng để tạo câu hỏi.</strong>
+          <span>Hãy sao chép chương trình chung hoặc tạo chương trình của riêng bạn trước.</span>
+          <Link to="/academic">Mở Chương trình học <span aria-hidden="true">→</span></Link>
+        </div> : <div className="assessment-selects">
+          <Select label="Chương trình riêng" placeholder="Chọn chương trình" value={subjectId} items={questionSubjects} onChange={changeSubject} />
+          <Select label="Chủ đề" value={topicId} items={topics} onChange={changeTopic} />
+          <Select label="Bài học / kiến thức" value={lessonId} items={lessons} onChange={changeLesson} />
+        </div>}
         {lessonId ? <form className="assessment-form" onSubmit={saveQuestion}>
           <label>Nội dung câu hỏi<textarea required maxLength="4000" value={questionForm.content} onChange={e => setQuestionForm({ ...questionForm, content: e.target.value })} placeholder="Ví dụ: 8 + 7 bằng bao nhiêu?" /></label>
           <div className="assessment-form-row"><Select label="Dạng câu hỏi" value={questionForm.kind} items={[{ id: 'MULTIPLE_CHOICE', name: 'Trắc nghiệm' }, { id: 'FILL_BLANK', name: 'Điền khuyết' }, { id: 'SHORT_ANSWER', name: 'Trả lời ngắn' }]} onChange={kind => setQuestionForm({ ...questionForm, kind })} /><Select label="Độ khó" value={questionForm.difficulty} items={[{ id: 'EASY', name: 'Dễ' }, { id: 'MEDIUM', name: 'Vừa' }, { id: 'HARD', name: 'Khó' }]} onChange={difficulty => setQuestionForm({ ...questionForm, difficulty })} /><label>Điểm<input type="number" min="0.1" max="100" step="0.1" required value={questionForm.score} onChange={e => setQuestionForm({ ...questionForm, score: e.target.value })} /></label></div>
@@ -215,8 +287,39 @@ export default function AssessmentsPage() {
         </form>
       </section>
       <section className="assessment-panel assessment-tests"><PanelTitle eyebrow="ĐỀ CỦA BẠN" title="Bài kiểm tra" detail="Bài nháp chỉ hiển thị với giáo viên cho đến khi công bố." />
-        {assessments.length ? <div className="assessment-test-list">{assessments.map(test => <article className="assessment-test-item" key={test.id}><div><strong>{test.title}</strong><small>{types[test.type]} · {test.questions.length} câu · {test.classroomNames?.join(', ')}</small></div><div className="assessment-test-actions"><span className={`assessment-status ${test.published ? 'is-published' : ''}`}>{test.published ? 'Đã giao' : 'Bản nháp'}</span>{!test.published && <button disabled={busy} className="assessment-secondary" onClick={() => safeAction(async () => { const updated = await publishAssessment(test.id); setAssessments(current => current.map(item => item.id === updated.id ? updated : item)); setNotice('Đã công bố bài kiểm tra cho các lớp đã chọn.') })}>Công bố</button>}</div></article>)}</div> : <Empty text="Chưa có bài kiểm tra. Hãy tạo bản nháp đầu tiên." />}
-        <div className="assessment-results-filter"><PanelTitle eyebrow="UC11 · UC12" title="Kết quả học sinh" detail="Tra cứu điểm và câu trả lời trong các lớp của bạn." /><div className="assessment-form-row assessment-result-selects"><Select label="Lớp học" value={resultClassId} items={classrooms} onChange={changeResultClass} /><Select label="Học sinh" value={resultStudentId} items={resultStudents} onChange={changeResultStudent} /></div>{teacherHistory.length ? <div className="assessment-test-list">{teacherHistory.map(item => <article className="assessment-test-item" key={item.id}><div><strong>{item.assessmentTitle}</strong><small>{item.studentName} · {new Date(item.submittedAt || item.startedAt).toLocaleDateString('vi-VN')} · {item.status === 'SUBMITTED' ? `${item.totalScore}/${item.maxScore} điểm` : 'Đang làm'}</small></div>{item.status === 'SUBMITTED' && <button className="assessment-secondary" onClick={() => openResult(item.id)}>Xem kết quả</button>}</article>)}</div> : <Empty text={resultStudentId ? 'Học sinh này chưa có kết quả cho bài kiểm tra của bạn.' : 'Chọn lớp và học sinh để xem lịch sử.'} />}</div>
+        {assessments.length ? <div className="assessment-class-assessment-groups">{classAssessmentGroups.map(group => <details className="assessment-class-assessment-group" key={group.id} open={classAssessmentGroups.length === 1}>
+          <summary><span><strong>{group.name}</strong>{group.schoolYear && <small>{group.schoolYear}</small>}</span><b>{group.assessments.length} đề <i aria-hidden="true">⌄</i></b></summary>
+          <div className="assessment-test-list">{group.assessments.map(test => <article className="assessment-test-item" key={test.id}>
+            <div><strong>{test.title}</strong><small>{types[test.type]} · {test.questions.length} câu</small></div>
+            <div className="assessment-test-actions"><span className={`assessment-status ${test.published ? 'is-published' : ''}`}>{test.published ? 'Đã giao' : 'Bản nháp'}</span>
+              {!test.published && <button disabled={busy} className="assessment-secondary" onClick={() => safeAction(async () => { const updated = await publishAssessment(test.id); setAssessments(current => current.map(item => item.id === updated.id ? updated : item)); setNotice('Đã công bố bài kiểm tra cho các lớp đã chọn.') })}>Công bố</button>}
+            </div>
+          </article>)}</div>
+        </details>)}</div> : <Empty text="Chưa có bài kiểm tra. Hãy tạo bản nháp đầu tiên." />}
+        <div className="assessment-results-filter">
+          <PanelTitle title="Kết quả học sinh" detail="Chọn lớp và học sinh để xem các lần làm bài, điểm số và câu trả lời." />
+          <div className="assessment-form-row assessment-result-selects">
+            <Select label="Lớp học" placeholder="Chọn lớp học" value={resultClassId} items={classrooms} onChange={changeResultClass} />
+            <Select label="Học sinh" placeholder={resultStudentsLoading ? 'Đang tải học sinh…' : 'Chọn học sinh'}
+              value={resultStudentId} items={resultStudents} disabled={!resultClassId || resultStudentsLoading || !resultStudents.length}
+              onChange={changeResultStudent} />
+          </div>
+          {teacherHistoryLoading ? <p className="assessment-results-state" role="status">Đang tải lịch sử kiểm tra…</p>
+            : groupedTeacherHistory.length ? <div className="assessment-result-groups">{groupedTeacherHistory.map(group => <details className="assessment-result-group" key={group.id}>
+              <summary><strong>{group.title}</strong><span>{group.attempts.length} lượt làm <i aria-hidden="true">⌄</i></span></summary>
+              <div className="assessment-result-attempts">{group.attempts.map(item => <article className="assessment-test-item" key={item.id}>
+                <div><strong>{item.studentName} · {new Date(item.submittedAt || item.startedAt).toLocaleDateString('vi-VN')}</strong>
+                  <small>{item.status === 'SUBMITTED' ? `${item.totalScore}/${item.maxScore} điểm` : 'Đang làm'}</small></div>
+                {item.status === 'SUBMITTED' && <button className="assessment-secondary" onClick={() => openResult(item.id)}>Xem câu trả lời</button>}
+              </article>)}</div>
+            </details>)}</div>
+              : !classrooms.length ? <Empty text="Tài khoản của bạn chưa được phân công lớp học." />
+                : !resultClassId ? <Empty text="Chọn một lớp để tải danh sách học sinh." />
+                  : resultStudentsLoading ? <p className="assessment-results-state" role="status">Đang tải học sinh trong lớp…</p>
+                    : !resultStudents.length ? <Empty text="Lớp này chưa có học sinh." />
+                      : !resultStudentId ? <Empty text="Chọn học sinh để xem lịch sử kiểm tra." />
+                        : <Empty text="Học sinh này chưa có kết quả kiểm tra trong lớp đã chọn." />}
+        </div>
       </section>
     </div>}
 
@@ -228,7 +331,7 @@ export default function AssessmentsPage() {
   </main>
 }
 
-function Select({ label, value, items, onChange }) { return <label>{label}<select value={value} onChange={event => onChange(event.target.value)}><option value="">Chọn</option>{items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> }
+function Select({ label, value, items, onChange, placeholder = 'Chọn', disabled = false }) { return <label>{label}<select value={value} disabled={disabled} onChange={event => onChange(event.target.value)}><option value="">{placeholder}</option>{items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label> }
 function PanelTitle({ eyebrow, title, detail }) { return <header className="assessment-panel-title"><div>{eyebrow && <p className="assessment-kicker">{eyebrow}</p>}<h2>{title}</h2>{detail && <p>{detail}</p>}</div></header> }
 function Empty({ text }) { return <p className="assessment-empty">{text}</p> }
 function QuestionCard({ question, index, draft, onChange }) {

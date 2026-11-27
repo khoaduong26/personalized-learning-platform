@@ -4,6 +4,7 @@ import com.tlcn.backend.learningpath.entity.LearningPath;
 import com.tlcn.backend.learningpath.entity.LearningStep;
 import com.tlcn.backend.learningpath.entity.LearningStepStatus;
 import com.tlcn.backend.learningpath.service.LearningPathService;
+import com.tlcn.backend.classroom.entity.Classroom;
 import com.tlcn.backend.user.dto.UserSummary;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -15,12 +16,19 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/students/{studentId}/learning-paths")
 public class LearningPathController {
+    public record ClassroomView(Long id, String name, String schoolYear) {
+        static ClassroomView from(Classroom classroom) {
+            return new ClassroomView(classroom.getId(), classroom.getName(), classroom.getSchoolYear());
+        }
+    }
+
     public record StepView(Long id, Integer order, String status, Double targetScore, Long lessonId,
             String lessonName, String lessonDescription) {
         static StepView from(LearningStep step) {
@@ -40,11 +48,14 @@ public class LearningPathController {
         }
     }
 
-    public record PathView(Long id, String status, Integer version, ProgressView progress, List<StepView> steps) {
+    public record PathView(Long id, String status, Integer version, Long classroomId, String classroomName,
+            ProgressView progress, List<StepView> steps) {
         static PathView from(LearningPath path) {
             List<LearningStep> orderedSteps = path.getSteps().stream()
                     .sorted(java.util.Comparator.comparing(LearningStep::getStepOrder)).toList();
             return new PathView(path.getId(), path.getStatus().name(), path.getVersion(),
+                    path.getClassroom() == null ? null : path.getClassroom().getId(),
+                    path.getClassroom() == null ? "Chưa gắn lớp" : path.getClassroom().getName(),
                     ProgressView.from(orderedSteps), orderedSteps.stream().map(StepView::from).toList());
         }
     }
@@ -60,14 +71,25 @@ public class LearningPathController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public List<PathView> list(@PathVariable Long studentId, @AuthenticationPrincipal UserSummary actor) {
-        return service.forStudent(studentId, actor).stream().map(PathView::from).toList();
+    public List<PathView> list(@PathVariable Long studentId,
+            @RequestParam(required = false) Long classroomId,
+            @AuthenticationPrincipal UserSummary actor) {
+        return service.forStudent(studentId, classroomId, actor).stream().map(PathView::from).toList();
+    }
+
+    @GetMapping("/classrooms")
+    @Transactional(readOnly = true)
+    public List<ClassroomView> classrooms(@PathVariable Long studentId,
+            @AuthenticationPrincipal UserSummary actor) {
+        return service.classroomsForStudent(studentId, actor).stream().map(ClassroomView::from).toList();
     }
 
     @PostMapping("/generate")
     @Transactional
-    public PathView generate(@PathVariable Long studentId, @AuthenticationPrincipal UserSummary actor) {
-        return PathView.from(service.generate(studentId, actor));
+    public PathView generate(@PathVariable Long studentId,
+            @RequestParam(required = false) Long classroomId,
+            @AuthenticationPrincipal UserSummary actor) {
+        return PathView.from(service.generate(studentId, classroomId, actor));
     }
 
     @GetMapping("/{pathId}")

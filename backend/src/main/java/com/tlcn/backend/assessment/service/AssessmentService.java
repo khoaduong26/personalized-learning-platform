@@ -20,7 +20,7 @@ public interface AssessmentService {
 
     Question createQuestion(QuestionRequest request, UserSummary actor);
 
-    List<AssessmentAttempt> attemptsForStudent(Long id, UserSummary actor);
+    List<AssessmentAttempt> attemptsForStudent(Long id, Long classroomId, UserSummary actor);
 
     List<Classroom> classroomsForTeacher(UserSummary actor);
 

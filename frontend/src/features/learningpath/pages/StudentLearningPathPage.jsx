@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import HomeHeader from '../../home/components/HomeHeader'
-import { getLearningPaths, getMySession } from '../services/learningPathApi'
+import { getLearningPaths, getMySession, getStudentClassrooms } from '../services/learningPathApi'
 import '../styles/learningpath.css'
 
 export default function StudentLearningPathPage() {
   const [student, setStudent] = useState(null)
   const [paths, setPaths] = useState([])
+  const [classrooms, setClassrooms] = useState([])
+  const [selectedClassroomId, setSelectedClassroomId] = useState('')
   const [state, setState] = useState('loading')
 
   useEffect(() => {
@@ -16,7 +18,18 @@ export default function StudentLearningPathPage() {
       if (!active) return
       if (session.role !== 'STUDENT') { setState('forbidden'); return }
       setStudent(session)
-      try { const result = await getLearningPaths(session.id); if (active) { setPaths(result); setState('ready') } }
+      try {
+        const [result, memberships] = await Promise.all([
+          getLearningPaths(session.id), getStudentClassrooms(session.id),
+        ])
+        if (active) {
+          setPaths(result)
+          setClassrooms(memberships)
+          const current = result.find(path => path.status === 'ACTIVE')
+          setSelectedClassroomId(String(current?.classroomId ?? memberships[0]?.id ?? ''))
+          setState('ready')
+        }
+      }
       catch { if (active) setState('error') }
     }).catch(error => {
       if (active) setState(error.status === 401 ? 'signed-out' : 'error')
@@ -28,11 +41,19 @@ export default function StudentLearningPathPage() {
   if (state === 'signed-out') return <Gate title="Đăng nhập để xem lộ trình" description="Đăng nhập bằng tài khoản học sinh để xem em cần học gì." signedOut />
   if (state === 'forbidden') return <Gate title="Trang dành cho học sinh" description="Hãy đăng nhập bằng tài khoản học sinh để xem lộ trình của mình." />
 
-  const currentPath = paths.find(path => path.status === 'ACTIVE')
-  const completedPath = paths.some(path => path.status === 'COMPLETED')
+  const classPaths = selectedClassroomId ? paths.filter(path => String(path.classroomId) === selectedClassroomId) : paths
+  const currentPath = classPaths.find(path => path.status === 'ACTIVE')
+  const completedPath = classPaths.some(path => path.status === 'COMPLETED')
+  const selectedClassroom = classrooms.find(item => String(item.id) === selectedClassroomId)
   return <main id="noi-dung" tabIndex={-1} className="student-learning-shell">
     <HomeHeader user={student} onLogout={() => setStudent(null)} />
     <section className="student-learning-hero"><h1>Lộ trình của em</h1><p>Xem bước đang học và mở bài luyện tập của em.</p></section>
+    {classrooms.length > 0 && <label className="student-learning-class-picker">Lớp học
+      <select aria-label="Chọn lớp xem lộ trình" value={selectedClassroomId} onChange={event => setSelectedClassroomId(event.target.value)}>
+        {classrooms.map(classroom => <option key={classroom.id} value={classroom.id}>{classroom.name} · {classroom.schoolYear}</option>)}
+      </select>
+    </label>}
+    {selectedClassroom && <p className="student-learning-class-context">Lộ trình của lớp <strong>{selectedClassroom.name}</strong></p>}
     {state === 'error' && <p className="student-learning-error" role="alert">Chưa tải được lộ trình. Em hãy tải lại trang để thử lại.</p>}
     {currentPath && <section className="student-learning-card" aria-labelledby="student-progress-title">
       <h2 id="student-progress-title">Em đã học xong {currentPath.progress.completed} trên {currentPath.progress.total} bước</h2>
@@ -66,7 +87,7 @@ export default function StudentLearningPathPage() {
     </section>}
     {state === 'ready' && !currentPath && <section className="student-learning-card student-learning-complete">
       <h2>{completedPath ? 'Em đã hoàn thành lộ trình!' : 'Em chưa có lộ trình học'}</h2>
-      <p>{completedPath ? 'Em có thể xem bài kiểm tra thầy cô đã giao.' : 'Khi thầy cô tạo lộ trình cho em, các bước học sẽ hiện ở đây.'}</p>
+      <p>{completedPath ? 'Em có thể xem bài kiểm tra thầy cô đã giao.' : `Khi thầy cô tạo lộ trình cho em ở lớp ${selectedClassroom?.name || 'này'}, các bước học sẽ hiện ở đây.`}</p>
       <Link className="student-learning-action" to="/assessments">Xem bài kiểm tra</Link>
     </section>}
   </main>
