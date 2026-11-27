@@ -13,6 +13,13 @@ import com.tlcn.backend.academic.service.AcademicBadRequestException;
 import com.tlcn.backend.academic.service.AcademicNotFoundException;
 import com.tlcn.backend.academic.service.SubjectService;
 import com.tlcn.backend.academic.service.TopicService;
+import com.tlcn.backend.assessment.entity.Blank;
+import com.tlcn.backend.assessment.entity.FillBlankQuestion;
+import com.tlcn.backend.assessment.entity.MultipleChoiceQuestion;
+import com.tlcn.backend.assessment.entity.Option;
+import com.tlcn.backend.assessment.entity.Question;
+import com.tlcn.backend.assessment.entity.ShortAnswerQuestion;
+import com.tlcn.backend.assessment.repository.QuestionRepository;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import com.tlcn.backend.user.entity.User;
@@ -20,6 +27,7 @@ import com.tlcn.backend.user.repository.UserRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.Hibernate;
 
 @Service
 public class SubjectServiceImpl implements SubjectService {
@@ -28,14 +36,16 @@ public class SubjectServiceImpl implements SubjectService {
     private final LessonRepository lessons;
     private final UserRepository users;
     private final TopicService topicService;
+    private final QuestionRepository questions;
 
     public SubjectServiceImpl(SubjectRepository repository, TopicRepository topics,
-            LessonRepository lessons, UserRepository users, TopicService topicService) {
+            LessonRepository lessons, UserRepository users, TopicService topicService, QuestionRepository questions) {
         this.repository = repository;
         this.topics = topics;
         this.lessons = lessons;
         this.users = users;
         this.topicService = topicService;
+        this.questions = questions;
     }
 
     @Override
@@ -103,10 +113,55 @@ public class SubjectServiceImpl implements SubjectService {
         for (Topic sourceTopic : topics.findBySubjectIdOrderByNameAsc(source.getId())) {
             Topic topicCopy = topics.save(new Topic(sourceTopic.getName(), copy));
             for (Lesson sourceLesson : lessons.findByTopicIdOrderByNameAsc(sourceTopic.getId())) {
-                lessons.save(new Lesson(sourceLesson.getName(), sourceLesson.getDescription(), topicCopy));
+                Lesson lessonCopy = lessons.save(new Lesson(sourceLesson.getName(), sourceLesson.getDescription(), topicCopy));
+                for (Question sourceQuestion : questions.findByLessonId(sourceLesson.getId())) {
+                    questions.save(copyQuestion(sourceQuestion, lessonCopy));
+                }
             }
         }
         return response(copy);
+    }
+
+    private Question copyQuestion(Question source, Lesson targetLesson) {
+        source = (Question) Hibernate.unproxy(source);
+        Question copy;
+        if (source instanceof MultipleChoiceQuestion original) {
+            MultipleChoiceQuestion multipleChoice = new MultipleChoiceQuestion();
+            multipleChoice.setAllowMultiple(original.isAllowMultiple());
+            multipleChoice.setOptions(original.getOptions().stream().map(option -> {
+                Option optionCopy = new Option();
+                optionCopy.setName(option.getName());
+                optionCopy.setCorrect(option.isCorrect());
+                optionCopy.setDisplayOrder(option.getDisplayOrder());
+                return optionCopy;
+            }).toList());
+            copy = multipleChoice;
+        } else if (source instanceof FillBlankQuestion original) {
+            FillBlankQuestion fillBlank = new FillBlankQuestion();
+            fillBlank.setCaseSensitive(original.isCaseSensitive());
+            fillBlank.setBlanks(original.getBlanks().stream().map(blank -> {
+                Blank blankCopy = new Blank();
+                blankCopy.setCorrectAnswer(blank.getCorrectAnswer());
+                blankCopy.setPosition(blank.getPosition());
+                return blankCopy;
+            }).toList());
+            copy = fillBlank;
+        } else if (source instanceof ShortAnswerQuestion original) {
+            ShortAnswerQuestion shortAnswer = new ShortAnswerQuestion();
+            shortAnswer.setCaseSensitive(original.isCaseSensitive());
+            shortAnswer.setCorrectAnswer(original.getCorrectAnswer());
+            copy = shortAnswer;
+        } else {
+            throw new AcademicConflictException("Có dạng câu hỏi không thể sao chép trong chương trình này.");
+        }
+        copy.setContent(source.getContent());
+        copy.setDifficulty(source.getDifficulty());
+        copy.setScore(source.getScore());
+        copy.setLesson(targetLesson);
+        copy.setAiGenerated(source.isAiGenerated());
+        copy.setApprovalStatus(source.getApprovalStatus());
+        copy.setExplanation(source.getExplanation());
+        return copy;
     }
 
     private SubjectResponse response(Subject subject) {
