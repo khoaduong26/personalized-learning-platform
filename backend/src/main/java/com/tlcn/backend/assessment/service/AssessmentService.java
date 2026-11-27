@@ -22,6 +22,10 @@ public interface AssessmentService {
 
     List<AssessmentAttempt> attemptsForStudent(Long id, Long classroomId, UserSummary actor);
 
+    default List<AssessmentAttempt> attemptsForStudent(Long id, UserSummary actor) {
+        return attemptsForStudent(id, null, actor);
+    }
+
     List<Classroom> classroomsForTeacher(UserSummary actor);
 
     Assessment ownedAssessment(Long id, UserSummary actor);
