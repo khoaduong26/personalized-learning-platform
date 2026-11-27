@@ -1,4 +1,4 @@
-.learning-home { --ink: #302b42; --muted: #635f71; --purple: #68518d; --cream: #fcfaf5; background: var(--cream); color: var(--ink); font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif; font-size: 17px; line-height: 1.65; font-weight: 400; overflow-wrap: break-word; overflow: clip; }
+.learning-home { --ink: #2c2933; --muted: #736e78; --purple: #705788; --cream: #f6f5f1; background: var(--cream); color: var(--ink); font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif; font-size: 16px; line-height: 1.65; font-weight: 400; overflow-wrap: break-word; overflow: clip; }
 .learning-home *, .learning-home *::before, .learning-home *::after { box-sizing: border-box; }
 .learning-home a { color: inherit; text-decoration: none; }
 .learning-home button { font: inherit; cursor: pointer; }
@@ -8,11 +8,12 @@
 .home-container { width: min(1180px, calc(100% - 64px)); margin-inline: auto; }
 .home-skip { position: absolute; top: -100px; left: 16px; z-index: 10; background: white; padding: 12px 20px; border: 2px solid var(--purple); border-radius: 8px; }
 .home-skip:focus { top: 12px; }
-.home-header { border-bottom: 1px solid #e8e3db; }
+.home-header { border-bottom: 1px solid #e7e3dc; background: var(--cream, #f6f5f1); }
+.learning-home > .home-header { padding-inline: clamp(16px, 5vw, 72px); }
 .home-account-actions { display: flex; align-items: center; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
 .home-account-actions .home-text-link { max-width: 220px; overflow-wrap: anywhere; }
-.home-header-inner { min-height: 94px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.home-brand { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; white-space: nowrap; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.4; }
+.home-header-inner { width: 100%; max-width: none; min-height: 76px; margin-inline: 0; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.home-brand { display: inline-flex; align-items: center; flex-shrink: 0; white-space: nowrap; color: #302a3c; font-size: 22px; font-weight: 800; letter-spacing: -.7px; line-height: 1.4; }
 .brand-symbol { display: block; flex-shrink: 0; width: 44px; height: 44px; }
 .brand-dot { color: #957644; }
 .home-nav { display: flex; gap: 30px; font-size: 15px; font-weight: 600; }
@@ -30,7 +31,7 @@
 .home-classrooms-link:hover { color: var(--purple); text-decoration: underline; text-underline-offset: 5px; }
 .learning-home .home-button { display: inline-flex; align-items: center; justify-content: center; gap: 24px; min-height: 54px; padding: 14px 25px; border: 1px solid var(--purple); border-radius: 14px; background: var(--purple); color: white; font-size: 16px; font-weight: 700; transition: background .18s, transform .18s; }
 .learning-home .home-button:hover { background: #53406f; transform: translateY(-2px); }
-.learning-home .home-button-small { min-height: 46px; padding: 10px 18px; font-size: 14px; gap: 18px; }
+.learning-home .home-button-small { min-height: 44px; padding: 9px 16px; font-size: 13px; gap: 12px; border-radius: 10px; }
 .home-hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 25px; align-items: center; padding-block: 65px 70px; }
 .home-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #65507f; display: flex; align-items: center; gap: 9px; }
 .eyebrow-dot { width: 8px; height: 8px; border-radius: 50%; background: #81955d; }
@@ -110,43 +111,44 @@
 .closing-star { display: block; font-size: 44px; color: #71815e; margin-bottom: 7px; }.home-closing h2 { line-height: 1.35; }.home-closing p { margin-block: 18px 25px; color: #5f6756; font-size: 16px; }
 
 @media (min-width: 1600px) { .home-hero { padding-block: 90px; } }
-@media (max-width: 1100px) { .home-header-inner { flex-wrap: wrap; padding-block: 16px; row-gap: 10px; }.home-nav { order: 3; width: 100%; justify-content: center; } }
+@media (max-width: 1100px) { .home-header-inner { flex-wrap: wrap; padding-block: 16px; row-gap: 10px; }.home-header .workspace-navigation { order: 3; width: 100%; justify-content: center; flex-wrap: wrap; }.home-nav { order: 3; width: 100%; justify-content: center; } }
 @media (max-width: 1000px) { .home-nav { gap: 18px; font-size: 13px; }.home-hero h1 { font-size: 43px; }.home-hero-actions { gap: 18px; }.home-practice-grid { gap: 35px; }.topic-card { padding: 22px; }.topic-card h3 { font-size: 20px; }.home-values > div { font-size: 12px; }.teacher-invite { align-items: start; } }
-@media (max-width: 760px) { .home-container { width: calc(100% - 40px); }.home-header-inner { min-height: 80px; flex-wrap: wrap; column-gap: 15px; row-gap: 0; padding-top: 14px; }.home-brand { font-size: 27px; }.home-nav { order: 3; width: 100%; justify-content: space-between; gap: 12px; padding-block: 6px; font-size: 12px; }.home-header .home-button-small { font-size: 13px; min-height: 44px; padding: 9px 12px; }.home-hero { grid-template-columns: 1fr; padding-block: 40px 36px; gap: 30px; }.home-hero h1 { font-size: clamp(36px, 7vw, 51px); letter-spacing: -0.75px; }.home-lead { font-size: 17px; max-width: 100%; }.home-eyebrow { font-size: 10px; letter-spacing: 1.1px; }.home-hero-art { width: 100%; max-width: 480px; justify-self: center; }.garden-label { left: 45px; font-size: 12px; }.garden-caption { right: 0; bottom: -4px; font-size: 12px; }.home-values > div { flex-wrap: wrap; justify-content: center; gap: 8px 20px; padding-block: 14px; }.home-values span > span { margin-right: 5px; font-size: 18px; }.home-section-heading { align-items: start; flex-direction: column; gap: 16px; }.home-section-heading > p br { display: none; }.home-explore, .home-teachers { padding-block: 50px; }.home-topics { grid-template-columns: 1fr; gap: 16px; }.topic-card { padding: 22px; position: relative; }.topic-top { margin-bottom: 18px; }.topic-card h3 { font-size: 23px; }.topic-symbol { height: 55px; font-size: 27px; }.topic-link { margin-top: 19px; padding-top: 10px; }.home-practice-section { padding-block: 45px; }.home-practice-grid { grid-template-columns: 1fr; gap: 30px; }.home-practice-copy h2 { font-size: 30px; }.practice-encouragement { margin-top: 20px; }.practice-card { padding: 25px 20px; }.teacher-steps { grid-template-columns: 1fr; gap: 25px; }.teacher-steps h3 { margin-block: 8px; }.teacher-invite { flex-direction: column; padding: 22px; gap: 20px; }.teacher-invite .home-button { width: 100%; }.home-closing { padding-block: 35px 45px; }.home-closing h2 { font-size: 30px; } }
-@media (max-width: 480px) { .home-header-inner { justify-content: center; }.home-account-actions { width: 100%; justify-content: center; gap: 12px; }.home-nav { flex-wrap: wrap; justify-content: center; column-gap: 16px; row-gap: 0; }.home-brand { font-size: 26px; } }
+@media (max-width: 760px) { .home-container { width: calc(100% - 40px); }.home-header-inner { width: 100%; min-height: 80px; flex-wrap: wrap; column-gap: 15px; row-gap: 0; padding-top: 14px; }.home-brand { font-size: 22px; }.home-nav { order: 3; width: 100%; justify-content: space-between; gap: 12px; padding-block: 6px; font-size: 12px; }.home-header .home-button-small { font-size: 13px; min-height: 44px; padding: 9px 12px; }.home-hero { grid-template-columns: 1fr; padding-block: 40px 36px; gap: 30px; }.home-hero h1 { font-size: clamp(36px, 7vw, 51px); letter-spacing: -0.75px; }.home-lead { font-size: 17px; max-width: 100%; }.home-eyebrow { font-size: 10px; letter-spacing: 1.1px; }.home-hero-art { width: 100%; max-width: 480px; justify-self: center; }.garden-label { left: 45px; font-size: 12px; }.garden-caption { right: 0; bottom: -4px; font-size: 12px; }.home-values > div { flex-wrap: wrap; justify-content: center; gap: 8px 20px; padding-block: 14px; }.home-values span > span { margin-right: 5px; font-size: 18px; }.home-section-heading { align-items: start; flex-direction: column; gap: 16px; }.home-section-heading > p br { display: none; }.home-explore, .home-teachers { padding-block: 50px; }.home-topics { grid-template-columns: 1fr; gap: 16px; }.topic-card { padding: 22px; position: relative; }.topic-top { margin-bottom: 18px; }.topic-card h3 { font-size: 23px; }.topic-symbol { height: 55px; font-size: 27px; }.topic-link { margin-top: 19px; padding-top: 10px; }.home-practice-section { padding-block: 45px; }.home-practice-grid { grid-template-columns: 1fr; gap: 30px; }.home-practice-copy h2 { font-size: 30px; }.practice-encouragement { margin-top: 20px; }.practice-card { padding: 25px 20px; }.teacher-steps { grid-template-columns: 1fr; gap: 25px; }.teacher-steps h3 { margin-block: 8px; }.teacher-invite { flex-direction: column; padding: 22px; gap: 20px; }.teacher-invite .home-button { width: 100%; }.home-closing { padding-block: 35px 45px; }.home-closing h2 { font-size: 30px; } }
+@media (max-width: 480px) { .home-header-inner { justify-content: center; }.home-account-actions { width: 100%; justify-content: center; gap: 12px; }.home-nav { flex-wrap: wrap; justify-content: center; column-gap: 16px; row-gap: 0; }.home-brand { font-size: 22px; } }
 @media (max-width: 370px) { .home-container { width: calc(100% - 32px); }.home-hero h1 { font-size: 34px; }.home-nav { font-size: 11px; }.practice-actions { flex-direction: column; align-items: stretch; }.home-hero-actions { align-items: start; flex-direction: column; gap: 8px; }.practice-options { gap: 8px; } }
-.home-footer { padding-block: 32px 0; background: #f2f6fb; border-top: 1px solid #dce4ef; color: var(--ink); }
+.home-footer { padding-block: 32px 0; background: #f6f5f1; border-top: 1px solid #e7e3dc; color: var(--ink); }
 .footer-grid { display: grid; grid-template-columns: 1.3fr 1fr .95fr 1.1fr; gap: 28px; padding-bottom: 20px; }
 .footer-grid > section { min-width: 0; }
-.home-footer .home-brand { font-size: 27px; }
+.home-footer .home-brand { font-size: 22px; }
 .home-footer .footer-about-title { margin-block: 19px 10px; font-size: 17px; line-height: 1.5; letter-spacing: 0; }
-.footer-about > p { color: #596579; font-size: 13px; line-height: 1.8; }
+.footer-about > p { color: #736e78; font-size: 13px; line-height: 1.8; }
 .home-footer .footer-group h2 { display: flex; align-items: flex-start; gap: 9px; min-height: 44px; margin-bottom: 16px; padding-top: 9px; font-size: 15px; line-height: 1.5; letter-spacing: 0; }
-.footer-icon { width: 21px; height: 21px; flex-shrink: 0; color: #60799f; }
+.footer-icon { width: 21px; height: 21px; flex-shrink: 0; color: #816997; }
 .footer-details-list { display: grid; gap: 3px; }
-.footer-detail { min-width: 0; font-size: 13px; color: #4d5c70; }
+.footer-detail { min-width: 0; font-size: 13px; color: #615a68; }
 .footer-detail summary { cursor: pointer; padding-block: 9px; line-height: 1.6; border-radius: 4px; transition: color .15s; }
-.footer-detail summary::marker { color: #879bc0; font-size: 10px; }
-.footer-detail summary:hover, .home-footer a:hover { color: #405e90; }
+.footer-detail summary::marker { color: #9b7bba; font-size: 10px; }
+.footer-detail summary:hover, .home-footer a:hover { color: #604773; }
 .home-footer a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .home-footer .home-brand:hover { text-decoration: none; }
 .home-footer summary:focus-visible { outline: 3px solid #46336d; outline-offset: 3px; }
-.footer-detail > p { margin-block: 3px 12px; padding: 12px; background: #fff; border: 1px solid #dce4ef; border-radius: 10px; line-height: 1.8; color: #596579; scroll-margin-top: 24px; }
-.footer-detail[open] > summary { color: #405e90; font-weight: 600; }
+.footer-detail > p { margin-block: 3px 12px; padding: 12px; background: #fff; border: 1px solid #e7e3dc; border-radius: 10px; line-height: 1.8; color: #736e78; scroll-margin-top: 24px; }
+.footer-detail[open] > summary { color: #604773; font-weight: 600; }
 .footer-link { display: inline-flex; align-items: center; gap: 8px; padding-block: 10px; font-size: 13px; font-weight: 600; }
-.footer-group > .footer-link { margin-top: 10px; color: #526b91; }
-.footer-support-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; font-size: 13px; color: #4d5c70; }
+.footer-group > .footer-link { margin-top: 10px; color: #69577a; }
+.footer-support-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; font-size: 13px; color: #615a68; }
 .footer-support-list li { display: grid; gap: 2px; }
-.footer-support-list small { font-size: 11px; color: #657187; }
-.footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; margin-top: 0; padding-block: 16px; border-top: 1px solid #dce4ef; font-size: 12px; color: #596579; }
+.footer-support-list small { font-size: 11px; color: #817987; }
+.footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; margin-top: 0; padding-block: 16px; border-top: 1px solid #e7e3dc; font-size: 12px; color: #736e78; }
 .footer-bottom nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .footer-bottom a { display: inline-block; padding-block: 8px; transition: color .15s; }
 @media (max-width: 1050px) { .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 40px; }.home-footer .footer-group h2 { min-height: auto; padding-top: 0; }.footer-bottom { align-items: flex-start; flex-direction: column; gap: 6px; } }
-@media (max-width: 600px) { .home-footer { padding-top: 34px; }.footer-grid { grid-template-columns: 1fr; gap: 28px; padding-bottom: 26px; }.footer-about { padding-bottom: 24px; border-bottom: 1px solid #dce4ef; }.home-footer .footer-group h2 { margin-bottom: 10px; }.footer-bottom { margin-top: 24px; padding-block: 18px; }.footer-bottom nav { gap: 4px 20px; } }
+@media (max-width: 600px) { .home-footer { padding-top: 34px; }.footer-grid { grid-template-columns: 1fr; gap: 28px; padding-bottom: 26px; }.footer-about { padding-bottom: 24px; border-bottom: 1px solid #e7e3dc; }.home-footer .footer-group h2 { margin-bottom: 10px; }.footer-bottom { margin-top: 24px; padding-block: 18px; }.footer-bottom nav { gap: 4px 20px; } }
 @media (prefers-reduced-motion: reduce) { .learning-home *, .learning-home *::before, .learning-home *::after { transition: none !important; scroll-behavior: auto !important; } }
 @media (max-width: 760px) { .home-header-actions { gap: 10px; }.home-classrooms-link { font-size: 13px; } }
 @media (max-width: 370px) { .home-header-actions { gap: 6px; }.home-classrooms-link { font-size: 11px; }.home-header .home-button-small { gap: 8px; padding-inline: 8px; } }
 @media (max-width: 760px) {
+  .home-header .workspace-navigation { order: 3; flex: 1 0 100%; justify-content: flex-start; }
   .home-header .workspace-navigation,
   .home-header .home-nav {
     justify-content: center;

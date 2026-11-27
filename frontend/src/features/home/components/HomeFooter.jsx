@@ -25,13 +25,12 @@ export default function HomeFooter() {
   const year = new Intl.DateTimeFormat('vi-VN', { year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date())
 
   return (
-    <footer className="home-footer" aria-label="Thông tin về EduLearn">
+      <footer className="home-footer" aria-label="Thông tin về EduLearn">
       <div className="home-container">
         <div className="footer-grid">
           <section className="footer-about" aria-labelledby="footer-about-title">
             <Link className="home-brand" to="/" aria-label="EduLearn — Trang chủ">
-              <img className="brand-symbol" src="/math-bunny.svg" width="44" height="44" alt="" />
-              <span>EduLearn<span className="brand-dot">.</span></span>
+              EduLearn
             </Link>
             <h2 id="footer-about-title" className="footer-about-title">Cùng thầy cô, hiểu từng em.</h2>
             <p>Hướng đến hỗ trợ giáo viên đánh giá năng lực và cá nhân hóa việc học cho học sinh tiểu học.</p>

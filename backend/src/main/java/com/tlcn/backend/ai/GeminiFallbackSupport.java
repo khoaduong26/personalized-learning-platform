@@ -13,12 +13,16 @@ public final class GeminiFallbackSupport {
         if (exception instanceof ResourceAccessException) {
             return true;
         }
+        if (exception instanceof IllegalStateException) {
+            return true;
+        }
         if (!(exception instanceof RestClientResponseException responseException)) {
             return false;
         }
 
         int status = responseException.getStatusCode().value();
-        if (status == 429 || (status >= 500 && status <= 599)) {
+        if (status == 400 || status == 401 || status == 404 || status == 429
+                || (status >= 500 && status <= 599)) {
             return true;
         }
         if (status != 402 && status != 403) {

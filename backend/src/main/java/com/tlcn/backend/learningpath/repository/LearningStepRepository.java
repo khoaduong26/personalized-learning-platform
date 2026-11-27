@@ -9,4 +9,6 @@ public interface LearningStepRepository extends JpaRepository<LearningStep, Long
     List<LearningStep> findByPathIdOrderByStepOrderAsc(Long pathId);
 
     Optional<LearningStep> findByIdAndPathId(Long id, Long pathId);
+
+    boolean existsByLessonId(Long lessonId);
 }

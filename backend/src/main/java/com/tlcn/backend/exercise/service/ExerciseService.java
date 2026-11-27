@@ -11,7 +11,7 @@ import java.util.List;
 public interface ExerciseService {
     List<StepExercise> forStep(Long stepId, UserSummary actor);
 
-    List<Question> pendingReview(UserSummary actor);
+    List<StepExercise> pendingReview(UserSummary actor);
 
     Question createGenerated(Long stepId, QuestionRequest request, UserSummary actor);
 

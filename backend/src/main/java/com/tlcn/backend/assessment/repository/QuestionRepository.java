@@ -7,5 +7,7 @@ import java.util.List;
 public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByLessonId(Long lessonId);
 
+    boolean existsByLessonId(Long lessonId);
+
     List<Question> findByLessonIdOrderByIdDesc(Long lessonId);
 }

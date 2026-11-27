@@ -56,8 +56,13 @@ public class GeminiExerciseQuestionGenerator implements ExerciseQuestionGenerato
             if (!canFallback(exception)) {
                 throw exception;
             }
-            String output = deepSeekClient.completeJson(prompt);
-            return ExerciseGeneratorSupport.parse(output, step.getLesson().getId(), "deepseek", mapper);
+            try {
+                String output = deepSeekClient.completeJson(prompt);
+                return ExerciseGeneratorSupport.parse(output, step.getLesson().getId(), "deepseek", mapper);
+            } catch (RuntimeException fallbackException) {
+                fallbackException.addSuppressed(exception);
+                throw fallbackException;
+            }
         }
     }
 

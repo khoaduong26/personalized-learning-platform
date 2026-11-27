@@ -59,3 +59,31 @@
 .exercise-options input { width: 18px; height: 18px; flex-shrink: 0; }
 .exercise-page :is(a, button, input):focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
 @media (max-width: 640px) { .exercise-page { padding: 0 16px 38px; } .exercise-header > div { gap: 7px; font-size: 11px; } .exercise-card { padding: 16px; } .exercise-actions { justify-content: stretch; } .exercise-actions button { flex: 1; } }
+.exercise-review-workspace { display: grid; gap: 16px; }
+.exercise-page > .home-header { width: 100vw; margin-inline: calc(50% - 50vw); padding-inline: clamp(16px, 5vw, 72px); box-sizing: border-box; }
+.exercise-review-page { box-sizing: border-box; width: 100%; max-width: none; margin: 0; padding: 0 clamp(16px, 5vw, 72px) 56px; background: #f6f5f1; color: #2c2933; }
+.exercise-review-page .exercise-header { min-height: 72px; border-color: #e7e3dc; gap: 12px; }
+.exercise-review-page .exercise-brand { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 9px; color: #302a3c; font-size: 22px; letter-spacing: -.7px; }
+.exercise-review-page .exercise-review-brand-mark { padding: 0; border-radius: 0; background: transparent; color: #9b7bba; font-size: 24px; }
+.exercise-review-page .workspace-navigation { flex: 1 1 auto; }
+.exercise-review-page .exercise-review-user { flex: 0 0 auto; gap: 10px; color: #393340; font-size: 13px; }
+.exercise-review-page .exercise-review-user > span:first-child { padding: 0; border-radius: 0; background: transparent; color: inherit; font-size: inherit; }
+.exercise-review-page .exercise-review-role { padding: 5px 10px; border-radius: 999px; background: #eee8f3; color: #665574; font-size: 11px; }
+.exercise-review-page .exercise-heading { padding: 34px 0 22px; }
+.exercise-review-page .exercise-heading h1 { color: #292533; }
+.exercise-review-page .exercise-heading > p:last-child { color: #736e78; }
+.exercise-review-page .exercise-review-workspace { padding: 18px; border: 1px solid #e9e5dd; border-radius: 14px; background: #fff; box-shadow: 0 5px 18px #44394d08; }
+.exercise-review-page .exercise-notice, .exercise-review-page .exercise-error { box-sizing: border-box; max-width: 100%; line-height: 1.5; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .exercise-review-page .workspace-navigation { flex: 1 0 100%; } }
+@media (max-width: 640px) { .exercise-review-page { padding: 0 16px 38px; }.exercise-review-page .exercise-review-workspace { padding: 13px; } }
+.exercise-student-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 10px; border-bottom: 1px solid #ebe6ee; scrollbar-width: thin; }
+.exercise-student-tabs button { display: grid; flex: 0 0 auto; gap: 4px; min-width: 145px; border: 1px solid #e8e2eb; border-radius: 10px; padding: 10px 12px; background: #fff; color: #554b5e; text-align: left; cursor: pointer; }
+.exercise-student-tabs button span { font-size: 12px; font-weight: 800; }
+.exercise-student-tabs button small { color: #89818f; font-size: 10px; }
+.exercise-student-tabs button.is-active { border-color: #b6a2c5; background: #faf7fc; box-shadow: inset 3px 0 #876b9c; color: #604b73; }
+.exercise-student-tabs button:focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
+.exercise-student-queue-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 2px 4px; }
+.exercise-student-queue-heading > div > span { color: #8a6ea0; font-size: 9px; font-weight: 850; letter-spacing: 1.3px; }
+.exercise-student-queue-heading h2 { margin: 4px 0 0; font-size: 20px; }
+.exercise-student-queue-heading > small { color: #817987; font-size: 11px; }
+@media (max-width: 640px) { .exercise-student-tabs button { min-width: 130px; }.exercise-student-queue-heading { align-items: flex-start; flex-direction: column; } }

@@ -1,4 +1,5 @@
 .admin-dashboard-shell { --admin-ink: #2d2638; --admin-muted: #756d7c; --admin-line: #e8e1eb; min-height: 100vh; background: #f8f6f3; color: var(--admin-ink); }
+.admin-dashboard-shell > .home-header { padding-inline: clamp(16px, 5vw, 72px); }
 .admin-dashboard-topbar, .admin-dashboard-content { width: min(100% - 2 * clamp(16px, 5vw, 72px), 1280px); margin-inline: auto; }
 .admin-dashboard-topbar { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--admin-line); }
 .admin-dashboard-brand { display: inline-flex; align-items: center; gap: 8px; color: inherit; font-size: 21px; font-weight: 800; letter-spacing: -.04em; text-decoration: none; white-space: nowrap; }

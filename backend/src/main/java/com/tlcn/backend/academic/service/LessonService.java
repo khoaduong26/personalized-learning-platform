@@ -2,12 +2,13 @@ package com.tlcn.backend.academic.service;
 
 import com.tlcn.backend.academic.dto.LessonRequest;
 import com.tlcn.backend.academic.dto.LessonResponse;
+import com.tlcn.backend.user.dto.UserSummary;
 import java.util.List;
 
 public interface LessonService {
-    List<LessonResponse> byTopic(Long id);
-    LessonResponse get(Long id);
-    LessonResponse create(LessonRequest request);
-    LessonResponse update(Long id, LessonRequest request);
-    void delete(Long id);
+    List<LessonResponse> byTopic(Long id, UserSummary actor);
+    LessonResponse get(Long id, UserSummary actor);
+    LessonResponse create(LessonRequest request, UserSummary actor);
+    LessonResponse update(Long id, LessonRequest request, UserSummary actor);
+    void delete(Long id, UserSummary actor);
 }

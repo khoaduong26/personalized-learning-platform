@@ -6,7 +6,7 @@ import {
 } from '../services/classroomApi'
 import '../styles/classrooms.css'
 import MasteryPanel from '../../mastery/components/MasteryPanel'
-import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
+import HomeHeader from '../../home/components/HomeHeader'
 import LearningPathPanel from '../../learningpath/components/LearningPathPanel'
 
 function currentSchoolYear() {
@@ -21,6 +21,7 @@ export default function ClassroomsPage() {
   const [classes, setClasses] = useState([])
   const [teachers, setTeachers] = useState([])
   const [selectedId, setSelectedId] = useState(null)
+  const [classroomTab, setClassroomTab] = useState('roster')
   const [students, setStudents] = useState([])
   const [roster, setRoster] = useState({ key: '', state: 'idle', error: '' })
   const [classForm, setClassForm] = useState({ name: '', schoolYear: currentSchoolYear(), teacherId: '' })
@@ -103,6 +104,7 @@ export default function ClassroomsPage() {
       ...(user?.role === 'ADMIN' ? { teacherId: Number(classForm.teacherId) } : {}) }
     mutate(async () => {
       const result = editingClass && selectedId ? await updateClassroom(selectedId, body) : await createClassroom(body)
+      if (!editingClass) setClassroomTab('roster')
       setClassForm({ name: '', schoolYear: currentSchoolYear(), teacherId: '' })
       setEditingClass(false)
       return result
@@ -162,42 +164,60 @@ export default function ClassroomsPage() {
   const selected = classes.find(item => item.id === selectedId)
   const rosterState = roster.key === rosterKey ? roster.state : 'loading'
   const visibleStudents = rosterState === 'ready' ? students : []
+  const studentTotal = classes.reduce((total, item) => total + (item.studentCount || 0), 0)
 
-  return <main className="classrooms-shell">
-    <header className="classrooms-topbar"><Link to="/" className="classrooms-brand"><span>✳</span> TLCN</Link><WorkspaceNavigation role={user?.role} /><div className="classrooms-user"><span>{user?.fullName}</span><span className="classrooms-role">{user?.role === 'ADMIN' ? 'Quản trị viên' : 'Giáo viên'}</span></div></header>
+  return <main id="noi-dung" tabIndex={-1} className="classrooms-shell">
+    <HomeHeader user={user} onLogout={() => setUser(null)} />
     <section className="classrooms-heading"><div><p className="classrooms-kicker">GÓC DÀNH CHO THẦY CÔ</p><h1>Lớp học và học sinh</h1><p>Tổ chức lớp, thêm học sinh và cập nhật hồ sơ trong phạm vi được phân quyền.</p></div><span aria-hidden="true">♧</span></section>
     {notice && <div className="classrooms-notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Đóng">×</button></div>}
+
+    <section className="classrooms-overview" aria-label="Tổng quan lớp học">
+      <article><span className="classrooms-overview-icon is-violet" aria-hidden="true">▦</span><div><small>LỚP ĐƯỢC PHÂN QUYỀN</small><strong>{classes.length}</strong><span>lớp học</span></div></article>
+      <article><span className="classrooms-overview-icon is-green" aria-hidden="true">♧</span><div><small>HỌC SINH TRONG CÁC LỚP</small><strong>{studentTotal}</strong><span>đang được quản lý</span></div></article>
+      <article className="classrooms-overview-current"><span className="classrooms-overview-icon is-amber" aria-hidden="true">⌂</span><div><small>LỚP ĐANG MỞ</small><strong>{selected?.name || 'Chưa chọn lớp'}</strong><span>{selected ? `${selected.schoolYear} · ${selected.teacherName}` : 'Chọn lớp ở danh sách bên dưới'}</span></div></article>
+    </section>
 
     <div className="classrooms-grid">
       <aside className="classrooms-panel classrooms-list-panel">
         <div className="classrooms-panel-heading"><div><h2>{user?.role === 'ADMIN' ? 'Danh sách lớp' : 'Lớp của tôi'}</h2><p>{classes.length} lớp học</p></div><span>{String(classes.length).padStart(2, '0')}</span></div>
         <form className="classrooms-form" onSubmit={saveClass}>
-          <div className="classrooms-form-title">{editingClass ? 'Chỉnh sửa lớp' : 'Tạo lớp mới'}</div>
+          <div className="classrooms-form-title"><span>{editingClass ? 'Chỉnh sửa thông tin lớp' : 'Tạo lớp mới'}</span><small>{editingClass ? 'Cập nhật tên hoặc năm học' : 'Bắt đầu quản lý một nhóm học sinh'}</small></div>
           <label>Tên lớp<input required maxLength="100" value={classForm.name} onChange={event => setClassForm({ ...classForm, name: event.target.value })} placeholder="Ví dụ: Lớp 2A1" /></label>
           <label>Năm học<input required pattern="\d{4}-\d{4}" title="Nhập theo dạng 2026-2027" value={classForm.schoolYear} onChange={event => setClassForm({ ...classForm, schoolYear: event.target.value })} placeholder="2026-2027" /></label>
           {user?.role === 'ADMIN' && !editingClass && <label>Giáo viên phụ trách<select required value={classForm.teacherId} onChange={event => setClassForm({ ...classForm, teacherId: event.target.value })}><option value="">Chọn giáo viên</option>{teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.fullName} · {teacher.email}</option>)}</select></label>}
           <div className="classrooms-form-actions"><button className="classrooms-primary" disabled={busy}>{editingClass ? 'Lưu thay đổi' : '+ Tạo lớp'}</button>{editingClass && <button type="button" className="classrooms-secondary" onClick={() => { setEditingClass(false); setClassForm({ name: '', schoolYear: currentSchoolYear(), teacherId: '' }) }}>Hủy</button>}</div>
         </form>
-        <div className="classrooms-class-list">{classes.map(item => <button type="button" key={item.id} className={`classrooms-class-card${selectedId === item.id ? ' is-active' : ''}`} onClick={() => { setSelectedId(item.id); setEditingClass(false); setClassForm({ name: '', schoolYear: currentSchoolYear(), teacherId: '' }) }}><span className="classrooms-class-icon">▦</span><span className="classrooms-class-copy"><strong>{item.name}</strong><small>{item.schoolYear} · {item.studentCount} học sinh</small></span><span aria-hidden="true">›</span></button>)}</div>
+        <div className="classrooms-class-list">{classes.map(item => <button type="button" key={item.id} className={`classrooms-class-card${selectedId === item.id ? ' is-active' : ''}`} onClick={() => { setSelectedId(item.id); setClassroomTab('roster'); setEditingClass(false); setClassForm({ name: '', schoolYear: currentSchoolYear(), teacherId: '' }) }}><span className="classrooms-class-icon">▦</span><span className="classrooms-class-copy"><strong>{item.name}</strong><small>{item.schoolYear} · {item.studentCount} học sinh</small></span><span aria-hidden="true">›</span></button>)}</div>
         {!classes.length && <p className="classrooms-empty">Chưa có lớp học. Tạo lớp đầu tiên để bắt đầu.</p>}
       </aside>
 
       <section className="classrooms-panel classrooms-roster-panel">
         {selected ? <>
-          <div className="classrooms-panel-heading roster-heading"><div><span className="classrooms-kicker">{selected.schoolYear}</span><h2>{selected.name}</h2><p>Giáo viên: {selected.teacherName} · {selected.studentCount} học sinh</p></div><button type="button" className="classrooms-edit-class" onClick={() => editClass(selected)}>✎ <span>Sửa lớp</span></button></div>
-          <section className="classrooms-add-student"><div><h3>Thêm học sinh</h3><p>Tra cứu bằng email đã đăng ký tài khoản TLCN.</p></div><form onSubmit={searchCandidate}><label className="classrooms-sr-only" htmlFor="student-email">Email học sinh</label><input id="student-email" type="email" required value={candidateEmail} onChange={event => setCandidateEmail(event.target.value)} placeholder="Email học sinh" /><button className="classrooms-secondary">Tìm học sinh</button></form>
-            {candidates.map(student => <div key={student.id} className="classrooms-candidate"><div><strong>{student.fullName}</strong><span>{student.email}</span></div><button type="button" disabled={busy} onClick={() => addStudent(student)}>+ Thêm vào lớp</button></div>)}
-            {candidateEmail && !candidates.length && <span className="classrooms-search-hint">Tìm đúng email của học sinh chưa được xếp lớp.</span>}
-          </section>
-          <div className="classrooms-roster-toolbar"><div><h3>Danh sách học sinh</h3><span>{visibleStudents.length} em</span></div><form onSubmit={event => { event.preventDefault(); retryStudents() }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
-          {rosterState === 'loading' ? <p className="classrooms-empty classrooms-roster-empty" role="status">Đang tải danh sách học sinh…</p>
-            : rosterState === 'error' ? <div className="classrooms-notice" role="alert"><span>{roster.error}</span><button type="button" onClick={retryStudents}>Thử tải lại</button></div>
-              : visibleStudents.length ? <div className="classrooms-students">{visibleStudents.map(student => <StudentRow key={student.id} student={student} busy={busy} onSave={saveStudent} onRemove={() => dropStudent(student)} />)}</div>
-                : <p className="classrooms-empty classrooms-roster-empty">Lớp chưa có học sinh. Tra cứu email ở phía trên để thêm thành viên.</p>}
-          {rosterState === 'ready' && <>
-            <MasteryPanel students={visibleStudents} classroomId={selectedId} />
-            <LearningPathPanel students={visibleStudents} />
-          </>}
+          <div className="classrooms-panel-heading roster-heading"><div><span className="classrooms-kicker">CHI TIẾT LỚP HỌC</span><h2>{selected.name}</h2><p>{selected.schoolYear} · Giáo viên phụ trách: {selected.teacherName}</p></div><button type="button" className="classrooms-edit-class" onClick={() => editClass(selected)}>✎ <span>Sửa lớp</span></button></div>
+          <div className="classrooms-tabs" role="tablist" aria-label={`Thông tin lớp ${selected.name}`}>
+            <button id="class-tab-roster" type="button" role="tab" aria-selected={classroomTab === 'roster'} aria-controls="class-panel-roster" className={classroomTab === 'roster' ? 'is-active' : ''} onClick={() => setClassroomTab('roster')}>LỚP ĐANG QUẢN LÝ · {selected.schoolYear}</button>
+            <button id="class-tab-progress" type="button" role="tab" aria-selected={classroomTab === 'progress'} aria-controls="class-panel-progress" className={classroomTab === 'progress' ? 'is-active' : ''} onClick={() => setClassroomTab('progress')}>THEO DÕI TIẾN ĐỘ</button>
+            <button id="class-tab-plan" type="button" role="tab" aria-selected={classroomTab === 'plan'} aria-controls="class-panel-plan" className={classroomTab === 'plan' ? 'is-active' : ''} onClick={() => setClassroomTab('plan')}>KẾ HOẠCH CỦNG CỐ</button>
+          </div>
+          <div id="class-panel-roster" role="tabpanel" aria-labelledby="class-tab-roster" hidden={classroomTab !== 'roster'}>
+            <section className="classrooms-add-student"><div><span className="classrooms-section-step">01</span><div><h3>Thêm học sinh</h3><p>Tìm tài khoản học sinh bằng email để thêm vào lớp.</p></div></div><form onSubmit={searchCandidate}><label className="classrooms-sr-only" htmlFor="student-email">Email học sinh</label><input id="student-email" type="email" required value={candidateEmail} onChange={event => setCandidateEmail(event.target.value)} placeholder="hoc.sinh@email.com" /><button className="classrooms-secondary">Tìm học sinh</button></form>
+              {candidates.map(student => <div key={student.id} className="classrooms-candidate"><div><strong>{student.fullName}</strong><span>{student.email}</span></div><button type="button" disabled={busy} onClick={() => addStudent(student)}>+ Thêm vào lớp</button></div>)}
+              {candidateEmail && !candidates.length && <span className="classrooms-search-hint">Tìm đúng email của học sinh chưa được xếp lớp.</span>}
+            </section>
+            <div className="classrooms-roster-toolbar"><div><span className="classrooms-section-step">02</span><div><h3>Danh sách học sinh</h3><small>{selected.studentCount || 0} học sinh trong lớp</small></div></div><form onSubmit={event => { event.preventDefault(); retryStudents() }}><input value={studentSearch} onChange={event => setStudentSearch(event.target.value)} placeholder="Tìm theo tên hoặc email" aria-label="Tìm học sinh trong lớp" /><button className="classrooms-secondary">Tìm</button></form></div>
+            {rosterState === 'loading' ? <p className="classrooms-empty classrooms-roster-empty" role="status">Đang tải danh sách học sinh…</p>
+              : rosterState === 'error' ? <div className="classrooms-notice" role="alert"><span>{roster.error}</span><button type="button" onClick={retryStudents}>Thử tải lại</button></div>
+                : visibleStudents.length ? <div className="classrooms-students">{visibleStudents.map(student => <StudentRow key={student.id} student={student} busy={busy} onSave={saveStudent} onRemove={() => dropStudent(student)} />)}</div>
+                  : <p className="classrooms-empty classrooms-roster-empty">Lớp chưa có học sinh. Tra cứu email ở phía trên để thêm thành viên.</p>}
+          </div>
+          <div id="class-panel-progress" role="tabpanel" aria-labelledby="class-tab-progress" hidden={classroomTab !== 'progress'}>
+            {rosterState === 'ready' ? <MasteryPanel students={visibleStudents} classroomId={selectedId} />
+              : <p className="classrooms-empty" role={rosterState === 'error' ? 'alert' : 'status'}>{rosterState === 'error' ? roster.error : 'Đang tải danh sách học sinh…'}</p>}
+          </div>
+          <div id="class-panel-plan" role="tabpanel" aria-labelledby="class-tab-plan" hidden={classroomTab !== 'plan'}>
+            {rosterState === 'ready' ? <LearningPathPanel students={visibleStudents} />
+              : <p className="classrooms-empty" role={rosterState === 'error' ? 'alert' : 'status'}>{rosterState === 'error' ? roster.error : 'Đang tải danh sách học sinh…'}</p>}
+          </div>
         </> : <div className="classrooms-no-selection"><span>▦</span><h2>Chọn một lớp học</h2><p>Tạo lớp mới hoặc chọn lớp ở cột bên trái để quản lý danh sách học sinh.</p></div>}
       </section>
     </div>

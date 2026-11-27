@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
+import HomeHeader from '../../home/components/HomeHeader'
 import { getCurrentUser } from '../../auth/services/authApi'
 import { listAccounts } from '../../accounts/services/accountApi'
 import { getClassrooms } from '../../classrooms/services/classroomApi'
@@ -78,13 +78,9 @@ export default function AdminDashboardPage() {
 
   const { admin, stats } = dashboard
   return <div className="admin-dashboard-shell">
-    <header className="admin-dashboard-topbar">
-      <Link to="/" className="admin-dashboard-brand"><span aria-hidden="true">✳</span> EduLearn</Link>
-      <WorkspaceNavigation role="ADMIN" />
-      <Link to="/profile" className="admin-dashboard-account"><strong>{admin.fullName}</strong><span>Quản trị viên</span></Link>
-    </header>
+    <HomeHeader user={admin} onLogout={() => setDashboard(initialState)} />
 
-    <main className="admin-dashboard-content">
+    <main id="noi-dung" tabIndex={-1} className="admin-dashboard-content">
       <section className="admin-dashboard-welcome">
         <div><span className="admin-dashboard-kicker">BẢNG ĐIỀU KHIỂN QUẢN TRỊ</span><h1>Xin chào, {admin.fullName}</h1><p>Theo dõi quy mô và các việc cần xử lý trên EduLearn.</p></div>
         <Link className="admin-dashboard-primary" to="/admin/accounts">Quản lý tài khoản <span aria-hidden="true">↗</span></Link>

@@ -68,7 +68,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/students/*/mastery/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers("/api/students/*/learning-paths/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers("/api/students/*").hasAnyRole("ADMIN", "TEACHER")
-                // Curriculum is readable by signed-in users; only admins may change shared content.
+                // Signed-in users may read curriculum; services restrict shared edits to admins and private edits to their owner.
                 .requestMatchers(HttpMethod.GET, "/api/subjects/**", "/api/topics/**", "/api/lessons/**")
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                 .requestMatchers("/api/subjects/**", "/api/topics/**", "/api/lessons/**")

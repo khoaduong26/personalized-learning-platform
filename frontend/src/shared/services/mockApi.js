@@ -95,7 +95,8 @@ function lessonById(id) {
 }
 
 function subjectView(subject) {
-  return { ...subject, topicCount: state.academic.topics.filter(topic => topic.subjectId === subject.id).length }
+  return { ...subject, ownerId: subject.ownerId ?? null, shared: subject.ownerId == null,
+    topicCount: state.academic.topics.filter(topic => topic.subjectId === subject.id).length }
 }
 
 function topicView(topic) {
@@ -106,6 +107,20 @@ function topicView(topic) {
 function lessonView(lesson) {
   const topic = state.academic.topics.find(item => item.id === lesson.topicId)
   return { ...lesson, topicName: topic?.name || '' }
+}
+
+function requireVisibleMockSubject(subjectId, current) {
+  const subject = state.academic.subjects.find(item => item.id === Number(subjectId))
+  if (!subject || (current.role !== 'ADMIN' && subject.ownerId != null && subject.ownerId !== current.id)) {
+    fail(404, 'Không tìm thấy chương trình học.')
+  }
+  return subject
+}
+
+function requireEditableMockSubject(subjectId, current) {
+  const subject = requireVisibleMockSubject(subjectId, current)
+  if (current.role !== 'ADMIN' && subject.ownerId == null) fail(409, 'Chương trình chung chỉ đọc. Hãy lưu về bản riêng để chỉnh sửa.')
+  return subject
 }
 
 function questionView(question) {
@@ -509,48 +524,100 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
   }
 
   if (route === '/api/subjects') {
+    const current = requireActor()
+    if (method === 'GET') return state.academic.subjects
+      .filter(item => current.role === 'ADMIN' || item.ownerId == null || item.ownerId === current.id)
+      .map(subjectView)
     requireActor(['ADMIN', 'TEACHER'])
-    if (method === 'GET') return state.academic.subjects.map(subjectView)
-    const item = { id: nextId++, name: body.name }
+    const item = { id: nextId++, name: body.name, ownerId: current.role === 'ADMIN' ? null : current.id }
     state.academic.subjects.push(item)
     return subjectView(item)
   }
+  match = route.match(/^\/api\/subjects\/(\d+)\/copy$/)
+  if (match && method === 'POST') {
+    const current = requireActor(['TEACHER'])
+    const source = state.academic.subjects.find(value => value.id === Number(match[1]))
+    if (!source || source.ownerId != null) fail(404, 'Không tìm thấy chương trình chung.')
+    if (state.academic.subjects.some(value => value.ownerId === current.id && value.name === source.name)) fail(409, 'Bạn đã có bản riêng của môn học này.')
+    const copy = { id: nextId++, name: source.name, ownerId: current.id }
+    state.academic.subjects.push(copy)
+    state.academic.topics.filter(value => value.subjectId === source.id).forEach(value => {
+      const topic = { ...value, id: nextId++, subjectId: copy.id }
+      state.academic.topics.push(topic)
+      state.academic.lessons.filter(lesson => lesson.topicId === value.id).forEach(lesson => state.academic.lessons.push({
+        ...lesson, id: nextId++, topicId: topic.id, subjectId: copy.id,
+      }))
+    })
+    return subjectView(copy)
+  }
   match = route.match(/^\/api\/subjects\/(\d+)$/)
   if (match) {
-    requireActor(['ADMIN', 'TEACHER'])
+    const current = requireActor(['ADMIN', 'TEACHER'])
     const item = state.academic.subjects.find(value => value.id === Number(match[1]))
     if (!item) fail(404, 'Không tìm thấy môn học.')
+    if (current.role !== 'ADMIN' && item.ownerId !== current.id) fail(409, 'Chương trình chung chỉ đọc. Hãy lưu về bản riêng để chỉnh sửa.')
     if (method === 'PUT') { item.name = body.name; return subjectView(item) }
-    if (method === 'DELETE') { state.academic.subjects = state.academic.subjects.filter(value => value.id !== item.id); state.academic.topics = state.academic.topics.filter(value => value.subjectId !== item.id); return null }
+    if (method === 'DELETE') {
+      const topicIds = state.academic.topics.filter(value => value.subjectId === item.id).map(value => value.id)
+      state.academic.subjects = state.academic.subjects.filter(value => value.id !== item.id)
+      state.academic.topics = state.academic.topics.filter(value => value.subjectId !== item.id)
+      state.academic.lessons = state.academic.lessons.filter(value => !topicIds.includes(value.topicId))
+      return null
+    }
   }
   if (route === '/api/topics') {
+    const current = requireActor()
+    if (method === 'GET') {
+      const subjectId = Number(url.searchParams.get('subjectId'))
+      requireVisibleMockSubject(subjectId, current)
+      return state.academic.topics.filter(item => item.subjectId === subjectId).map(topicView)
+    }
     requireActor(['ADMIN', 'TEACHER'])
-    if (method === 'GET') return state.academic.topics.filter(item => item.subjectId === Number(url.searchParams.get('subjectId'))).map(topicView)
+    requireEditableMockSubject(body.subjectId, current)
     const item = { id: nextId++, name: body.name, subjectId: Number(body.subjectId) }
     state.academic.topics.push(item)
     return topicView(item)
   }
   match = route.match(/^\/api\/topics\/(\d+)$/)
   if (match) {
-    requireActor(['ADMIN', 'TEACHER'])
+    const current = requireActor(['ADMIN', 'TEACHER'])
     const item = state.academic.topics.find(value => value.id === Number(match[1]))
     if (!item) fail(404, 'Không tìm thấy chủ đề.')
-    if (method === 'PUT') { Object.assign(item, body, { subjectId: Number(body.subjectId) }); return topicView(item) }
+    requireEditableMockSubject(item.subjectId, current)
+    if (method === 'PUT') { requireEditableMockSubject(body.subjectId, current); Object.assign(item, body, { subjectId: Number(body.subjectId) }); return topicView(item) }
     if (method === 'DELETE') { state.academic.topics = state.academic.topics.filter(value => value.id !== item.id); state.academic.lessons = state.academic.lessons.filter(value => value.topicId !== item.id); return null }
   }
   if (route === '/api/lessons') {
+    const current = requireActor()
+    if (method === 'GET') {
+      const topicId = Number(url.searchParams.get('topicId'))
+      const topic = state.academic.topics.find(item => item.id === topicId)
+      if (!topic) fail(404, 'Không tìm thấy chủ đề.')
+      requireVisibleMockSubject(topic.subjectId, current)
+      return state.academic.lessons.filter(item => item.topicId === topicId).map(lessonView)
+    }
     requireActor(['ADMIN', 'TEACHER'])
-    if (method === 'GET') return state.academic.lessons.filter(item => item.topicId === Number(url.searchParams.get('topicId'))).map(lessonView)
+    const targetTopic = state.academic.topics.find(item => item.id === Number(body.topicId))
+    if (!targetTopic) fail(404, 'Không tìm thấy chủ đề.')
+    requireEditableMockSubject(targetTopic.subjectId, current)
     const item = { id: nextId++, name: body.name, description: body.description || '', topicId: Number(body.topicId), subjectId: state.academic.topics.find(topic => topic.id === Number(body.topicId))?.subjectId }
     state.academic.lessons.push(item)
     return lessonView(item)
   }
   match = route.match(/^\/api\/lessons\/(\d+)$/)
   if (match) {
-    requireActor(['ADMIN', 'TEACHER'])
+    const current = requireActor(['ADMIN', 'TEACHER'])
     const item = state.academic.lessons.find(value => value.id === Number(match[1]))
     if (!item) fail(404, 'Không tìm thấy bài học.')
-    if (method === 'PUT') { Object.assign(item, body, { topicId: Number(body.topicId) }); return lessonView(item) }
+    const oldTopic = state.academic.topics.find(value => value.id === item.topicId)
+    if (!oldTopic) fail(404, 'Không tìm thấy chủ đề.')
+    requireEditableMockSubject(oldTopic.subjectId, current)
+    if (method === 'PUT') {
+      const newTopic = state.academic.topics.find(value => value.id === Number(body.topicId))
+      if (!newTopic) fail(404, 'Không tìm thấy chủ đề.')
+      requireEditableMockSubject(newTopic.subjectId, current)
+      Object.assign(item, body, { topicId: Number(body.topicId) }); return lessonView(item)
+    }
     if (method === 'DELETE') { state.academic.lessons = state.academic.lessons.filter(value => value.id !== item.id); return null }
   }
 
@@ -636,8 +703,21 @@ export async function mockRequest(path, { method = 'GET', body, signal } = {}) {
     if (match[4] && method === 'POST') {
       requireActor(['ADMIN', 'TEACHER'])
       const gaps = state.knowledgeGaps.filter(item => item.studentId === studentId && item.status !== 'RESOLVED')
-      if (!gaps.length) fail(409, 'Học sinh hiện không có khoảng trống cần ôn.')
-      const pathItem = { id: nextId++, studentId, status: 'ACTIVE', version: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), steps: gaps.map((gap, index) => ({ id: nextId++, stepOrder: index + 1, status: index === 0 ? 'IN_PROGRESS' : 'LOCKED', targetScore: 70, lessonId: gap.lessonId, lessonName: lessonById(gap.lessonId)?.name || '' })) }
+      const activePath = state.learningPaths.find(item => item.studentId === studentId && item.status === 'ACTIVE')
+      if (!gaps.length) {
+        if (activePath) return pathView(activePath)
+        fail(409, 'Học sinh hiện không có khoảng trống cần ôn.')
+      }
+      const activeLessonIds = (activePath?.steps || []).map(step => Number(step.lessonId)).sort((a, b) => a - b)
+      const currentLessonIds = gaps.map(gap => Number(gap.lessonId)).sort((a, b) => a - b)
+      if (activePath && activeLessonIds.length === currentLessonIds.length
+        && activeLessonIds.every((id, index) => id === currentLessonIds[index])) {
+        return pathView(activePath)
+      }
+      state.learningPaths.filter(item => item.studentId === studentId && item.status === 'ACTIVE')
+        .forEach(item => { item.status = 'ARCHIVED'; item.updatedAt = new Date().toISOString() })
+      const version = Math.max(0, ...state.learningPaths.filter(item => item.studentId === studentId).map(item => Number(item.version) || 0)) + 1
+      const pathItem = { id: nextId++, studentId, status: 'ACTIVE', version, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), steps: gaps.map((gap, index) => ({ id: nextId++, stepOrder: index + 1, status: index === 0 ? 'IN_PROGRESS' : 'LOCKED', targetScore: 70, lessonId: gap.lessonId, lessonName: lessonById(gap.lessonId)?.name || '' })) }
       state.learningPaths.unshift(pathItem)
       gaps.forEach(item => { item.status = 'IN_REMEDIATION' })
       return pathView(pathItem)

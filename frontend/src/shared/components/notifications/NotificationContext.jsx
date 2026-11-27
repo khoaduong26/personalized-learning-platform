@@ -1,9 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { httpRequest } from '../../services/httpClient'
 import { isMockMode } from '../../services/mockMode'
-
-const NotificationContext = createContext(null)
+import { NotificationContext } from './context'
 
 export function NotificationProvider({ children }) {
   const location = useLocation()
@@ -19,7 +18,6 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     let active = true
     if (isMockMode()) {
-      setUser(null)
       return () => { active = false }
     }
     httpRequest('/api/auth/session')
@@ -40,7 +38,6 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     if (!user?.id || isMockMode()) {
-      setConnected(false)
       return undefined
     }
     let active = true
@@ -92,10 +89,4 @@ export function NotificationProvider({ children }) {
     notifications, unreadCount: unreadIds.size, connected, toast, setPanelOpen, dismissToast,
   }), [notifications, unreadIds.size, connected, toast, setPanelOpen, dismissToast])
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>
-}
-
-export function useNotifications() {
-  const context = useContext(NotificationContext)
-  if (!context) throw new Error('useNotifications must be used within NotificationProvider')
-  return context
 }

@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,9 +79,20 @@ public class LearningPathServiceImpl implements LearningPathService {
                         .thenComparing(KnowledgeGap::getIdentifiedAt)
                         .thenComparing(gap -> gap.getLesson().getId()))
                 .toList();
+        List<LearningPath> history = paths.findByStudentIdOrderByCreatedAtDesc(studentId);
+        LearningPath activePath = history.stream()
+                .filter(path -> path.getStatus() == LearningPathStatus.ACTIVE)
+                .findFirst()
+                .orElse(null);
         if (openGaps.isEmpty()) {
+            if (activePath != null) {
+                return activePath;
+            }
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Học sinh hiện không có khoảng trống kiến thức cần đưa vào lộ trình.");
+        }
+        if (activePath != null && matchesCurrentGaps(activePath, openGaps)) {
+            return activePath;
         }
 
         List<LearningPathOrderer.Candidate> candidates = java.util.stream.IntStream.range(0, openGaps.size())
@@ -107,7 +119,7 @@ public class LearningPathServiceImpl implements LearningPathService {
                     orderer.getClass().getSimpleName());
         }
 
-        paths.findByStudentIdOrderByCreatedAtDesc(studentId).stream()
+        history.stream()
                 .filter(path -> path.getStatus() == LearningPathStatus.ACTIVE)
                 .forEach(path -> {
                     path.setStatus(LearningPathStatus.ARCHIVED);
@@ -137,6 +149,38 @@ public class LearningPathServiceImpl implements LearningPathService {
         notifications.notifyAfterCommit(student.getId(), "LEARNING_PATH_READY", "Lộ trình học tập mới",
                 "Thầy cô đã tạo lộ trình học tập cá nhân cho em.", "/my-learning-path");
         return saved;
+    }
+
+    private boolean matchesCurrentGaps(LearningPath activePath, List<KnowledgeGap> openGaps) {
+        if (activePath.getSteps().size() != openGaps.size()) {
+            return false;
+        }
+
+        List<Long> activeLessonIds = activePath.getSteps().stream()
+                .map(step -> step.getLesson().getId())
+                .sorted()
+                .toList();
+        List<Long> currentLessonIds = openGaps.stream()
+                .map(gap -> gap.getLesson().getId())
+                .sorted()
+                .toList();
+        if (!activeLessonIds.equals(currentLessonIds)) {
+            return false;
+        }
+
+        Map<Long, Integer> currentPriorities = new java.util.HashMap<>();
+        for (KnowledgeGap gap : openGaps) {
+            currentPriorities.put(gap.getLesson().getId(), priorityOrder(gap.getPriority()));
+        }
+        int previousPriority = -1;
+        for (LearningStep step : activePath.getSteps()) {
+            Integer priority = currentPriorities.get(step.getLesson().getId());
+            if (priority == null || priority < previousPriority) {
+                return false;
+            }
+            previousPriority = priority;
+        }
+        return true;
     }
 
     private List<KnowledgeGap> validateSuggestion(List<Integer> positions, List<KnowledgeGap> backendOrder) {

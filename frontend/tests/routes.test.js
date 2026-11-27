@@ -31,8 +31,8 @@ const routes = [
   ['/profile', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
   ['/profile/teacher', 'Hồ sơ giáo viên', 'TÀI KHOẢN GIÁO VIÊN'],
   ['/profile/student', 'Tài khoản của bạn', 'Đang tải thông tin tài khoản'],
-  ['/exercises/review', 'Đang tải…', 'exercise-page'],
-  ['/exercises/steps/123', 'Đang tải…', 'exercise-page'],
+  ['/exercises/review', 'Đang mở bài tập…', 'exercise-page'],
+  ['/exercises/steps/123', 'Đang mở bài tập…', 'exercise-page'],
   ['/my-learning-path', 'Đang mở lộ trình học tập…', 'student-learning-shell'],
   ['/does-not-exist', 'Không tìm thấy trang', 'home-header'],
 ]

@@ -10,6 +10,25 @@ export default function ManualExerciseForm({ step, saving, error, onCancel, onSu
   })
 
   const change = (key, value) => setForm(current => ({ ...current, [key]: value }))
+  const changeMultiple = checked => setForm(current => ({
+    ...current,
+    allowMultiple: checked,
+    options: checked || current.options.filter(option => option.correct).length <= 1
+      ? current.options
+      : current.options.map((option, index) => ({
+          ...option,
+          correct: index === current.options.findIndex(item => item.correct),
+        })),
+  }))
+  const changeOptionCorrect = (index, checked) => setForm(current => ({
+    ...current,
+    options: current.options.map((option, itemIndex) => ({
+      ...option,
+      correct: current.allowMultiple
+        ? itemIndex === index ? checked : option.correct
+        : itemIndex === index,
+    })),
+  }))
   const submit = event => {
     event.preventDefault()
     onSubmit({
@@ -45,10 +64,10 @@ export default function ManualExerciseForm({ step, saving, error, onCancel, onSu
 
     {form.kind === 'MULTIPLE_CHOICE' && <fieldset className="learning-path-manual-options">
       <legend>Lựa chọn và đáp án đúng</legend>
-      <label className="learning-path-manual-check"><input type="checkbox" checked={form.allowMultiple} onChange={event => change('allowMultiple', event.target.checked)} /> Cho phép chọn nhiều đáp án đúng</label>
+      <label className="learning-path-manual-check"><input type="checkbox" checked={form.allowMultiple} onChange={event => changeMultiple(event.target.checked)} /> Cho phép chọn nhiều đáp án đúng</label>
       {form.options.map((option, index) => <div className="learning-path-manual-option" key={index}>
         <input aria-label={`Lựa chọn ${index + 1}`} required maxLength="1000" value={option.name} placeholder={`Lựa chọn ${index + 1}`} onChange={event => change('options', form.options.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} />
-        <label className="learning-path-manual-check"><input type="checkbox" checked={option.correct} onChange={event => change('options', form.options.map((item, itemIndex) => itemIndex === index ? { ...item, correct: event.target.checked } : item))} /> Đúng</label>
+        <label className="learning-path-manual-check"><input type={form.allowMultiple ? 'checkbox' : 'radio'} name={`correct-option-${step.id}`} required={!form.allowMultiple} checked={option.correct} onChange={event => changeOptionCorrect(index, event.target.checked)} /> Đáp án đúng</label>
         {form.options.length > 2 && <button type="button" className="learning-path-manual-remove" aria-label={`Xóa lựa chọn ${index + 1}`} onClick={() => change('options', form.options.filter((_, itemIndex) => itemIndex !== index))}>×</button>}
       </div>)}
       <button type="button" className="learning-path-manual-add" onClick={() => change('options', [...form.options, emptyOption()])}>+ Thêm lựa chọn</button>

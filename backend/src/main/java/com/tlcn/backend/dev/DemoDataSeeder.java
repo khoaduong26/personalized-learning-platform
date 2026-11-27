@@ -49,6 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ConditionalOnProperty(prefix = "app.demo-seed", name = "enabled", havingValue = "true")
 public class DemoDataSeeder implements CommandLineRunner {
     public static final String DEMO_PASSWORD = "Demo123!";
+    private static final String ADMIN_EMAIL = "admin.demo@example.test";
     private static final String TEACHER_EMAIL = "teacher.demo@example.test";
     private static final String STUDENT_AN_EMAIL = "student.an@example.test";
     private static final String STUDENT_BINH_EMAIL = "student.binh@example.test";
@@ -101,8 +102,10 @@ public class DemoDataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        seedAdminAccount();
+
         if (users.findByEmail(TEACHER_EMAIL).isPresent()) {
-            log.info("Demo records already exist; skipping seed.");
+            log.info("Demo records already exist; seeded admin account if missing and skipped the rest.");
             return;
         }
 
@@ -207,6 +210,18 @@ public class DemoDataSeeder implements CommandLineRunner {
         log.info("Seeded synthetic demo data: teacher={}, students=2, class={}, assessment={}, path={}, masteryRecords={}",
                 TEACHER_EMAIL, classroom.getName(), assessment.getTitle(), path.getId(),
                 mastery.findByStudentClassroomId(classroom.getId()).size());
+    }
+
+    private void seedAdminAccount() {
+        if (users.findByEmail(ADMIN_EMAIL).isPresent()) {
+            log.info("Admin demo account already exists; skipping it.");
+            return;
+        }
+
+        User admin = User.withRole(Role.ADMIN);
+        setAccount(admin, "Quản trị viên Demo", ADMIN_EMAIL);
+        users.save(admin);
+        log.info("Seeded synthetic admin demo account: {}", ADMIN_EMAIL);
     }
 
     private void setAccount(User user, String name, String email) {

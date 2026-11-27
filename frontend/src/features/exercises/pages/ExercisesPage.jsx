@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
+import HomeHeader from '../../home/components/HomeHeader'
 import { getAssessmentSession } from '../../assessments/services/assessmentApi'
 import {
   getExerciseResult, getPendingExercises, getStepExercises, reviewExercise, saveExerciseAnswer,
   startExerciseAttempt, submitExerciseAttempt, updateExercise,
 } from '../services/exerciseApi'
 import { createExerciseDraft, toExerciseUpdate, validateExerciseUpdate } from '../services/exerciseDraft'
-import { restoreExerciseAnswers, toExerciseAnswerPayload } from '../services/exerciseAttempt'
+import { toExerciseAnswerPayload } from '../services/exerciseAttempt'
 import '../styles/exercises.css'
 
 const kindName = { MULTIPLE_CHOICE: 'Trắc nghiệm', FILL_BLANK: 'Điền khuyết', SHORT_ANSWER: 'Trả lời ngắn' }
@@ -23,6 +23,7 @@ function ExerciseWorkspace({ stepId }) {
   const [access, setAccess] = useState('loading')
   const [questions, setQuestions] = useState([])
   const [pending, setPending] = useState([])
+  const [pendingStudentId, setPendingStudentId] = useState(null)
   const [answers, setAnswers] = useState({})
   const [attempt, setAttempt] = useState(null)
   const [submittedId, setSubmittedId] = useState(null)
@@ -32,10 +33,19 @@ function ExerciseWorkspace({ stepId }) {
   const [busy, setBusy] = useState(false)
   const [questionIndex, setQuestionIndex] = useState(0)
   const [loadError, setLoadError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [draft, setDraft] = useState(null)
   const questionHeading = useRef(null)
   const resultHeading = useRef(null)
   const question = questions[questionIndex]
   const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
+  const pendingByStudent = Object.values(pending.reduce((groups, item) => {
+    const id = item.studentId == null ? 'unknown' : String(item.studentId)
+    if (!groups[id]) groups[id] = { id, name: item.studentName || 'Học sinh chưa xác định', items: [] }
+    groups[id].items.push(item)
+    return groups
+  }, {})).sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  const activePendingStudent = pendingByStudent.find(group => group.id === pendingStudentId) || pendingByStudent[0]
 
   useEffect(() => {
     document.title = stepId ? 'Bài luyện tập · EduLearn' : 'Duyệt bài tập · EduLearn'
@@ -50,7 +60,10 @@ function ExerciseWorkspace({ stepId }) {
         const items = await (stepId ? getStepExercises(stepId) : getPendingExercises())
         if (!active) return
         if (stepId) setQuestions(items)
-        else setPending(items)
+        else {
+          setPending(items)
+          setPendingStudentId(items[0]?.studentId == null ? null : String(items[0].studentId))
+        }
       } catch {
         if (active) setLoadError('Chưa tải được bài tập. Hãy tải lại trang để thử lại.')
       }
@@ -96,7 +109,9 @@ function ExerciseWorkspace({ stepId }) {
     const validationError = validateExerciseUpdate(question, payload)
     if (validationError) throw new Error(validationError)
     const updated = await updateExercise(question.questionId, payload)
-    setPending(items => items.map(item => item.questionId === question.questionId ? updated : item))
+    setPending(items => items.map(item => item.questionId === question.questionId
+      ? { ...updated, studentId: item.studentId, studentName: item.studentName }
+      : item))
     setEditingId(null)
     setDraft(null)
     setNotice('Đã lưu chỉnh sửa. Bài tập vẫn đang chờ duyệt.')
@@ -116,9 +131,10 @@ function ExerciseWorkspace({ stepId }) {
     {access === 'missing-step' ? <Link to="/my-learning-path">Về lộ trình của em</Link> : <Link to="/">Về trang chủ</Link>}
   </section></main>
 
-  return <main className={stepId ? 'exercise-page exercise-student' : 'exercise-page'}>
-    <header className="exercise-header"><Link to="/" className="exercise-brand">EduLearn</Link><WorkspaceNavigation role={user.role} /><div>{user.fullName}</div></header>
+  return <main id="noi-dung" tabIndex={-1} className={stepId ? 'exercise-page exercise-student' : 'exercise-page exercise-review-page'}>
+    <HomeHeader user={user} onLogout={() => setUser(null)} />
     <section className="exercise-heading">
+      {!stepId && <p className="exercise-kicker">KHO BÀI TẬP · DUYỆT NỘI DUNG</p>}
       <h1>{stepId ? 'Bài luyện tập của em' : 'Duyệt bài tập'}</h1>
       <p>{stepId ? 'Em làm từng câu rồi nộp bài để xem kết quả nhé.' : 'Xem bài tập AI tạo hoặc giáo viên tự soạn, chỉnh sửa rồi duyệt trước khi giao cho học sinh.'}</p>
     </section>
@@ -126,21 +142,37 @@ function ExerciseWorkspace({ stepId }) {
     {actionError && <p className="exercise-error" role="alert">{actionError}</p>}
     {loadError && <p className="exercise-error" role="alert">{loadError}</p>}
 
-    {isTeacher && !loadError && <section className="exercise-list" aria-label="Bài tập chờ duyệt">
-      {pending.length === 0 ? <p className="exercise-empty">Không có bài tập nào đang chờ duyệt.</p> : pending.map(question => <article className="exercise-card" key={question.questionId}>
-        <div className="exercise-card-meta"><span>{question.aiGenerated ? 'AI tạo' : 'Giáo viên tự soạn'} · {kindName[question.kind]}</span><span>{question.difficulty} · {question.score} điểm</span></div>
-        {editingId === question.questionId && draft ? <div className="exercise-edit-form">
-          <label>Nội dung câu hỏi<textarea rows="3" value={draft.content} onChange={event => setDraft(current => ({ ...current, content: event.target.value }))} /></label>
-          <div className="exercise-edit-row"><label>Mức độ<select value={draft.difficulty} onChange={event => setDraft(current => ({ ...current, difficulty: event.target.value }))}><option value="EASY">Dễ</option><option value="MEDIUM">Vừa</option><option value="HARD">Khó</option></select></label><label>Điểm<input type="number" min="0.1" step="0.1" value={draft.score} onChange={event => setDraft(current => ({ ...current, score: event.target.value }))} /></label></div>
-          {question.kind === 'MULTIPLE_CHOICE' ? <label>Các lựa chọn (mỗi dòng một lựa chọn, thêm * trước đáp án đúng)<textarea rows="4" value={draft.choices} onChange={event => setDraft(current => ({ ...current, choices: event.target.value }))} /></label> : <label>{question.kind === 'FILL_BLANK' ? 'Đáp án cho từng ô (mỗi dòng một đáp án)' : 'Đáp án chuẩn'}<textarea rows={question.kind === 'FILL_BLANK' ? 3 : 2} value={draft.expectedAnswers} onChange={event => setDraft(current => ({ ...current, expectedAnswers: event.target.value }))} /></label>}
-          <label>Lời giải<textarea rows="2" value={draft.explanation} onChange={event => setDraft(current => ({ ...current, explanation: event.target.value }))} /></label>
-          <div className="exercise-actions"><button disabled={busy} onClick={() => { setEditingId(null); setDraft(null) }} className="exercise-secondary">Hủy sửa</button><button disabled={busy || !draft.content.trim() || !Number(draft.score)} onClick={() => saveEdit(question)} className="exercise-primary">Lưu chỉnh sửa</button></div>
-        </div> : <>
-          <h2>{question.content}</h2><p className="exercise-answer">Đáp án: {question.kind === 'MULTIPLE_CHOICE' ? question.options.filter(option => option.correct).map(option => option.name).join(', ') : question.expectedAnswers.join(', ')}</p>
-          {question.explanation && <p className="exercise-explanation">{question.explanation}</p>}
-          <div className="exercise-actions"><button disabled={busy} onClick={() => beginEdit(question)} className="exercise-secondary">Sửa câu hỏi</button><button disabled={busy} onClick={() => review(question.questionId, 'REJECTED')} className="exercise-secondary">Từ chối</button><button disabled={busy} onClick={() => review(question.questionId, 'APPROVED')} className="exercise-primary">Duyệt và giao</button></div>
-        </>}
-      </article>)}
+    {isTeacher && !loadError && <section className="exercise-review-workspace" aria-label="Duyệt bài tập theo từng học sinh">
+      {pending.length === 0 ? <p className="exercise-empty">Không có bài tập nào đang chờ duyệt.</p> : <>
+        <div className="exercise-student-tabs" role="tablist" aria-label="Học sinh có bài tập chờ duyệt">
+          {pendingByStudent.map(group => <button key={group.id} type="button" role="tab"
+            id={`exercise-student-tab-${group.id}`} aria-controls={`exercise-student-panel-${group.id}`}
+            aria-selected={activePendingStudent?.id === group.id}
+            className={activePendingStudent?.id === group.id ? 'is-active' : ''}
+            onClick={() => { setPendingStudentId(group.id); setEditingId(null); setDraft(null) }}>
+            <span>{group.name}</span><small>{group.items.length} chờ duyệt</small>
+          </button>)}
+        </div>
+        {activePendingStudent && <section className="exercise-list" role="tabpanel"
+          id={`exercise-student-panel-${activePendingStudent.id}`}
+          aria-labelledby={`exercise-student-tab-${activePendingStudent.id}`}>
+          <div className="exercise-student-queue-heading"><div><span>HỒ SƠ ĐANG DUYỆT</span><h2>{activePendingStudent.name}</h2></div><small>{activePendingStudent.items.length} bài tập đang chờ</small></div>
+          {activePendingStudent.items.map(question => <article className="exercise-card" key={question.questionId}>
+            <div className="exercise-card-meta"><span>{question.aiGenerated ? 'AI tạo' : 'Giáo viên tự soạn'} · {kindName[question.kind]}</span><span>{question.difficulty} · {question.score} điểm</span></div>
+            {editingId === question.questionId && draft ? <div className="exercise-edit-form">
+              <label>Nội dung câu hỏi<textarea rows="3" value={draft.content} onChange={event => setDraft(current => ({ ...current, content: event.target.value }))} /></label>
+              <div className="exercise-edit-row"><label>Mức độ<select value={draft.difficulty} onChange={event => setDraft(current => ({ ...current, difficulty: event.target.value }))}><option value="EASY">Dễ</option><option value="MEDIUM">Vừa</option><option value="HARD">Khó</option></select></label><label>Điểm<input type="number" min="0.1" step="0.1" value={draft.score} onChange={event => setDraft(current => ({ ...current, score: event.target.value }))} /></label></div>
+              {question.kind === 'MULTIPLE_CHOICE' ? <label>Các lựa chọn (mỗi dòng một lựa chọn, thêm * trước đáp án đúng)<textarea rows="4" value={draft.choices} onChange={event => setDraft(current => ({ ...current, choices: event.target.value }))} /></label> : <label>{question.kind === 'FILL_BLANK' ? 'Đáp án cho từng ô (mỗi dòng một đáp án)' : 'Đáp án chuẩn'}<textarea rows={question.kind === 'FILL_BLANK' ? 3 : 2} value={draft.expectedAnswers} onChange={event => setDraft(current => ({ ...current, expectedAnswers: event.target.value }))} /></label>}
+              <label>Lời giải<textarea rows="2" value={draft.explanation} onChange={event => setDraft(current => ({ ...current, explanation: event.target.value }))} /></label>
+              <div className="exercise-actions"><button disabled={busy} onClick={() => { setEditingId(null); setDraft(null) }} className="exercise-secondary">Hủy sửa</button><button disabled={busy || !draft.content.trim() || !Number(draft.score)} onClick={() => saveEdit(question)} className="exercise-primary">Lưu chỉnh sửa</button></div>
+            </div> : <>
+              <h2>{question.content}</h2><p className="exercise-answer">Đáp án: {question.kind === 'MULTIPLE_CHOICE' ? question.options.filter(option => option.correct).map(option => option.name).join(', ') : question.expectedAnswers.join(', ')}</p>
+              {question.explanation && <p className="exercise-explanation">{question.explanation}</p>}
+              <div className="exercise-actions"><button disabled={busy} onClick={() => beginEdit(question)} className="exercise-secondary">Sửa câu hỏi</button><button disabled={busy} onClick={() => review(question.questionId, 'REJECTED')} className="exercise-secondary">Từ chối</button><button disabled={busy} onClick={() => review(question.questionId, 'APPROVED')} className="exercise-primary">Duyệt và giao</button></div>
+            </>}
+          </article>)}
+        </section>}
+      </>}
     </section>}
 
     {stepId && !loadError && !attempt && !submittedId && <section className="exercise-list">

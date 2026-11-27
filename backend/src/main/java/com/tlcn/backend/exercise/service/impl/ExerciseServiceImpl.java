@@ -26,6 +26,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 
 @Service
 public class ExerciseServiceImpl implements ExerciseService {
@@ -62,7 +64,7 @@ public class ExerciseServiceImpl implements ExerciseService {
     }
 
     @Transactional(readOnly = true)
-    public List<Question> pendingReview(UserSummary actor) {
+    public List<StepExercise> pendingReview(UserSummary actor) {
         requireTeacher(actor);
         return actor.role() == Role.ADMIN ? exercises.findAllPendingReview()
                 : exercises.findPendingReviewForTeacher(actor.id());
@@ -109,7 +111,7 @@ public class ExerciseServiceImpl implements ExerciseService {
             generated = generator.generate(step);
         } catch (RuntimeException exception) {
             log.error("Configured exercise generator failed (adapter={}).", generator.getClass().getSimpleName(), exception);
-            throw generationFailure("Bộ sinh bài tập hiện không khả dụng.");
+            throw generationFailure("Bộ sinh bài tập hiện không khả dụng. " + describeGeneratorFailure(exception));
         }
         if (generated == null || generated.question() == null || generated.provider() == null
                 || generated.provider().isBlank() || (generated.demo() && (generated.notice() == null
@@ -276,6 +278,20 @@ public class ExerciseServiceImpl implements ExerciseService {
 
     private ResponseStatusException generationFailure(String message) {
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
+    }
+
+    private String describeGeneratorFailure(RuntimeException exception) {
+        if (exception instanceof RestClientResponseException responseException) {
+            return "Nhà cung cấp AI trả HTTP " + responseException.getStatusCode().value()
+                    + ". Hãy kiểm tra cấu hình khóa, model và hạn mức trong backend.";
+        }
+        if (exception instanceof ResourceAccessException) {
+            return "Backend không kết nối được tới nhà cung cấp AI hoặc bị hết thời gian chờ.";
+        }
+        if (exception instanceof IllegalStateException && exception.getMessage() != null) {
+            return exception.getMessage();
+        }
+        return "Hãy xem log backend để biết chi tiết; nội dung câu hỏi và khóa API không được đưa vào thông báo.";
     }
 
     private LearningStep getStep(Long stepId) {

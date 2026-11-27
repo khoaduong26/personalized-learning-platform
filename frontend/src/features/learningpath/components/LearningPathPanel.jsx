@@ -37,8 +37,13 @@ export default function LearningPathPanel({ students }) {
     setState('saving'); setMessage('')
     try {
       const created = await generateLearningPath(selectedStudentId)
-      setPaths(current => [created, ...current.map(path => path.status === 'ACTIVE' ? { ...path, status: 'ARCHIVED' } : path)])
-      setMessage('Đã tạo lộ trình mới từ các kiến thức cần củng cố.')
+      const unchanged = paths.some(path => path.status === 'ACTIVE' && String(path.id) === String(created.id))
+      setPaths(current => current.some(path => String(path.id) === String(created.id))
+        ? current.map(path => String(path.id) === String(created.id) ? created : path)
+        : [created, ...current.map(path => path.status === 'ACTIVE' ? { ...path, status: 'ARCHIVED' } : path)])
+      setMessage(unchanged
+        ? 'Lộ trình không thay đổi; không tạo phiên bản mới.'
+        : 'Đã tạo lộ trình mới từ các kiến thức cần củng cố.')
       setState('ready')
     } catch (error) { setMessage(error.message); setState('ready') }
   }

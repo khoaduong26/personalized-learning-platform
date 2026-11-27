@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
-import { getLearningPaths, getMySession, updateLearningStep } from '../services/learningPathApi'
+import HomeHeader from '../../home/components/HomeHeader'
+import { getLearningPaths, getMySession } from '../services/learningPathApi'
 import '../styles/learningpath.css'
 
 export default function StudentLearningPathPage() {
   const [student, setStudent] = useState(null)
   const [paths, setPaths] = useState([])
   const [state, setState] = useState('loading')
-  const [message, setMessage] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [updateError, setUpdateError] = useState('')
 
   useEffect(() => {
     document.title = 'Lộ trình của em · EduLearn'
@@ -27,34 +24,16 @@ export default function StudentLearningPathPage() {
     return () => { active = false }
   }, [])
 
-  const completeStep = async (path, step) => {
-    setBusy(true)
-    setMessage('')
-    setUpdateError('')
-    try {
-      const updated = await updateLearningStep(student.id, path.id, step.id, 'COMPLETED')
-      setPaths(current => current.map(item => item.id === updated.id ? updated : item))
-      setMessage(updated.status === 'COMPLETED' ? 'Tuyệt vời! Em đã hoàn thành lộ trình.' : 'Em đã học xong bước này. Bước tiếp theo đã mở!')
-    } catch (error) { setUpdateError(error.message) }
-    finally { setBusy(false) }
-  }
-
   if (state === 'loading') return <main className="student-learning-shell"><p role="status">Đang mở lộ trình học tập…</p></main>
   if (state === 'signed-out') return <Gate title="Đăng nhập để xem lộ trình" description="Đăng nhập bằng tài khoản học sinh để xem em cần học gì." signedOut />
   if (state === 'forbidden') return <Gate title="Trang dành cho học sinh" description="Hãy đăng nhập bằng tài khoản học sinh để xem lộ trình của mình." />
 
   const currentPath = paths.find(path => path.status === 'ACTIVE')
   const completedPath = paths.some(path => path.status === 'COMPLETED')
-  return <main className="student-learning-shell">
-    <header className="student-learning-topbar">
-      <Link to="/" className="student-learning-brand">EduLearn</Link>
-      {student && <WorkspaceNavigation role={student.role} />}
-      <span className="student-learning-name">{student?.fullName}</span>
-    </header>
+  return <main id="noi-dung" tabIndex={-1} className="student-learning-shell">
+    <HomeHeader user={student} onLogout={() => setStudent(null)} />
     <section className="student-learning-hero"><h1>Lộ trình của em</h1><p>Xem bước đang học và mở bài luyện tập của em.</p></section>
     {state === 'error' && <p className="student-learning-error" role="alert">Chưa tải được lộ trình. Em hãy tải lại trang để thử lại.</p>}
-    {state === 'ready' && message && <p className="student-learning-message" role="status">{message}</p>}
-    {updateError && <p className="student-learning-error" role="alert">{updateError}</p>}
     {currentPath && <section className="student-learning-card" aria-labelledby="student-progress-title">
       <h2 id="student-progress-title">Em đã học xong {currentPath.progress.completed} trên {currentPath.progress.total} bước</h2>
       <div className="learning-path-progress student-progress" role="progressbar" aria-labelledby="student-progress-title" aria-valuenow={currentPath.progress.percentage}>
@@ -75,9 +54,9 @@ export default function StudentLearningPathPage() {
               {step.status === 'LOCKED' && <p>Học xong bước trước để mở bài này.</p>}
               {step.status === 'IN_PROGRESS' && <>
                 <p>Mục tiêu của bài này là đạt {step.targetScore}%.</p>
+                <p>Hoàn thành bước sau khi nộp bài luyện tập và đạt mục tiêu.</p>
                 <div className="student-step-actions">
                   <Link className="student-learning-action" to={`/exercises/steps/${step.id}`}>Mở bài luyện tập <span aria-hidden="true">→</span></Link>
-                  <button type="button" disabled={busy} onClick={() => completeStep(currentPath, step)}>{busy ? 'Đang lưu…' : 'Đánh dấu đã học xong'}</button>
                 </div>
               </>}
             </article>

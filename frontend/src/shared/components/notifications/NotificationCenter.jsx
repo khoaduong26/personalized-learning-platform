@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useNotifications } from './NotificationContext'
+import { useNotifications } from './useNotifications'
 import './notification-center.css'
 
 export default function NotificationCenter() {

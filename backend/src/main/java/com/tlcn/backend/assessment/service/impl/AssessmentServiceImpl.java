@@ -78,6 +78,8 @@ public class AssessmentServiceImpl implements AssessmentService {
                 && question.getApprovalStatus() != ApprovalStatus.APPROVED))
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Chỉ có thể giao bài tập AI đã được giáo viên duyệt.");
+        if (actor.role() == Role.TEACHER && attached.stream().anyMatch(question -> !canUseLesson(question.getLesson(), actor)))
+            throw forbidden();
         List<Classroom> assignedClassrooms = classrooms.findAllById(request.classroomIds());
         if (assignedClassrooms.size() != new HashSet<>(request.classroomIds()).size())
             throw notFound("Một số lớp học không tồn tại.");
@@ -110,8 +112,8 @@ public class AssessmentServiceImpl implements AssessmentService {
     @Transactional(readOnly = true)
     public List<Question> questionsForLesson(Long lessonId, UserSummary actor) {
         requireTeacher(actor);
-        if (!lessons.existsById(lessonId))
-            throw notFound("Không tìm thấy bài học.");
+        Lesson lesson = lessons.findById(lessonId).orElseThrow(() -> notFound("Không tìm thấy bài học."));
+        requireCanUseLesson(lesson, actor);
         List<Question> found = questions.findByLessonIdOrderByIdDesc(lessonId);
         found.forEach(this::initializeQuestionView);
         return found;
@@ -121,6 +123,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     public Question createQuestion(QuestionRequest request, UserSummary actor) {
         requireTeacher(actor);
         Lesson lesson = lessons.findById(request.lessonId()).orElseThrow(() -> notFound("Không tìm thấy bài học."));
+        requireCanUseLesson(lesson, actor);
         String kind = request.kind().toUpperCase(Locale.ROOT);
         Question q;
         switch (kind) {
@@ -254,6 +257,15 @@ public class AssessmentServiceImpl implements AssessmentService {
         requireSignedIn(actor);
         if (actor.role() != Role.TEACHER && actor.role() != Role.ADMIN)
             throw forbidden();
+    }
+
+    private void requireCanUseLesson(Lesson lesson, UserSummary actor) {
+        if (!canUseLesson(lesson, actor)) throw forbidden();
+    }
+
+    private boolean canUseLesson(Lesson lesson, UserSummary actor) {
+        User owner = lesson.getTopic().getSubject().getOwner();
+        return owner == null || actor.role() == Role.ADMIN || owner.getId().equals(actor.id());
     }
 
     private void requireSignedIn(UserSummary actor) {

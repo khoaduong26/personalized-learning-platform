@@ -11,4 +11,6 @@ public interface KnowledgeMasteryRepository extends JpaRepository<KnowledgeMaste
     List<KnowledgeMastery> findByStudentClassroomId(Long classroomId);
 
     Optional<KnowledgeMastery> findByStudentIdAndLessonId(Long studentId, Long lessonId);
+
+    boolean existsByLessonId(Long lessonId);
 }

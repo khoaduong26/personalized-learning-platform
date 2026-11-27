@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation.jsx'
+import HomeHeader from '../../home/components/HomeHeader'
 import { getCurrentUser } from '../../auth/services/authApi.js'
 import { initials, roleNames } from '../../profile/utils/profile.js'
 import AccountDialog from '../components/AccountDialog.jsx'
@@ -116,16 +116,9 @@ export default function AccountsPage() {
   const goToPage = page => setFilters(previous => ({ ...previous, page }))
   return (
     <div className="accounts-shell">
-      <header className="accounts-topbar">
-        <Link to="/" className="accounts-brand"><span aria-hidden="true">✳︎</span> TLCN</Link>
-        <WorkspaceNavigation role={admin.role} />
-        <Link to="/profile" className="accounts-admin" aria-label={`Hồ sơ của ${admin.fullName}`}>
-          <span className="accounts-avatar" aria-hidden="true">{initials(admin.fullName)}</span>
-          <span><strong>{admin.fullName}</strong><small>Quản trị viên</small></span>
-        </Link>
-      </header>
+      <HomeHeader user={admin} onLogout={() => setSession({ state: 'signed-out' })} />
 
-      <main className="accounts-content">
+      <main id="noi-dung" tabIndex={-1} className="accounts-content">
         <div className="accounts-heading">
           <div>
             <h1>Quản lý tài khoản</h1>

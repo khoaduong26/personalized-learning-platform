@@ -6,6 +6,7 @@ import ProfileIcon from '../../profile/components/ProfileIcon'
 import { notifyAccountChanged } from '../../../shared/services/accountEvents'
 import { profilePathFor } from '../../../shared/utils/profilePath'
 import WorkspaceNavigation from '../../../shared/components/navigation/WorkspaceNavigation'
+import '../styles/home.css'
 import '../../profile/styles/profile.css'
 
 function AccountAvatar({ user }) {
@@ -63,7 +64,7 @@ export default function HomeHeader({ user, onLogout }) {
 
       <header className="home-header">
         <div className="home-container home-header-inner">
-          <Link className="home-brand" to="/" aria-label="EduLearn — Trang chủ"><img className="brand-symbol" src="/math-bunny.svg" width="44" height="44" alt="" /><span>EduLearn<span className="brand-dot">.</span></span></Link>
+          <Link className="home-brand" to="/" aria-label="EduLearn — Trang chủ">EduLearn</Link>
           {user ? <WorkspaceNavigation role={user.role} /> : (
             <nav className="home-nav" aria-label="Điều hướng chính">
               <Link to="/#thu-suc">Thử bài Toán</Link>
