@@ -41,6 +41,8 @@ Các biến cấu hình chính gồm `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `DB
 
 Nếu AI không khả dụng, giáo viên có thể tự soạn câu trắc nghiệm, điền khuyết hoặc trả lời ngắn ngay trên từng bước của lộ trình. Bài thủ công được liên kết đúng với bài học của bước, chờ duyệt rồi mới xuất hiện với học sinh.
 
+Trang **Duyệt bài tập** nhóm hàng chờ theo học sinh; giáo viên chọn hồ sơ cần xử lý rồi duyệt riêng các bài của em đó. API hàng chờ trả kèm mã và tên học sinh từ lộ trình liên kết; giáo viên chỉ nhận bài của học sinh trong lớp mình phụ trách.
+
 Backend luôn tạo lộ trình theo quy tắc ưu tiên của khoảng trống kiến thức. Gemini hoặc DeepSeek chỉ đề xuất thứ tự trong cùng một mức ưu tiên; backend từ chối đề xuất thiếu/trùng bước hoặc đảo thứ tự ưu tiên. Nếu AI lỗi hoặc đề xuất không hợp lệ, backend vẫn lưu lộ trình theo thứ tự xác định: mức ưu tiên, thời điểm phát hiện, rồi mã bài học. Cấu hình provider bằng `APP_LEARNING_PATH_GENERATOR_PROVIDER=gemini|deepseek`; Gemini có thể fallback qua DeepSeek theo `APP_AI_FALLBACK_PROVIDER` nếu khóa DeepSeek đã cấu hình. DeepSeek dùng `https://api.deepseek.com/chat/completions`, model mặc định `deepseek-flash`.
 
 ### Thông báo realtime
@@ -51,9 +53,25 @@ Frontend mở kết nối WebSocket đã xác thực tại `/ws/notifications` b
 
 Trong **Hồ sơ năng lực** của từng học sinh, giáo viên có thể mở từng câu trả lời sai để xem nội dung câu hỏi, câu trả lời của học sinh, đáp án đúng, điểm câu hỏi và lời giải (nếu có). Quyền xem vẫn được giới hạn theo lớp mà giáo viên quản lý.
 
+### Quản lý ngân hàng câu hỏi
+
+Admin quản lý câu hỏi thuộc chương trình chung; giáo viên quản lý câu hỏi thuộc chương trình riêng của mình. Ngân hàng hỗ trợ xem, thêm, sửa và xóa câu hỏi theo bài học. API quản lý gồm `GET /api/assessments/questions?lessonId=...`, `GET /api/assessments/questions/{id}/editor`, `PUT /api/assessments/questions/{id}` và `DELETE /api/assessments/questions/{id}`. Xóa sẽ ẩn câu hỏi khỏi ngân hàng. Nếu sửa câu đã được gắn vào đề hoặc có bài làm, backend tạo phiên bản ngân hàng mới và giữ nguyên phiên bản cũ trong đề/bài làm.
+
 ### Dashboard quản trị
 
 Admin mở `/admin` để xem số lượng tài khoản theo vai trò, lớp học, học sinh đã xếp lớp, bài tập chờ duyệt và tài khoản chờ xác minh. Dashboard dùng các API quản lý hiện có; quyền truy cập được kiểm tra theo phiên đăng nhập và vai trò `ADMIN`.
+
+### Xóa chương trình học
+
+Xóa một chương trình sẽ xóa các chủ đề và bài học con trong cùng giao dịch; xóa một chủ đề sẽ xóa các bài học con. Nếu bài học đã được dùng trong câu hỏi, lộ trình hoặc dữ liệu tiến độ học sinh, backend từ chối toàn bộ thao tác để bảo toàn lịch sử học tập.
+
+Khi giáo viên lưu một chương trình chung thành bản riêng, backend sao chép cả chủ đề, bài học và câu hỏi thuộc từng bài học, gồm lựa chọn/đáp án và lời giải. Các câu hỏi trong bản riêng là bản độc lập gắn với bài học mới.
+
+### Nội dung ôn tập và hình minh họa bài học
+
+Admin có thể bổ sung nội dung chi tiết cho bài học chung; giáo viên bổ sung trong chương trình riêng của mình. Nội dung có thể chia thành nhiều mục nhỏ, đặt tiêu đề, chỉnh nội dung và sắp xếp thứ tự; bài học cũ được giữ nguyên và chuyển thành mục để tiếp tục sửa. Nội dung hiển thị ở trang **Học lại chương trình** của học sinh và liên kết **Ôn lại bài học** trong lộ trình. Bài học hỗ trợ tối đa 8 ảnh JPEG/PNG, mỗi ảnh tối đa 2 MB; có thể chỉnh ảnh nằm trước/sau phần kiến thức, căn trái/giữa/phải và chọn kích thước. Ảnh được lưu trên Cloudinary bằng cấu hình `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`; Hibernate tạo bảng `lesson_images` khi backend khởi động lại.
+
+Từ danh sách bài học, giáo viên/admin mở **Xem** để đọc trước nội dung trên trang riêng rồi chọn **Chỉnh sửa bài học** để sửa ngay tại đó. Trang chi tiết có mục lục bên trái, liệt kê các chủ đề và bài học thuộc cùng chương trình; chọn bài học để chuyển tới nội dung tương ứng. Quyền sửa vẫn theo phạm vi chương trình: admin sửa chương trình chung, giáo viên sửa chương trình riêng của mình.
 
 Tạo database trước khi chạy, ví dụ:
 
@@ -106,7 +124,7 @@ $env:APP_DEMO_SEED_ENABLED = 'true'
 .\mvnw.cmd spring-boot:run
 ```
 
-Tài khoản demo dùng mật khẩu `Demo123!`: giáo viên `teacher.demo@example.test`, học sinh `student.an@example.test` và `student.binh@example.test`. Nếu tài khoản giáo viên demo đã tồn tại, seeder bỏ qua toàn bộ dữ liệu và không xóa hoặc ghi đè dữ liệu có sẵn. Bỏ hai biến bật demo trước lần chạy bình thường tiếp theo.
+Tài khoản demo dùng mật khẩu `Demo123!`: quản trị viên `admin.demo@example.test`, giáo viên `teacher.demo@example.test`, học sinh `student.an@example.test` và `student.binh@example.test`. Khi tài khoản giáo viên demo đã tồn tại, seeder vẫn tạo Admin demo nếu còn thiếu rồi bỏ qua các dữ liệu seed khác; seeder không xóa hoặc ghi đè dữ liệu có sẵn. Bỏ hai biến bật demo trước lần chạy bình thường tiếp theo.
 
 1. Đăng nhập bằng tài khoản giáo viên demo, mở lớp để xem hồ sơ năng lực/lộ trình của học sinh.
 2. Mở **Kiểm tra và đánh giá** để xem bài đã giao, lịch sử và kết quả.
