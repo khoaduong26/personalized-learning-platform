@@ -4,7 +4,6 @@ import HomeHeader from '../../home/components/HomeHeader'
 import { getCurrentUser } from '../../auth/services/authApi'
 import { listAccounts } from '../../accounts/services/accountApi'
 import { getClassrooms } from '../../classrooms/services/classroomApi'
-import { getPendingExercises } from '../../exercises/services/exerciseApi'
 import './admin-dashboard.css'
 
 const initialState = { status: 'loading' }
@@ -27,13 +26,12 @@ export default function AdminDashboardPage() {
           return
         }
         setDashboard({ status: 'loading', admin })
-        const [admins, teachers, students, pendingAccounts, classrooms, pendingExercises] = await Promise.all([
+        const [admins, teachers, students, pendingAccounts, classrooms] = await Promise.all([
           listAccounts({ page: 0, role: 'ADMIN' }, controller.signal),
           listAccounts({ page: 0, role: 'TEACHER' }, controller.signal),
           listAccounts({ page: 0, role: 'STUDENT' }, controller.signal),
           listAccounts({ page: 0, status: 'PENDING_OTP' }, controller.signal),
           getClassrooms(),
-          getPendingExercises(),
         ])
         if (active) setDashboard({
           status: 'ready',
@@ -44,7 +42,6 @@ export default function AdminDashboardPage() {
             students: students.totalElements,
             classrooms: classrooms.length,
             pendingAccounts: pendingAccounts.totalElements,
-            pendingExercises: pendingExercises.length,
             enrolledStudents: classrooms.reduce((sum, classroom) => sum + classroom.studentCount, 0),
           },
         })
@@ -94,9 +91,8 @@ export default function AdminDashboardPage() {
       </section>
 
       <section className="admin-dashboard-work" aria-label="Công việc cần chú ý">
-        <div className="admin-dashboard-section-heading"><div><span className="admin-dashboard-kicker">CẦN THEO DÕI</span><h2>Hàng chờ và tài khoản</h2></div><button type="button" onClick={() => setRevision(value => value + 1)}>Làm mới số liệu</button></div>
+        <div className="admin-dashboard-section-heading"><div><span className="admin-dashboard-kicker">CẦN THEO DÕI</span><h2>Tài khoản cần xử lý</h2></div><button type="button" onClick={() => setRevision(value => value + 1)}>Làm mới số liệu</button></div>
         <div className="admin-dashboard-queue-grid">
-          <Link className="admin-dashboard-queue-card" to="/exercises/review"><span className="admin-dashboard-queue-icon queue-exercise">✎</span><span><strong>Bài tập chờ duyệt</strong><small>Kiểm tra nội dung AI và bài giáo viên soạn</small></span><b>{stats.pendingExercises}</b></Link>
           <Link className="admin-dashboard-queue-card" to="/admin/accounts"><span className="admin-dashboard-queue-icon queue-account">◎</span><span><strong>Tài khoản chờ xác minh</strong><small>Danh sách đang chờ xác thực email</small></span><b>{stats.pendingAccounts}</b></Link>
         </div>
       </section>
@@ -107,7 +103,6 @@ export default function AdminDashboardPage() {
           <Shortcut to="/admin/accounts" title="Tài khoản" description="Tạo tài khoản, cập nhật vai trò và khóa hoặc mở khóa người dùng." icon="♙" />
           <Shortcut to="/classrooms" title="Lớp học" description="Xem lớp, giáo viên phụ trách và số học sinh đang tham gia." icon="▦" />
           <Shortcut to="/academic" title="Chương trình học" description="Quản lý môn học, chủ đề và bài học trong chương trình." icon="▤" />
-          <Shortcut to="/exercises/review" title="Duyệt bài tập" description="Rà soát bài tập AI và nội dung giáo viên gửi duyệt." icon="✎" />
         </div>
       </section>
     </main>

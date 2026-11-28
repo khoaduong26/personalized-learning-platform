@@ -59,6 +59,24 @@ public class AssessmentController {
         return QuestionView.from(service.createQuestion(request, actor));
     }
 
+    @GetMapping("/questions/{id}/editor")
+    public QuestionEditorView questionForEditing(@PathVariable Long id,
+            @AuthenticationPrincipal UserSummary actor) {
+        return service.questionForEditing(id, actor);
+    }
+
+    @PutMapping("/questions/{id}")
+    public QuestionView updateQuestion(@PathVariable Long id, @Valid @RequestBody QuestionRequest request,
+            @AuthenticationPrincipal UserSummary actor) {
+        return QuestionView.from(service.updateQuestion(id, request, actor));
+    }
+
+    @DeleteMapping("/questions/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteQuestion(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
+        service.deleteQuestion(id, actor);
+    }
+
     @GetMapping("/classrooms")
     public List<ClassroomOption> classrooms(@AuthenticationPrincipal UserSummary actor) {
         return service.classroomsForTeacher(actor).stream().map(ClassroomOption::from).toList();

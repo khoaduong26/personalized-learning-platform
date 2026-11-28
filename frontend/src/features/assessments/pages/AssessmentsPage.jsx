@@ -4,14 +4,15 @@ import HomeHeader from '../../home/components/HomeHeader'
 import { getLessons, getSubjects, getTopics } from '../../academic/services/academicApi'
 import { getClassroomStudents } from '../../classrooms/services/classroomApi'
 import {
-  createAssessment, createQuestion, getAssessment, getAssessmentClassrooms, getAssessmentSession, getAssessments,
-  getAttemptDraft, getAttemptHistory, getAttemptResult, getQuestionBank, publishAssessment, saveAnswer, startAttempt,
-  submitAttempt,
+  createAssessment, createQuestion, deleteQuestion, getAssessment, getAssessmentClassrooms, getAssessmentSession,
+  getAssessments, getAttemptDraft, getAttemptHistory, getAttemptResult, getQuestionBank, getQuestionForEditing,
+  publishAssessment, saveAnswer, startAttempt, submitAttempt, updateQuestion,
 } from '../services/assessmentApi'
 import '../styles/assessments.css'
 
 const types = { DIAGNOSTIC: 'Khảo sát đầu vào', PERIODIC: 'Định kỳ', PRACTICE: 'Luyện tập' }
 const emptyOption = () => ({ name: '', correct: false })
+const emptyQuestionForm = () => ({ content: '', difficulty: 'EASY', score: '1', kind: 'MULTIPLE_CHOICE', allowMultiple: false, options: [emptyOption(), emptyOption()], blanks: [{ correctAnswer: '' }], correctAnswer: '', caseSensitive: false, explanation: '' })
 
 export default function AssessmentsPage() {
   const [searchParams] = useSearchParams()
@@ -30,7 +31,8 @@ export default function AssessmentsPage() {
   const [bank, setBank] = useState([])
   const [selectedQuestions, setSelectedQuestions] = useState([])
   const [selectedClasses, setSelectedClasses] = useState([])
-  const [questionForm, setQuestionForm] = useState({ content: '', difficulty: 'EASY', score: '1', kind: 'MULTIPLE_CHOICE', allowMultiple: false, options: [emptyOption(), emptyOption()], blanks: [{ correctAnswer: '' }], correctAnswer: '', caseSensitive: false, explanation: '' })
+  const [questionForm, setQuestionForm] = useState(emptyQuestionForm)
+  const [editingQuestionId, setEditingQuestionId] = useState('')
   const [assessmentForm, setAssessmentForm] = useState({ title: '', type: 'DIAGNOSTIC', durationMinutes: 30 })
   const [activeAttempt, setActiveAttempt] = useState(null)
   const [answerDrafts, setAnswerDrafts] = useState({})
@@ -44,9 +46,12 @@ export default function AssessmentsPage() {
   const [teacherHistoryLoading, setTeacherHistoryLoading] = useState(false)
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-  const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
+  const isTeacher = user?.role === 'TEACHER'
+  const canManageQuestionBank = isTeacher || user?.role === 'ADMIN'
   const isStudent = user?.role === 'STUDENT'
-  const questionSubjects = subjects.filter(subject => !subject.shared)
+  const questionSubjects = user?.role === 'ADMIN'
+    ? subjects.filter(subject => subject.shared)
+    : subjects.filter(subject => !subject.shared)
   const groupedTeacherHistory = useMemo(() => {
     const groups = teacherHistory.reduce((result, attempt) => {
       const key = attempt.assessmentId == null
@@ -101,24 +106,37 @@ export default function AssessmentsPage() {
   }
   const changeTopic = id => { setTopicId(id); setLessons([]); setLessonId(''); setBank([]); setSelectedQuestions([]) }
   const changeLesson = id => { setLessonId(id); setBank([]); setSelectedQuestions([]) }
+  const changeQuestionKind = kind => setQuestionForm(current => ({
+    ...current,
+    kind,
+    options: kind === 'MULTIPLE_CHOICE' && current.options.length >= 2 ? current.options : [emptyOption(), emptyOption()],
+    blanks: kind === 'FILL_BLANK' && current.blanks.length ? current.blanks : [{ correctAnswer: '' }],
+    correctAnswer: kind === 'SHORT_ANSWER' ? current.correctAnswer : '',
+  }))
 
   useEffect(() => {
-    document.title = 'Bài kiểm tra · EduLearn'
+    document.title = 'EduLearn'
     let active = true
     getAssessmentSession().then(async session => {
       if (!active) return
       setUser(session)
+      document.title = session?.role === 'ADMIN' ? 'Ngân hàng câu hỏi · EduLearn' : 'Bài kiểm tra · EduLearn'
       if (!['ADMIN', 'TEACHER', 'STUDENT'].includes(session?.role)) { setAccess('forbidden'); return }
       setAccess('allowed')
       try {
-        const [tests, subjectItems] = await Promise.all([getAssessments(), session.role === 'STUDENT' ? Promise.resolve([]) : getSubjects()])
+        const [tests, subjectItems] = await Promise.all([
+          session.role === 'ADMIN' ? Promise.resolve([]) : getAssessments(),
+          session.role === 'STUDENT' ? Promise.resolve([]) : getSubjects(),
+        ])
         if (!active) return
         setAssessments(tests); setSubjects(subjectItems)
-        const ownedSubjects = subjectItems.filter(subject => !subject.shared)
-        setSubjectId(current => ownedSubjects.some(subject => String(subject.id) === current)
+        const availableQuestionSubjects = session.role === 'ADMIN'
+          ? subjectItems.filter(subject => subject.shared)
+          : subjectItems.filter(subject => !subject.shared)
+        setSubjectId(current => availableQuestionSubjects.some(subject => String(subject.id) === current)
           ? current
-          : String(ownedSubjects[0]?.id ?? ''))
-        if (session.role !== 'STUDENT') {
+          : String(availableQuestionSubjects[0]?.id ?? ''))
+        if (session.role === 'TEACHER') {
           const classItems = await getAssessmentClassrooms()
           if (!active) return
           setClassrooms(classItems)
@@ -168,11 +186,11 @@ export default function AssessmentsPage() {
     return () => { active = false }
   }, [topicId])
   useEffect(() => {
-    if (!lessonId || !isTeacher) return
+    if (!lessonId || !canManageQuestionBank) return
     let active = true
     getQuestionBank(lessonId).then(items => { if (active) setBank(items) }).catch(error => { if (active) setNotice(error.message) })
     return () => { active = false }
-  }, [lessonId, isTeacher])
+  }, [lessonId, canManageQuestionBank])
 
   const safeAction = async action => {
     setBusy(true); setNotice('')
@@ -181,12 +199,47 @@ export default function AssessmentsPage() {
   const saveQuestion = event => {
     event.preventDefault()
     safeAction(async () => {
-      await createQuestion({ ...questionForm, lessonId: Number(lessonId), score: Number(questionForm.score),
+      const payload = { ...questionForm, lessonId: Number(lessonId), score: Number(questionForm.score),
         options: questionForm.kind === 'MULTIPLE_CHOICE' ? questionForm.options.map((item, displayOrder) => ({ ...item, displayOrder })) : [],
-        blanks: questionForm.kind === 'FILL_BLANK' ? questionForm.blanks.map((item, position) => ({ ...item, position })) : [] })
-      setQuestionForm(current => ({ ...current, content: '', explanation: '' }))
-      setNotice('Đã thêm câu hỏi vào ngân hàng.')
+        blanks: questionForm.kind === 'FILL_BLANK' ? questionForm.blanks.map((item, position) => ({ ...item, position })) : [] }
+      if (editingQuestionId) {
+        const previousId = Number(editingQuestionId)
+        await updateQuestion(previousId, payload)
+        setSelectedQuestions(current => current.filter(id => id !== previousId))
+        setEditingQuestionId('')
+        setQuestionForm(emptyQuestionForm())
+        setNotice('Đã cập nhật câu hỏi trong ngân hàng. Bài kiểm tra đã giao vẫn giữ nguyên phiên bản cũ.')
+      } else {
+        await createQuestion(payload)
+        setQuestionForm(current => ({ ...current, content: '', explanation: '' }))
+        setNotice('Đã thêm câu hỏi vào ngân hàng.')
+      }
       setBank(await getQuestionBank(lessonId))
+    })
+  }
+  const editQuestion = id => safeAction(async () => {
+    const question = await getQuestionForEditing(id)
+    setEditingQuestionId(String(question.id))
+    setQuestionForm({
+      content: question.content, difficulty: question.difficulty, score: String(question.score), kind: question.kind,
+      allowMultiple: question.allowMultiple, options: question.options.map(option => ({ ...option })),
+      blanks: question.blanks.length ? question.blanks.map(blank => ({ correctAnswer: blank.correctAnswer })) : [{ correctAnswer: '' }],
+      correctAnswer: question.correctAnswer || '', caseSensitive: question.caseSensitive,
+      explanation: question.explanation || '',
+    })
+    setNotice('Đang sửa câu hỏi đã chọn. Dạng câu hỏi được giữ nguyên.')
+  })
+  const removeQuestion = question => {
+    if (!window.confirm('Ẩn câu hỏi này khỏi ngân hàng? Các bài kiểm tra đã giao vẫn giữ nguyên nội dung.')) return
+    safeAction(async () => {
+      await deleteQuestion(question.id)
+      if (String(question.id) === editingQuestionId) {
+        setEditingQuestionId('')
+        setQuestionForm(emptyQuestionForm())
+      }
+      setBank(await getQuestionBank(lessonId))
+      setSelectedQuestions(current => current.filter(id => id !== question.id))
+      setNotice('Đã xóa câu hỏi khỏi ngân hàng. Nội dung trong bài kiểm tra đã giao vẫn được giữ nguyên.')
     })
   }
   const saveAssessment = event => {
@@ -234,14 +287,14 @@ export default function AssessmentsPage() {
   if (access === 'loading') return <main className="assessment-shell"><p className="assessment-state">Đang kiểm tra phiên đăng nhập…</p></main>
   if (access !== 'allowed') return <main className="assessment-shell"><div className="assessment-gate"><span className="assessment-kicker">KIỂM TRA VÀ ĐÁNH GIÁ</span><h1>{access === 'signed-out' ? 'Đăng nhập để tiếp tục' : 'Khu vực dành cho thành viên'}</h1><p>{access === 'signed-out' ? 'Đăng nhập để xem bài kiểm tra, lưu câu trả lời và theo dõi kết quả.' : 'Tài khoản này chưa có quyền truy cập nội dung đánh giá.'}</p>{access === 'signed-out' && <Link className="assessment-primary" to="/login?returnTo=/assessments">Đi đến đăng nhập</Link>}<Link className="assessment-back" to="/">Về trang chủ</Link></div></main>
 
-  return <main id="noi-dung" tabIndex={-1} className={isStudent ? 'assessment-shell assessment-student' : 'assessment-shell'}>
+  return <main id="noi-dung" tabIndex={-1} className={`${isStudent ? 'assessment-shell assessment-student' : 'assessment-shell'}${user?.role === 'ADMIN' ? ' assessment-admin-bank' : ''}`}>
     <HomeHeader user={user} onLogout={() => setUser(null)} />
     <section className="assessment-heading">
       <div>
-        {!isStudent && <p className="assessment-kicker">KIỂM TRA VÀ ĐÁNH GIÁ</p>}
-        <h1>{activeAttempt ? 'Bài làm của em' : result ? 'Kết quả bài kiểm tra' : isStudent ? 'Bài kiểm tra của em' : 'Kiểm tra và đánh giá'}</h1>
+        {!isStudent && <p className="assessment-kicker">{user?.role === 'ADMIN' ? 'QUẢN LÝ NỘI DUNG' : 'KIỂM TRA VÀ ĐÁNH GIÁ'}</p>}
+        <h1>{activeAttempt ? 'Bài làm của em' : result ? 'Kết quả bài kiểm tra' : isStudent ? 'Bài kiểm tra của em' : user?.role === 'ADMIN' ? 'Ngân hàng câu hỏi' : 'Kiểm tra và đánh giá'}</h1>
         {activeAttempt && <p>{activeAttempt.assessment.durationMinutes ? `Em có ${activeAttempt.assessment.durationMinutes} phút để làm bài.` : 'Bài này không giới hạn thời gian.'} Em có thể lưu bài để làm tiếp sau hoặc nộp khi đã xong.</p>}
-        {!activeAttempt && !result && <p>{isStudent ? 'Làm bài thầy cô đã giao hoặc xem lại bài em đã nộp.' : 'Tạo câu hỏi theo bài học, tổ chức bài kiểm tra và theo dõi tiến độ học tập.'}</p>}
+        {!activeAttempt && !result && <p>{isStudent ? 'Làm bài thầy cô đã giao hoặc xem lại bài em đã nộp.' : user?.role === 'ADMIN' ? 'Quản lý câu hỏi trong chương trình học chung theo từng chủ đề và bài học.' : 'Tạo câu hỏi theo bài học, tổ chức bài kiểm tra và theo dõi tiến độ học tập.'}</p>}
       </div>
       <span className="assessment-heading-mark" aria-hidden="true">✎</span>
     </section>
@@ -255,38 +308,45 @@ export default function AssessmentsPage() {
 
     {result && <ResultCard result={result} onClose={() => setResult(null)} />}
 
-    {!activeAttempt && !result && isTeacher && <div className="assessment-teacher-grid">
-      <section className="assessment-panel"><PanelTitle eyebrow="BƯỚC 1 · NGÂN HÀNG" title="Tạo câu hỏi" detail="Mỗi câu hỏi gắn với một bài học để phân tích kết quả." />
+    {!activeAttempt && !result && canManageQuestionBank && <div className="assessment-teacher-grid">
+      <section className="assessment-panel"><PanelTitle eyebrow={user?.role === 'ADMIN' ? 'CHƯƠNG TRÌNH CHUNG' : 'BƯỚC 1 · NGÂN HÀNG'} title={editingQuestionId ? 'Sửa câu hỏi' : user?.role === 'ADMIN' ? 'Thêm câu hỏi' : 'Tạo câu hỏi'} detail="Mỗi câu hỏi gắn với một bài học để phân tích kết quả." />
         {!questionSubjects.length ? <div className="assessment-private-subject-empty">
-          <strong>Chưa có chương trình riêng để tạo câu hỏi.</strong>
-          <span>Hãy sao chép chương trình chung hoặc tạo chương trình của riêng bạn trước.</span>
+          <strong>{user?.role === 'ADMIN' ? 'Chưa có chương trình chung để tạo câu hỏi.' : 'Chưa có chương trình riêng để tạo câu hỏi.'}</strong>
+          <span>{user?.role === 'ADMIN' ? 'Hãy tạo chương trình chung trước khi thêm câu hỏi.' : 'Hãy sao chép chương trình chung hoặc tạo chương trình của riêng bạn trước.'}</span>
           <Link to="/academic">Mở Chương trình học <span aria-hidden="true">→</span></Link>
         </div> : <div className="assessment-selects">
-          <Select label="Chương trình riêng" placeholder="Chọn chương trình" value={subjectId} items={questionSubjects} onChange={changeSubject} />
-          <Select label="Chủ đề" value={topicId} items={topics} onChange={changeTopic} />
-          <Select label="Bài học / kiến thức" value={lessonId} items={lessons} onChange={changeLesson} />
+          <Select label={user?.role === 'ADMIN' ? 'Chương trình chung' : 'Chương trình riêng'} placeholder="Chọn chương trình" value={subjectId} items={questionSubjects} onChange={changeSubject} disabled={Boolean(editingQuestionId)} />
+          <Select label="Chủ đề" value={topicId} items={topics} onChange={changeTopic} disabled={Boolean(editingQuestionId)} />
+          <Select label="Bài học / kiến thức" value={lessonId} items={lessons} onChange={changeLesson} disabled={Boolean(editingQuestionId)} />
         </div>}
         {lessonId ? <form className="assessment-form" onSubmit={saveQuestion}>
           <label>Nội dung câu hỏi<textarea required maxLength="4000" value={questionForm.content} onChange={e => setQuestionForm({ ...questionForm, content: e.target.value })} placeholder="Ví dụ: 8 + 7 bằng bao nhiêu?" /></label>
-          <div className="assessment-form-row"><Select label="Dạng câu hỏi" value={questionForm.kind} items={[{ id: 'MULTIPLE_CHOICE', name: 'Trắc nghiệm' }, { id: 'FILL_BLANK', name: 'Điền khuyết' }, { id: 'SHORT_ANSWER', name: 'Trả lời ngắn' }]} onChange={kind => setQuestionForm({ ...questionForm, kind })} /><Select label="Độ khó" value={questionForm.difficulty} items={[{ id: 'EASY', name: 'Dễ' }, { id: 'MEDIUM', name: 'Vừa' }, { id: 'HARD', name: 'Khó' }]} onChange={difficulty => setQuestionForm({ ...questionForm, difficulty })} /><label>Điểm<input type="number" min="0.1" max="100" step="0.1" required value={questionForm.score} onChange={e => setQuestionForm({ ...questionForm, score: e.target.value })} /></label></div>
+          <div className="assessment-form-row"><Select label="Dạng câu hỏi" value={questionForm.kind} items={[{ id: 'MULTIPLE_CHOICE', name: 'Trắc nghiệm' }, { id: 'FILL_BLANK', name: 'Điền khuyết' }, { id: 'SHORT_ANSWER', name: 'Trả lời ngắn' }]} onChange={changeQuestionKind} /><Select label="Độ khó" value={questionForm.difficulty} items={[{ id: 'EASY', name: 'Dễ' }, { id: 'MEDIUM', name: 'Vừa' }, { id: 'HARD', name: 'Khó' }]} onChange={difficulty => setQuestionForm({ ...questionForm, difficulty })} /><label>Điểm<input type="number" min="0.1" max="100" step="0.1" required value={questionForm.score} onChange={e => setQuestionForm({ ...questionForm, score: e.target.value })} /></label></div>
           {questionForm.kind === 'MULTIPLE_CHOICE' && <div className="assessment-choice-builder"><label className="assessment-check"><input type="checkbox" checked={questionForm.allowMultiple} onChange={e => setQuestionForm({ ...questionForm, allowMultiple: e.target.checked })} /> Cho phép chọn nhiều đáp án</label>{questionForm.options.map((option, index) => <div className="assessment-option-edit" key={index}><input required value={option.name} placeholder={`Lựa chọn ${index + 1}`} onChange={e => setQuestionForm({ ...questionForm, options: questionForm.options.map((item, i) => i === index ? { ...item, name: e.target.value } : item) })} /><label className="assessment-check"><input type="checkbox" checked={option.correct} onChange={e => setQuestionForm({ ...questionForm, options: questionForm.options.map((item, i) => i === index ? { ...item, correct: e.target.checked } : item) })} /> Đúng</label>{questionForm.options.length > 2 && <button type="button" className="assessment-remove" onClick={() => setQuestionForm({ ...questionForm, options: questionForm.options.filter((_, i) => i !== index) })}>×</button>}</div>)}<button type="button" className="assessment-text-button" onClick={() => setQuestionForm({ ...questionForm, options: [...questionForm.options, emptyOption()] })}>+ Thêm lựa chọn</button></div>}
           {questionForm.kind === 'FILL_BLANK' && <div className="assessment-choice-builder"><p className="assessment-field-label">Đáp án theo thứ tự ô trống</p>{questionForm.blanks.map((blank, index) => <div className="assessment-option-edit" key={blank.position ?? index}><input required value={blank.correctAnswer} placeholder={`Đáp án ô ${index + 1}`} onChange={e => setQuestionForm({ ...questionForm, blanks: questionForm.blanks.map((item, i) => i === index ? { correctAnswer: e.target.value } : item) })} />{questionForm.blanks.length > 1 && <button type="button" className="assessment-remove" onClick={() => setQuestionForm({ ...questionForm, blanks: questionForm.blanks.filter((_, i) => i !== index) })}>×</button>}</div>)}<button type="button" className="assessment-text-button" onClick={() => setQuestionForm({ ...questionForm, blanks: [...questionForm.blanks, { correctAnswer: '' }] })}>+ Thêm ô trống</button></div>}
           {questionForm.kind === 'SHORT_ANSWER' && <label>Đáp án chuẩn<input required value={questionForm.correctAnswer} onChange={e => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })} /></label>}
           {questionForm.kind !== 'MULTIPLE_CHOICE' && <label className="assessment-check"><input type="checkbox" checked={questionForm.caseSensitive} onChange={e => setQuestionForm({ ...questionForm, caseSensitive: e.target.checked })} /> Phân biệt chữ hoa và chữ thường</label>}
           <label>Lời giải / gợi ý<textarea value={questionForm.explanation} onChange={e => setQuestionForm({ ...questionForm, explanation: e.target.value })} placeholder="Hiển thị sau khi học sinh nộp bài" /></label>
-          <button className="assessment-primary" disabled={busy}>Thêm vào ngân hàng</button>
+          <div className="assessment-question-form-actions"><button className="assessment-primary" disabled={busy}>{editingQuestionId ? 'Lưu thay đổi' : 'Thêm vào ngân hàng'}</button>{editingQuestionId && <button type="button" className="assessment-secondary" disabled={busy} onClick={() => { setEditingQuestionId(''); setQuestionForm(emptyQuestionForm()); setNotice('Đã hủy sửa câu hỏi.') }}>Hủy sửa</button>}</div>
         </form> : <Empty text="Tạo môn học, chủ đề và bài học trước khi thêm câu hỏi." />}
       </section>
-      <section className="assessment-panel"><PanelTitle eyebrow="CÂU HỎI ĐÃ LƯU" title="Ngân hàng theo bài học" detail="Chọn câu hỏi để đưa vào bài kiểm tra mới." />
-        {bank.length ? <div className="assessment-bank-list">{bank.map(question => <label className="assessment-bank-item" key={question.id}><input type="checkbox" checked={selectedQuestions.includes(question.id)} onChange={() => toggleId(setSelectedQuestions, question.id)} /><span><strong>{question.content}</strong><small>{question.kind === 'MULTIPLE_CHOICE' ? 'Trắc nghiệm' : question.kind === 'FILL_BLANK' ? 'Điền khuyết' : 'Trả lời ngắn'} · {question.difficulty === 'EASY' ? 'Dễ' : question.difficulty === 'MEDIUM' ? 'Vừa' : 'Khó'} · {question.score} điểm</small></span></label>)}</div> : <Empty text="Bài học này chưa có câu hỏi trong ngân hàng." />}
-        <form className="assessment-form assessment-create-form" onSubmit={saveAssessment}><PanelTitle eyebrow="BƯỚC 2 · BÀI KIỂM TRA" title="Lưu bài kiểm tra nháp" detail="Chọn lớp được giao và câu hỏi cần sử dụng." />
+      <section className="assessment-panel"><PanelTitle eyebrow="CÂU HỎI ĐÃ LƯU" title={user?.role === 'ADMIN' ? 'Câu hỏi trong bài học' : 'Ngân hàng theo bài học'} detail={user?.role === 'ADMIN' ? 'Danh sách câu hỏi đã lưu cho bài học đang chọn.' : 'Chọn câu hỏi để đưa vào bài kiểm tra mới.'} />
+        {bank.length ? <div className="assessment-bank-list">{bank.map(question => {
+          const details = <span><strong>{question.content}</strong><small>{question.kind === 'MULTIPLE_CHOICE' ? 'Trắc nghiệm' : question.kind === 'FILL_BLANK' ? 'Điền khuyết' : 'Trả lời ngắn'} · {question.difficulty === 'EASY' ? 'Dễ' : question.difficulty === 'MEDIUM' ? 'Vừa' : 'Khó'} · {question.score} điểm</small></span>
+          return <article className="assessment-bank-item" key={question.id}>
+            {isTeacher && <input type="checkbox" aria-label={`Chọn câu hỏi: ${question.content}`} checked={selectedQuestions.includes(question.id)} onChange={() => toggleId(setSelectedQuestions, question.id)} />}
+            {details}
+            <div className="assessment-bank-actions"><button type="button" className="assessment-secondary" disabled={busy} onClick={() => editQuestion(question.id)}>Sửa</button><button type="button" className="assessment-secondary" disabled={busy} onClick={() => removeQuestion(question)}>Xóa</button></div>
+          </article>
+        })}</div> : <Empty text="Bài học này chưa có câu hỏi trong ngân hàng." />}
+        {isTeacher && <form className="assessment-form assessment-create-form" onSubmit={saveAssessment}><PanelTitle eyebrow="BƯỚC 2 · BÀI KIỂM TRA" title="Lưu bài kiểm tra nháp" detail="Chọn lớp được giao và câu hỏi cần sử dụng." />
           <label>Tên bài kiểm tra<input required maxLength="180" value={assessmentForm.title} onChange={e => setAssessmentForm({ ...assessmentForm, title: e.target.value })} placeholder="Ví dụ: Ôn tập phép cộng trong phạm vi 20" /></label>
           <div className="assessment-form-row"><Select label="Loại bài" value={assessmentForm.type} items={Object.entries(types).map(([id, name]) => ({ id, name }))} onChange={type => setAssessmentForm({ ...assessmentForm, type })} /><label>Thời gian (phút)<input type="number" min="1" max="240" value={assessmentForm.durationMinutes} onChange={e => setAssessmentForm({ ...assessmentForm, durationMinutes: e.target.value })} /></label></div>
           <div><p className="assessment-field-label">Giao cho lớp</p><div className="assessment-class-list">{classrooms.map(item => <label className="assessment-check" key={item.id}><input type="checkbox" checked={selectedClasses.includes(item.id)} onChange={() => toggleId(setSelectedClasses, item.id)} /> {item.name} · {item.schoolYear}</label>)}</div>{!classrooms.length && <small className="assessment-muted">Chưa có lớp học được phân công.</small>}</div>
           <div className="assessment-form-footer"><span>{selectedCount} câu · {selectedClasses.length} lớp</span><button className="assessment-primary" disabled={busy || !selectedCount || !selectedClasses.length}>Lưu bản nháp</button></div>
-        </form>
+        </form>}
       </section>
-      <section className="assessment-panel assessment-tests"><PanelTitle eyebrow="ĐỀ CỦA BẠN" title="Bài kiểm tra" detail="Bài nháp chỉ hiển thị với giáo viên cho đến khi công bố." />
+      {isTeacher && <section className="assessment-panel assessment-tests"><PanelTitle eyebrow="ĐỀ CỦA BẠN" title="Bài kiểm tra" detail="Bài nháp chỉ hiển thị với giáo viên cho đến khi công bố." />
         {assessments.length ? <div className="assessment-class-assessment-groups">{classAssessmentGroups.map(group => <details className="assessment-class-assessment-group" key={group.id} open={classAssessmentGroups.length === 1}>
           <summary><span><strong>{group.name}</strong>{group.schoolYear && <small>{group.schoolYear}</small>}</span><b>{group.assessments.length} đề <i aria-hidden="true">⌄</i></b></summary>
           <div className="assessment-test-list">{group.assessments.map(test => <article className="assessment-test-item" key={test.id}>
@@ -320,14 +380,14 @@ export default function AssessmentsPage() {
                       : !resultStudentId ? <Empty text="Chọn học sinh để xem lịch sử kiểm tra." />
                         : <Empty text="Học sinh này chưa có kết quả kiểm tra trong lớp đã chọn." />}
         </div>
-      </section>
+      </section>}
     </div>}
 
-    {!activeAttempt && !result && !isTeacher && <div className="assessment-student-grid">
+    {!activeAttempt && !result && isStudent && <div className="assessment-student-grid">
       <section className="assessment-panel"><PanelTitle title="Bài thầy cô giao" />{assessments.length ? <div className="assessment-test-list">{assessments.map(test => <article className="assessment-test-item" key={test.id}><div><strong>{test.title}</strong><small>{test.questions.length} câu{test.durationMinutes ? ` · ${test.durationMinutes} phút` : ''}</small></div><button className="assessment-primary" disabled={busy} onClick={() => openAttempt(test)}>Bắt đầu làm bài</button></article>)}</div> : <Empty text="Khi thầy cô giao bài kiểm tra, em sẽ thấy bài ở đây." />}</section>
       <section className="assessment-panel"><PanelTitle title="Các lần làm bài" />{history.length ? <div className="assessment-test-list">{history.map(item => <article className="assessment-test-item" key={item.id}><div><strong>{item.assessmentTitle}</strong><small>{new Date(item.submittedAt || item.startedAt).toLocaleDateString('vi-VN')} · {item.status === 'SUBMITTED' ? `${item.totalScore}/${item.maxScore} điểm` : 'Đang làm'}</small></div>{item.status === 'SUBMITTED' ? <button className="assessment-secondary" disabled={busy} onClick={() => openResult(item.id)}>Xem kết quả</button> : <button className="assessment-primary" disabled={busy} onClick={() => openAttempt(item)}>Làm tiếp</button>}</article>)}</div> : <Empty text="Các bài em đã bắt đầu hoặc đã nộp sẽ hiện ở đây." />}</section>
     </div>}
-    <footer className="assessment-footer">Câu trả lời được chấm theo đáp án và quy tắc của từng dạng câu hỏi.</footer>
+    {user?.role !== 'ADMIN' && <footer className="assessment-footer">Câu trả lời được chấm theo đáp án và quy tắc của từng dạng câu hỏi.</footer>}
   </main>
 }
 

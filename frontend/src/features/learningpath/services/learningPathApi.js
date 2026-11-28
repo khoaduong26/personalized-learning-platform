@@ -21,3 +21,6 @@ export const generateLearningPath = (studentId, classroomId) => learningPathRequ
 export const updateLearningStep = (studentId, pathId, stepId, status) => learningPathRequest(
   `/api/students/${studentId}/learning-paths/${pathId}/steps/${stepId}`, { method: 'PATCH', body: { status } },
 )
+export const deleteLearningPath = (studentId, pathId) => learningPathRequest(
+  `/api/students/${studentId}/learning-paths/${pathId}`, { method: 'DELETE' },
+)

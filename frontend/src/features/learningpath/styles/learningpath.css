@@ -153,7 +153,45 @@
 .learning-path-manual-submit { min-height: 38px; border: 0; border-radius: 7px; background: #426536; color: #fff; padding: 8px 12px; font: inherit; font-size: 11px; font-weight: 750; cursor: pointer; }
 .learning-path-manual-error { margin: 0; }
 .learning-path-message a { margin-left: 4px; color: #426536; font-weight: 750; }
+.learning-path-delete-button { flex: 0 0 auto; border: 1px solid #ead9d7; border-radius: 7px; background: #fff8f7; color: #9a4c44; padding: 6px 9px; font: inherit; font-size: 10px; font-weight: 750; cursor: pointer; }
+.learning-path-card-heading { align-items: center; gap: 14px; padding: 3px 10px 3px 3px; }
+.learning-path-card-heading strong { min-width: 0; }
+.learning-path-delete-button:hover:not(:disabled) { background: #fff0ee; }
+.learning-path-delete-button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 560px) { .learning-path-card-heading { flex-wrap: wrap; }.learning-path-delete-button { margin-left: auto; } }
 @media (max-width: 620px) { .learning-path-manual-row { grid-template-columns: 1fr; }.learning-path-manual-option { grid-template-columns: minmax(0, 1fr) auto auto; }.learning-path-manual-blank { grid-column: 1 / -2; } }
+.learning-path-topics { display: grid; gap: 8px; margin-top: 14px; }
+.learning-path-topic { min-width: 0; border: 1px solid #e9e3ed; border-radius: 10px; background: #fff; }
+.learning-path-topic > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; color: #44384f; cursor: pointer; font-size: 12px; font-weight: 800; }
+.learning-path-topic > summary::marker { color: #806b91; }
+.learning-path-topic > summary small { flex: 0 0 auto; color: #7a7181; font-size: 10px; font-weight: 650; }
+.learning-path-topic[open] > summary { border-bottom: 1px solid #eee9f0; background: #faf8fb; border-radius: 10px 10px 0 0; }
+.learning-path-topic .learning-path-steps { margin: 0; padding: 0 13px; }
+.learning-path-lesson-link { display: inline-flex; align-items: center; min-height: 32px; padding: 5px 8px; color: #5f4a71; font-size: 11px; font-weight: 750; text-decoration: none; }
+.learning-path-lesson-link:hover { text-decoration: underline; }
+.student-learning-topics { display: grid; gap: 10px; margin-top: 22px; }
+.student-learning-topic { min-width: 0; overflow: hidden; border: 1px solid #e3e8dd; border-radius: 13px; background: #fff; }
+.student-learning-topic > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 15px 17px; color: #3e5237; cursor: pointer; font-size: 16px; font-weight: 800; }
+.student-learning-topic > summary::marker { color: #6f8d5c; }
+.student-learning-topic > summary small { flex: 0 0 auto; color: #73806c; font-size: 12px; font-weight: 650; }
+.student-learning-topic[open] > summary { border-bottom: 1px solid #edf0e9; background: #fbfcf9; }
+.student-learning-topic .student-learning-steps { margin: 0; padding: 13px 16px 16px; }
+.teacher-learning-paths-shell { min-height: 100vh; padding: 0 clamp(16px, 5vw, 72px) 36px; background: #f7f8f3; color: #302b35; }
+.teacher-learning-paths-heading { max-width: 900px; margin: 0 auto; padding: 36px 0 22px; }
+.teacher-learning-paths-kicker { margin: 0 0 8px; color: #816997; font-size: 10px; font-weight: 800; letter-spacing: 1.6px; }
+.teacher-learning-paths-heading h1 { margin: 0; color: #394b33; font-size: clamp(28px, 4vw, 38px); letter-spacing: -.8px; }
+.teacher-learning-paths-heading > p:last-child { color: #697264; font-size: 15px; line-height: 1.6; }
+.teacher-learning-paths-filter { display: flex; align-items: end; justify-content: space-between; gap: 16px; max-width: 900px; margin: 0 auto 18px; padding: 16px; border: 1px solid #e4e8df; border-radius: 13px; background: #fff; }
+.teacher-learning-paths-filter label { display: grid; gap: 6px; width: min(100%, 420px); color: #56614f; font-size: 12px; font-weight: 750; }
+.teacher-learning-paths-filter select { box-sizing: border-box; width: 100%; min-height: 44px; border: 1px solid #dfe4da; border-radius: 9px; background: #fff; color: #302b35; padding: 9px 11px; font: inherit; }
+.teacher-learning-paths-filter > p { margin: 0; color: #6e7667; font-size: 13px; }
+.teacher-learning-paths-shell > .learning-path-panel { max-width: 900px; margin: 0 auto; padding: 18px; border: 1px solid #e4e8df; border-radius: 13px; background: #fff; }
+.teacher-learning-paths-state, .teacher-learning-paths-error, .teacher-learning-paths-empty { box-sizing: border-box; max-width: 900px; margin: 18px auto; padding: 20px; border: 1px solid #e4e8df; border-radius: 13px; background: #fff; color: #687162; line-height: 1.6; }
+.teacher-learning-paths-error { border-color: #efd6d2; background: #fff7f5; color: #984d45; }
+.teacher-learning-paths-empty h1, .teacher-learning-paths-empty h2 { margin-top: 0; color: #3f5238; }
+.teacher-learning-paths-empty a { color: #5c744e; font-weight: 750; }
+.teacher-learning-paths-shell :is(a, button, select):focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
+@media (max-width: 620px) { .teacher-learning-paths-shell { padding-inline: 14px; }.teacher-learning-paths-heading { padding-top: 28px; }.teacher-learning-paths-filter { align-items: stretch; flex-direction: column; }.teacher-learning-paths-filter label { width: 100%; } }
 .student-learning-class-picker { display: grid; gap: 8px; max-width: 420px; margin: 0 0 10px; color: #625b6b; font-weight: 700; }
 .student-learning-class-picker select { width: 100%; padding: 12px 14px; border: 1px solid #ded8e5; border-radius: 12px; background: #fff; color: #302a3c; font: inherit; }
 .student-learning-class-context { margin: 10px 0 18px; color: #766d80; }

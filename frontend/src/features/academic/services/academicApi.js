@@ -21,6 +21,16 @@ export const createTopic = (name, subjectId) => academicRequest('/api/topics', {
 export const updateTopic = (id, name, subjectId) => academicRequest(`/api/topics/${id}`, { method: 'PUT', body: { name, subjectId } })
 export const deleteTopic = id => academicRequest(`/api/topics/${id}`, { method: 'DELETE' })
 export const getLessons = topicId => academicRequest(`/api/lessons?topicId=${topicId}`)
-export const createLesson = (name, description, topicId) => academicRequest('/api/lessons', { method: 'POST', body: { name, description, topicId } })
-export const updateLesson = (id, name, description, topicId) => academicRequest(`/api/lessons/${id}`, { method: 'PUT', body: { name, description, topicId } })
+const imagePayload = images => images?.map(({ url, altText, caption, placement, alignment, displaySize }) => ({ url, altText, caption, placement, alignment, displaySize }))
+export const createLesson = (name, description, learningContent, images, topicId) => academicRequest('/api/lessons', { method: 'POST', body: { name, description, learningContent, images: imagePayload(images), topicId } })
+export const updateLesson = (id, name, description, learningContent, images, topicId) => academicRequest(`/api/lessons/${id}`, { method: 'PUT', body: { name, description, learningContent, images: imagePayload(images), topicId } })
+export const getLesson = lessonId => academicRequest(`/api/lessons/${lessonId}`)
+export async function uploadLessonImage(lessonId, file) {
+  const csrf = await httpRequest('/api/csrf')
+  const body = new FormData()
+  body.append('file', file)
+  return httpRequest(`/api/lessons/${lessonId}/images`, {
+    method: 'POST', body, headers: { [csrf.headerName]: csrf.token },
+  })
+}
 export const deleteLesson = id => academicRequest(`/api/lessons/${id}`, { method: 'DELETE' })

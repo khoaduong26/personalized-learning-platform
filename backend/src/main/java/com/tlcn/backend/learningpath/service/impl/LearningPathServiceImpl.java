@@ -60,7 +60,8 @@ public class LearningPathServiceImpl implements LearningPathService {
     @Transactional(readOnly = true)
     public List<LearningPath> forStudent(Long studentId, Long classroomId, UserSummary actor) {
         requireCanView(studentId, classroomId, actor);
-        List<LearningPath> result = paths.findByStudentIdOrderByCreatedAtDesc(studentId);
+        List<LearningPath> result = paths.findByStudentIdOrderByCreatedAtDesc(studentId).stream()
+                .filter(path -> path.getStatus() != LearningPathStatus.DELETED).toList();
         if (classroomId != null) result = result.stream()
                 .filter(path -> path.getClassroom() != null && classroomId.equals(path.getClassroom().getId())).toList();
         else if (actor.role() == Role.TEACHER) result = result.stream()
@@ -87,6 +88,9 @@ public class LearningPathServiceImpl implements LearningPathService {
         requireCanView(studentId, null, actor);
         LearningPath path = paths.findByIdAndStudentId(pathId, studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lộ trình."));
+        if (path.getStatus() == LearningPathStatus.DELETED) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lộ trình.");
+        }
         if (actor.role() == Role.TEACHER && path.getClassroom() != null
                 && !path.getClassroom().getTeacher().getId().equals(actor.id()))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền xem lộ trình của lớp này.");
@@ -179,6 +183,21 @@ public class LearningPathServiceImpl implements LearningPathService {
         notifications.notifyAfterCommit(student.getId(), "LEARNING_PATH_READY", "Lộ trình học tập mới",
                 "Thầy cô đã tạo lộ trình học tập cá nhân cho em.", "/my-learning-path");
         return saved;
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long studentId, Long pathId, UserSummary actor) {
+        LearningPath path = paths.findByIdAndStudentId(pathId, studentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lộ trình."));
+        if (path.getStatus() == LearningPathStatus.DELETED) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lộ trình.");
+        }
+        Long classroomId = path.getClassroom() == null ? null : path.getClassroom().getId();
+        requireCanManage(studentId, classroomId, actor);
+        path.setStatus(LearningPathStatus.DELETED);
+        path.setUpdatedAt(Instant.now());
+        paths.save(path);
     }
 
     private boolean matchesCurrentGaps(LearningPath activePath, List<KnowledgeGap> openGaps) {

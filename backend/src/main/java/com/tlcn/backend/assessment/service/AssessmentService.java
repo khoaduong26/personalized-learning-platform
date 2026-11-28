@@ -4,6 +4,7 @@ import com.tlcn.backend.assessment.entity.*;
 import java.util.List;
 import com.tlcn.backend.assessment.dto.AssessmentRequest;
 import com.tlcn.backend.assessment.dto.QuestionRequest;
+import com.tlcn.backend.assessment.dto.QuestionEditorView;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.classroom.entity.Classroom;
 
@@ -19,6 +20,12 @@ public interface AssessmentService {
     List<Question> questionsForLesson(Long lessonId, UserSummary actor);
 
     Question createQuestion(QuestionRequest request, UserSummary actor);
+
+    QuestionEditorView questionForEditing(Long questionId, UserSummary actor);
+
+    Question updateQuestion(Long questionId, QuestionRequest request, UserSummary actor);
+
+    void deleteQuestion(Long questionId, UserSummary actor);
 
     List<AssessmentAttempt> attemptsForStudent(Long id, Long classroomId, UserSummary actor);
 

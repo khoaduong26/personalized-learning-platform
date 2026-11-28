@@ -41,7 +41,7 @@ function ExerciseWorkspace({ stepId }) {
   const questionHeading = useRef(null)
   const resultHeading = useRef(null)
   const question = questions[questionIndex]
-  const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN'
+  const isTeacher = user?.role === 'TEACHER'
   const reviewClassroomGroups = reviewClassrooms.reduce((groups, classroom) => {
     const id = String(classroom.id)
     groups[id] = { id, name: classroom.name, items: [] }
@@ -71,7 +71,7 @@ function ExerciseWorkspace({ stepId }) {
       setUser(session)
       if (!['ADMIN', 'TEACHER', 'STUDENT'].includes(session?.role)) { setAccess('forbidden'); return }
       if (stepId && session.role !== 'STUDENT') { setAccess('forbidden'); return }
-      if (!stepId && session.role === 'STUDENT') { setAccess('missing-step'); return }
+      if (!stepId && session.role !== 'TEACHER') { setAccess('forbidden'); return }
       try {
         const items = await (stepId ? getStepExercises(stepId) : getPendingExercises())
         if (!active) return

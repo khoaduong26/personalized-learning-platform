@@ -11,6 +11,6 @@ public class UploadExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<ProfileExceptionHandler.ApiError> tooLarge(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(
-                new ProfileExceptionHandler.ApiError("AVATAR_TOO_LARGE", "Ảnh đại diện tối đa 2 MB.", Map.of()));
+                new ProfileExceptionHandler.ApiError("UPLOAD_TOO_LARGE", "Ảnh tải lên tối đa 2 MB.", Map.of()));
     }
 }

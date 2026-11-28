@@ -22,6 +22,9 @@ public abstract class Question {
     private Lesson lesson;
     @Column(nullable = false)
     private boolean aiGenerated;
+    // Nullable for existing database rows; null is treated as active in bank queries.
+    @Column(name = "active")
+    private Boolean active = true;
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private ApprovalStatus approvalStatus;
@@ -73,6 +76,14 @@ public abstract class Question {
 
     public void setAiGenerated(boolean aiGenerated) {
         this.aiGenerated = aiGenerated;
+    }
+
+    public boolean isActive() {
+        return !Boolean.FALSE.equals(active);
+    }
+
+    public void setActive(boolean value) {
+        active = value;
     }
 
     public ApprovalStatus getApprovalStatus() {

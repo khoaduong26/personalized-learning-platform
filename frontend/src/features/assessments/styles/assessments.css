@@ -13,6 +13,9 @@
 .assessment-notice { display: flex; justify-content: space-between; align-items: center; background: #edf3e7; border: 1px solid #dce8d2; color: #3f5a37; padding: 10px 14px; margin: 2px 0 15px; border-radius: 9px; font-size: 13px; }
 .assessment-notice button { border: 0; background: transparent; color: inherit; font-size: 21px; cursor: pointer; }
 .assessment-teacher-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.assessment-admin-bank .assessment-teacher-grid { grid-template-columns: minmax(280px, .85fr) minmax(0, 1.15fr); }
+.assessment-admin-bank .assessment-bank-item { cursor: default; }
+.assessment-admin-bank .assessment-bank-item > span { padding-left: 0; }
 .assessment-panel { min-width: 0; background: #fff; border: 1px solid #e8e4de; border-radius: 14px; padding: 20px; box-shadow: 0 5px 18px #44394d08; }
 .assessment-panel-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding-bottom: 15px; border-bottom: 1px solid #f0ede8; }
 .assessment-panel-title h2, .assessment-result-head h2 { margin: 0; color: #342e3b; font-size: 19px; letter-spacing: -.4px; }
@@ -44,9 +47,13 @@
 .assessment-primary:disabled, .assessment-secondary:disabled { opacity: .48; cursor: not-allowed; }
 .assessment-bank-list, .assessment-test-list { display: grid; gap: 8px; padding-top: 13px; }
 .assessment-bank-item, .assessment-test-item { display: flex; align-items: flex-start; gap: 10px; border: 1px solid #eeebf0; border-radius: 9px; padding: 10px; }
-.assessment-bank-item { cursor: pointer; }
+.assessment-bank-item { cursor: default; justify-content: space-between; align-items: center; }
 .assessment-bank-item > input { margin-top: 3px; accent-color: #765b8d; }
 .assessment-bank-item > span, .assessment-test-item > div:first-child { display: grid; gap: 5px; min-width: 0; }
+.assessment-bank-item > span { flex: 1; }
+.assessment-bank-actions, .assessment-question-form-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 7px; flex: 0 0 auto; }
+.assessment-bank-actions .assessment-secondary { min-height: 30px; padding: 0 9px; }
+.assessment-question-form-actions { justify-content: flex-start; }
 .assessment-bank-item strong, .assessment-test-item strong { color: #38323f; font-size: 12px; line-height: 1.45; }
 .assessment-bank-item small, .assessment-test-item small { color: #8b8590; font-size: 10px; line-height: 1.45; }
 .assessment-create-form { margin-top: 18px; padding: 16px; background: #fcfbfd; border: 1px solid #eeeaf0; border-radius: 11px; }
@@ -140,4 +147,4 @@
 .assessment-student .assessment-option input { width: 18px; height: 18px; flex-shrink: 0; }
 .assessment-student :is(a, button, input):focus-visible { outline: 3px solid #604773; outline-offset: 2px; }
 @media (max-width: 1000px) { .assessment-teacher-grid { grid-template-columns: 1fr; }.assessment-tests { grid-column: auto; } }
-@media (max-width: 700px) { .assessment-shell { padding-inline: 16px; }.assessment-topbar { height: 65px; }.assessment-user { gap: 8px; font-size: 11px; }.assessment-user > a { margin-left: 1px; }.assessment-role { display: none; }.assessment-heading { padding-top: 30px; }.assessment-form-row { grid-template-columns: 1fr; }.assessment-student-grid { grid-template-columns: 1fr; }.assessment-test-item { align-items: flex-start; flex-direction: column; }.assessment-test-actions { align-self: flex-end; }.assessment-gate { margin-top: 12vh; padding: 25px; }.assessment-option-list, .assessment-input-list, .assessment-answer-input { margin-left: 0; }.assessment-result-head { align-items: flex-start; flex-direction: column; }.assessment-score { justify-items: start; } }
+@media (max-width: 700px) { .assessment-shell { padding-inline: 16px; }.assessment-topbar { height: 65px; }.assessment-user { gap: 8px; font-size: 11px; }.assessment-user > a { margin-left: 1px; }.assessment-role { display: none; }.assessment-heading { padding-top: 30px; }.assessment-form-row { grid-template-columns: 1fr; }.assessment-student-grid { grid-template-columns: 1fr; }.assessment-test-item { align-items: flex-start; flex-direction: column; }.assessment-test-actions { align-self: flex-end; }.assessment-bank-item { flex-wrap: wrap; }.assessment-bank-actions { margin-left: auto; }.assessment-gate { margin-top: 12vh; padding: 25px; }.assessment-option-list, .assessment-input-list, .assessment-answer-input { margin-left: 0; }.assessment-result-head { align-items: flex-start; flex-direction: column; }.assessment-score { justify-items: start; } }

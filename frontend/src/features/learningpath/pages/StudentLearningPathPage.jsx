@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import HomeHeader from '../../home/components/HomeHeader'
 import { getLearningPaths, getMySession, getStudentClassrooms } from '../services/learningPathApi'
+import { groupStepsByTopic } from '../utils/groupStepsByTopic'
 import '../styles/learningpath.css'
 
 export default function StudentLearningPathPage() {
@@ -44,6 +45,7 @@ export default function StudentLearningPathPage() {
   const classPaths = selectedClassroomId ? paths.filter(path => String(path.classroomId) === selectedClassroomId) : paths
   const currentPath = classPaths.find(path => path.status === 'ACTIVE')
   const completedPath = classPaths.some(path => path.status === 'COMPLETED')
+  const topicGroups = groupStepsByTopic(currentPath?.steps)
   const selectedClassroom = classrooms.find(item => String(item.id) === selectedClassroomId)
   return <main id="noi-dung" tabIndex={-1} className="student-learning-shell">
     <HomeHeader user={student} onLogout={() => setStudent(null)} />
@@ -60,8 +62,12 @@ export default function StudentLearningPathPage() {
       <div className="learning-path-progress student-progress" role="progressbar" aria-labelledby="student-progress-title" aria-valuenow={currentPath.progress.percentage}>
         <span style={{ width: `${currentPath.progress.percentage}%` }} />
       </div>
-      <ol className="student-learning-steps">
-        {currentPath.steps.map(step => (
+      <div className="student-learning-topics" aria-label="Các chủ đề cần học lại">
+        {topicGroups.map((group, index) => <details className="student-learning-topic" key={group.id}
+          open={group.steps.some(step => step.status === 'IN_PROGRESS') || (!currentPath.steps.some(step => step.status === 'IN_PROGRESS') && index === 0)}>
+          <summary><span>{group.name}</span><small>{group.steps.length} bài cần ôn</small></summary>
+          <ol className="student-learning-steps">
+        {group.steps.map(step => (
           <li key={step.id} className={`step-${step.status.toLowerCase()}`} aria-current={step.status === 'IN_PROGRESS' ? 'step' : undefined}>
             <span className="student-step-marker" aria-hidden="true">{step.status === 'COMPLETED' ? '✓' : step.order}</span>
             <article>
@@ -72,7 +78,10 @@ export default function StudentLearningPathPage() {
                 </div>
               </div>
               {step.lessonDescription && <p>{step.lessonDescription}</p>}
-              {step.status === 'LOCKED' && <p>Học xong bước trước để mở bài này.</p>}
+              {step.status === 'LOCKED' && <p>Bài luyện tập mở sau khi em học xong bước trước. Em vẫn có thể xem nội dung để ôn bài.</p>}
+              {step.lessonId && <div className="student-step-actions">
+                <Link className="student-learning-action student-learning-review-action" to={`/curriculum/lessons/${step.lessonId}?stepId=${step.id}`}>Xem bài học chi tiết <span aria-hidden="true">→</span></Link>
+              </div>}
               {step.status === 'IN_PROGRESS' && <>
                 <p>Mục tiêu của bài này là đạt {step.targetScore}%.</p>
                 <p>Hoàn thành bước sau khi nộp bài luyện tập và đạt mục tiêu.</p>
@@ -83,7 +92,9 @@ export default function StudentLearningPathPage() {
             </article>
           </li>
         ))}
-      </ol>
+          </ol>
+        </details>)}
+      </div>
     </section>}
     {state === 'ready' && !currentPath && <section className="student-learning-card student-learning-complete">
       <h2>{completedPath ? 'Em đã hoàn thành lộ trình!' : 'Em chưa có lộ trình học'}</h2>

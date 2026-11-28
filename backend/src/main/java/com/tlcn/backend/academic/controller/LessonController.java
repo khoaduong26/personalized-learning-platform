@@ -6,9 +6,11 @@ import com.tlcn.backend.academic.service.LessonService;
 import com.tlcn.backend.user.dto.UserSummary;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/lessons")
@@ -27,6 +29,12 @@ public class LessonController {
     @GetMapping("/{id}")
     public LessonResponse get(@PathVariable Long id, @AuthenticationPrincipal UserSummary actor) {
         return service.get(id, actor);
+    }
+
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public java.util.Map<String, String> uploadImage(@PathVariable Long id, @RequestPart("file") MultipartFile file,
+            @AuthenticationPrincipal UserSummary actor) {
+        return java.util.Map.of("url", service.uploadImage(id, file, actor));
     }
 
     @PostMapping

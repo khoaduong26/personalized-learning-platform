@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { generateLearningPath, getLearningPaths } from '../services/learningPathApi'
+import { deleteLearningPath, generateLearningPath, getLearningPaths } from '../services/learningPathApi'
 import { createManualStepExercise, generateStepExercise } from '../../exercises/services/exerciseApi'
 import ManualExerciseForm from './ManualExerciseForm'
+import { groupStepsByTopic } from '../utils/groupStepsByTopic'
 import '../styles/learningpath.css'
 
 export default function LearningPathPanel({ students, classroomId, classroomName }) {
@@ -20,6 +21,7 @@ export default function LearningPathPanel({ students, classroomId, classroomName
   const [savingManualStepId, setSavingManualStepId] = useState(null)
   const [manualExerciseNotice, setManualExerciseNotice] = useState('')
   const [manualExerciseError, setManualExerciseError] = useState('')
+  const [deletingPathId, setDeletingPathId] = useState(null)
 
   const selectedStudentId = students.some(student => String(student.id) === studentId)
     ? studentId
@@ -83,6 +85,24 @@ export default function LearningPathPanel({ students, classroomId, classroomName
     }
   }
 
+  const removePath = async path => {
+    if (!window.confirm(`Xóa lộ trình phiên bản ${path.version} của ${selected?.fullName || 'học sinh này'} khỏi danh sách? Học sinh sẽ không còn thấy lộ trình này; lịch sử bài làm và kết quả vẫn được giữ.`)) return
+    setDeletingPathId(path.id)
+    setMessage('')
+    try {
+      await deleteLearningPath(selectedStudentId, path.id)
+      const refreshed = await getLearningPaths(selectedStudentId, classroomId)
+      setPaths(refreshed)
+      setState('ready')
+      setMessage('Đã xóa lộ trình khỏi danh sách. Lịch sử bài làm và kết quả vẫn được giữ.')
+    } catch (error) {
+      setMessage(error.message)
+      setState('error')
+    } finally {
+      setDeletingPathId(null)
+    }
+  }
+
   const selected = students.find(student => String(student.id) === selectedStudentId)
   const isLoading = Boolean(selectedStudentId) && (loadedStudentId !== selectedStudentId || loadedClassroomId !== classroomId)
   const visiblePaths = loadedStudentId === selectedStudentId && loadedClassroomId === classroomId ? paths : []
@@ -107,7 +127,7 @@ export default function LearningPathPanel({ students, classroomId, classroomName
           {message && <p className={state === 'error' ? 'learning-path-error' : 'learning-path-message'} role={state === 'error' ? 'alert' : 'status'}>{message}</p>}
           <div className="learning-path-toolbar"><p>{activePath ? `Phiên bản ${activePath.version} · ${activePath.progress?.percentage ?? 0}% hoàn thành` : 'Chưa có lộ trình đang học.'}</p><button type="button" disabled={state === 'saving'} onClick={createPath}>{state === 'saving' ? 'Đang tạo lộ trình…' : 'Tạo lộ trình từ khoảng trống'}</button></div>
           {state === 'saving' && <p className="learning-path-message" role="status">Backend đang sắp xếp theo mức độ ưu tiên; AI chỉ đề xuất thứ tự khi khả dụng.</p>}
-          {activePath ? <PathSummary path={activePath} onGenerate={createExercise} generatingStepId={generatingStepId}
+          {activePath ? <PathSummary path={activePath} onDelete={removePath} deletingPathId={deletingPathId} onGenerate={createExercise} generatingStepId={generatingStepId}
             failedStepId={failedStepId} manualStepId={manualStepId} onToggleManual={stepId => { setManualExerciseError(''); setManualStepId(current => current === stepId ? null : stepId) }}
             onCreateManual={saveManualExercise} savingManualStepId={savingManualStepId} manualExerciseError={manualExerciseError} />
             : <p className="learning-path-empty">Tạo lộ trình để sắp xếp các kiến thức cần ôn theo thứ tự ưu tiên.</p>}
@@ -119,30 +139,40 @@ export default function LearningPathPanel({ students, classroomId, classroomName
             <Link to="/exercises/review">Mở hàng chờ duyệt</Link>
           </div>}
           {manualExerciseNotice && <p className="learning-path-message" role="status">{manualExerciseNotice} <Link to="/exercises/review">Mở hàng chờ duyệt</Link></p>}
-          {visiblePaths.filter(path => path.status !== 'ACTIVE').length > 0 && <details className="learning-path-history"><summary>Lộ trình trước đây</summary>{visiblePaths.filter(path => path.status !== 'ACTIVE').map(path => <PathSummary key={path.id} path={path} />)}</details>}
+          {visiblePaths.filter(path => path.status !== 'ACTIVE').length > 0 && <details className="learning-path-history"><summary>Lộ trình trước đây</summary>{visiblePaths.filter(path => path.status !== 'ACTIVE').map(path => <PathSummary key={path.id} path={path} onDelete={removePath} deletingPathId={deletingPathId} />)}</details>}
         </>}
   </section>
 }
 
-function PathSummary({ path, onGenerate, generatingStepId, failedStepId, manualStepId, onToggleManual, onCreateManual, savingManualStepId, manualExerciseError }) {
+function PathSummary({ path, onDelete, deletingPathId, onGenerate, generatingStepId, failedStepId, manualStepId, onToggleManual, onCreateManual, savingManualStepId, manualExerciseError }) {
   const progress = path.progress || { completed: 0, total: path.steps.length, percentage: 0 }
+  const topicGroups = groupStepsByTopic(path.steps)
   return <article className="learning-path-card">
-    <div className="learning-path-card-heading"><strong>Phiên bản {path.version} · {path.classroomName || 'Chưa gắn lớp'}</strong><span>{path.status === 'COMPLETED' ? 'Đã hoàn thành' : path.status === 'ARCHIVED' ? 'Đã lưu trữ' : 'Đang học'}</span></div>
+    <div className="learning-path-card-heading"><strong>Phiên bản {path.version} · {path.classroomName || 'Chưa gắn lớp'}</strong><span>{path.status === 'COMPLETED' ? 'Đã hoàn thành' : path.status === 'ARCHIVED' ? 'Đã lưu trữ' : 'Đang học'}</span>{onDelete && <button type="button" className="learning-path-delete-button" disabled={deletingPathId !== null} onClick={() => onDelete(path)}>{deletingPathId === path.id ? 'Đang xóa…' : 'Xóa lộ trình'}</button>}</div>
     <div className="learning-path-progress"><span style={{ width: `${progress.percentage}%` }} /></div>
     <p>{progress.completed}/{progress.total} bước · {progress.percentage}%</p>
-    <ol className="learning-path-steps">{path.steps.map(step => <li key={step.id} className={`step-${step.status.toLowerCase()}`}>
-      <span className="learning-path-step-icon">{step.status === 'COMPLETED' ? '✓' : step.order}</span>
-      <div>
-        <strong>{step.lessonName}</strong>
-        <small>{step.lessonDescription || 'Ôn tập kiến thức này'}</small>
-        <em>{step.status === 'COMPLETED' ? 'Đã hoàn thành' : step.status === 'IN_PROGRESS' ? 'Đang học' : 'Chưa mở'} · Mục tiêu {step.targetScore}%</em>
-        {onGenerate && <div className="learning-path-step-actions">
-          <button type="button" className="learning-path-ai-button" disabled={generatingStepId !== null || savingManualStepId !== null} onClick={() => onGenerate(step)}>{generatingStepId === step.id ? 'Đang gọi AI…' : 'Sinh bài tập AI'}</button>
-          <button type="button" className="learning-path-manual-button" disabled={generatingStepId !== null || savingManualStepId !== null} onClick={() => onToggleManual(step.id)}>{manualStepId === step.id ? 'Đóng biểu mẫu' : failedStepId === step.id ? 'Soạn thủ công thay thế' : 'Tự soạn bài tập'}</button>
-        </div>}
-        {onCreateManual && manualStepId === step.id && <ManualExerciseForm step={step} saving={savingManualStepId === step.id}
-          error={manualExerciseError} onCancel={() => onToggleManual(step.id)} onSubmit={body => onCreateManual(step, body)} />}
-      </div>
-    </li>)}</ol>
+    <div className="learning-path-topics" aria-label="Các chủ đề cần củng cố">
+      {topicGroups.map((group, index) => <details className="learning-path-topic" key={group.id}
+        open={group.steps.some(step => step.status === 'IN_PROGRESS') || (!path.steps.some(step => step.status === 'IN_PROGRESS') && index === 0)}>
+        <summary><span>{group.name}</span><small>{group.steps.length} bài cần ôn</small></summary>
+        <ol className="learning-path-steps">{group.steps.map(step => <li key={step.id} className={`step-${step.status.toLowerCase()}`}>
+          <span className="learning-path-step-icon">{step.status === 'COMPLETED' ? '✓' : step.order}</span>
+          <div>
+            <strong>{step.lessonName}</strong>
+            <small>{step.lessonDescription || 'Ôn tập kiến thức này'}</small>
+            <em>{step.status === 'COMPLETED' ? 'Đã hoàn thành' : step.status === 'IN_PROGRESS' ? 'Đang học' : 'Chưa mở'} · Mục tiêu {step.targetScore}%</em>
+            <div className="learning-path-step-actions">
+              {step.lessonId && <Link className="learning-path-lesson-link" to={`/academic/lessons/${step.lessonId}`}>Xem bài học chi tiết <span aria-hidden="true">→</span></Link>}
+              {onGenerate && <>
+                <button type="button" className="learning-path-ai-button" disabled={generatingStepId !== null || savingManualStepId !== null} onClick={() => onGenerate(step)}>{generatingStepId === step.id ? 'Đang gọi AI…' : 'Sinh bài tập AI'}</button>
+                <button type="button" className="learning-path-manual-button" disabled={generatingStepId !== null || savingManualStepId !== null} onClick={() => onToggleManual(step.id)}>{manualStepId === step.id ? 'Đóng biểu mẫu' : failedStepId === step.id ? 'Soạn thủ công thay thế' : 'Tự soạn bài tập'}</button>
+              </>}
+            </div>
+            {onCreateManual && manualStepId === step.id && <ManualExerciseForm step={step} saving={savingManualStepId === step.id}
+              error={manualExerciseError} onCancel={() => onToggleManual(step.id)} onSubmit={body => onCreateManual(step, body)} />}
+          </div>
+        </li>)}</ol>
+      </details>)}
+    </div>
   </article>
 }

@@ -14,6 +14,8 @@ public interface LearningPathService {
 
     LearningPath generate(Long studentId, Long classroomId, UserSummary actor);
 
+    void delete(Long studentId, Long pathId, UserSummary actor);
+
     LearningPath updateStepStatus(Long studentId, Long pathId, Long stepId, LearningStepStatus status,
             UserSummary actor);
 }

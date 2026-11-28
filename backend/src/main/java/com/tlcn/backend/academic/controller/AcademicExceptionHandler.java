@@ -3,6 +3,7 @@ package com.tlcn.backend.academic.controller;
 import com.tlcn.backend.academic.service.AcademicConflictException;
 import com.tlcn.backend.academic.service.AcademicBadRequestException;
 import com.tlcn.backend.academic.service.AcademicNotFoundException;
+import com.tlcn.backend.academic.service.LessonImageStorageException;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -14,6 +15,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 
 @RestControllerAdvice(basePackages = "com.tlcn.backend.academic")
 public class AcademicExceptionHandler {
+    @ExceptionHandler(LessonImageStorageException.class)
+    ResponseEntity<?> imageStorage(LessonImageStorageException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(Map.of("code", ex.getCode(), "message", ex.getMessage()));
+    }
+
     @ExceptionHandler(AcademicBadRequestException.class)
     ResponseEntity<?> badRequest(AcademicBadRequestException ex) {
         return ResponseEntity.badRequest().body(Map.of("code", "ACADEMIC_INVALID_REQUEST", "message", ex.getMessage()));

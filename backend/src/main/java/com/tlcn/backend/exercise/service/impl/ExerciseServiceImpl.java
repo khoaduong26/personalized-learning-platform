@@ -12,6 +12,7 @@ import com.tlcn.backend.exercise.service.ExerciseGenerationResult;
 import com.tlcn.backend.exercise.service.ExerciseService;
 import com.tlcn.backend.learningpath.entity.LearningStep;
 import com.tlcn.backend.learningpath.entity.LearningStepStatus;
+import com.tlcn.backend.learningpath.entity.LearningPathStatus;
 import com.tlcn.backend.learningpath.repository.LearningStepRepository;
 import com.tlcn.backend.notification.NotificationService;
 import com.tlcn.backend.user.dto.UserSummary;
@@ -65,9 +66,8 @@ public class ExerciseServiceImpl implements ExerciseService {
 
     @Transactional(readOnly = true)
     public List<StepExercise> pendingReview(UserSummary actor) {
-        requireTeacher(actor);
-        return actor.role() == Role.ADMIN ? exercises.findAllPendingReview()
-                : exercises.findPendingReviewForTeacher(actor.id());
+        requireExerciseReviewer(actor);
+        return exercises.findPendingReviewForTeacher(actor.id());
     }
 
     @Transactional
@@ -140,7 +140,7 @@ public class ExerciseServiceImpl implements ExerciseService {
 
     @Transactional
     public Question updateGenerated(Long questionId, QuestionRequest request, UserSummary actor) {
-        requireTeacher(actor);
+        requireExerciseReviewer(actor);
         Question question = getReviewableQuestion(questionId, actor);
         if (question.getApprovalStatus() != ApprovalStatus.PENDING)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ có thể sửa bài tập đang chờ duyệt.");
@@ -173,7 +173,7 @@ public class ExerciseServiceImpl implements ExerciseService {
 
     @Transactional
     public Question review(Long questionId, ApprovalStatus decision, UserSummary actor) {
-        requireTeacher(actor);
+        requireExerciseReviewer(actor);
         if (decision == null || decision == ApprovalStatus.PENDING)
             throw badRequest("Quyết định duyệt phải là APPROVED hoặc REJECTED.");
         Question question = getReviewableQuestion(questionId, actor);
@@ -300,6 +300,7 @@ public class ExerciseServiceImpl implements ExerciseService {
 
     private void requireCanAccessStep(LearningStep step, UserSummary actor) {
         requireSignedIn(actor);
+        if (step.getPath().getStatus() == LearningPathStatus.DELETED) throw notFound("Không tìm thấy bước học.");
         if (actor.role() == Role.ADMIN)
             return;
         if (actor.role() == Role.STUDENT && step.getPath().getStudent().getId().equals(actor.id())) {
@@ -315,6 +316,7 @@ public class ExerciseServiceImpl implements ExerciseService {
 
     private void requireCanManageStep(LearningStep step, UserSummary actor) {
         requireTeacher(actor);
+        if (step.getPath().getStatus() == LearningPathStatus.DELETED) throw notFound("Không tìm thấy bước học.");
         if (actor.role() == Role.ADMIN || ownsStudent(step, actor))
             return;
         throw forbidden();
@@ -328,6 +330,12 @@ public class ExerciseServiceImpl implements ExerciseService {
     private void requireTeacher(UserSummary actor) {
         requireSignedIn(actor);
         if (actor.role() != Role.ADMIN && actor.role() != Role.TEACHER)
+            throw forbidden();
+    }
+
+    private void requireExerciseReviewer(UserSummary actor) {
+        requireSignedIn(actor);
+        if (actor.role() != Role.TEACHER)
             throw forbidden();
     }
 

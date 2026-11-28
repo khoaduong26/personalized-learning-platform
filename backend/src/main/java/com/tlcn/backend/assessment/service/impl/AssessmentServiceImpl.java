@@ -4,6 +4,7 @@ import com.tlcn.backend.academic.entity.Lesson;
 import com.tlcn.backend.academic.repository.LessonRepository;
 import com.tlcn.backend.assessment.dto.AssessmentRequest;
 import com.tlcn.backend.assessment.dto.QuestionRequest;
+import com.tlcn.backend.assessment.dto.QuestionEditorView;
 import com.tlcn.backend.assessment.entity.*;
 import com.tlcn.backend.assessment.repository.*;
 import com.tlcn.backend.assessment.service.AssessmentService;
@@ -74,6 +75,8 @@ public class AssessmentServiceImpl implements AssessmentService {
         List<Question> attached = questions.findAllById(request.questionIds());
         if (attached.size() != new HashSet<>(request.questionIds()).size())
             throw notFound("Một số câu hỏi không tồn tại.");
+        if (attached.stream().anyMatch(question -> !question.isActive()))
+            throw badRequest("Một số câu hỏi không còn trong ngân hàng.");
         if (attached.stream().anyMatch(question -> question.isAiGenerated()
                 && question.getApprovalStatus() != ApprovalStatus.APPROVED))
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -113,8 +116,8 @@ public class AssessmentServiceImpl implements AssessmentService {
     public List<Question> questionsForLesson(Long lessonId, UserSummary actor) {
         requireTeacher(actor);
         Lesson lesson = lessons.findById(lessonId).orElseThrow(() -> notFound("Không tìm thấy bài học."));
-        requireCanUseLesson(lesson, actor);
-        List<Question> found = questions.findByLessonIdOrderByIdDesc(lessonId);
+        requireCanManageQuestion(lesson, actor);
+        List<Question> found = questions.findActiveByLessonIdOrderByIdDesc(lessonId);
         found.forEach(this::initializeQuestionView);
         return found;
     }
@@ -123,7 +126,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     public Question createQuestion(QuestionRequest request, UserSummary actor) {
         requireTeacher(actor);
         Lesson lesson = lessons.findById(request.lessonId()).orElseThrow(() -> notFound("Không tìm thấy bài học."));
-        requireCanUseLesson(lesson, actor);
+        requireCanManageQuestion(lesson, actor);
         String kind = request.kind().toUpperCase(Locale.ROOT);
         Question q;
         switch (kind) {
@@ -177,6 +180,129 @@ public class AssessmentServiceImpl implements AssessmentService {
         q.setExplanation(request.explanation());
         initializeQuestionView(q);
         return questions.save(q);
+    }
+
+    @Transactional(readOnly = true)
+    public QuestionEditorView questionForEditing(Long questionId, UserSummary actor) {
+        Question question = questions.findById(questionId)
+                .orElseThrow(() -> notFound("Không tìm thấy câu hỏi."));
+        requireCanManageQuestion(question, actor);
+        if (!question.isActive()) throw notFound("Câu hỏi không còn trong ngân hàng.");
+        initializeQuestionView(question);
+        return QuestionEditorView.from(question);
+    }
+
+    @Transactional
+    public Question updateQuestion(Long questionId, QuestionRequest request, UserSummary actor) {
+        Question question = questions.findById(questionId)
+                .orElseThrow(() -> notFound("Không tìm thấy câu hỏi."));
+        requireCanManageQuestion(question, actor);
+        if (!question.isActive()) throw notFound("Câu hỏi không còn trong ngân hàng.");
+        Lesson lesson = lessons.findById(request.lessonId())
+                .orElseThrow(() -> notFound("Không tìm thấy bài học."));
+        requireCanManageQuestion(lesson, actor);
+
+        String requestedKind = request.kind().toUpperCase(Locale.ROOT);
+        if (!questionKind(question).equals(requestedKind) || isQuestionInUse(questionId)) {
+            // Keep every assessment and student answer attached to the unchanged version.
+            question.setActive(false);
+            questions.save(question);
+            Question nextVersion = newQuestion(requestedKind);
+            nextVersion.setAiGenerated(question.isAiGenerated());
+            nextVersion.setApprovalStatus(question.getApprovalStatus());
+            question = nextVersion;
+        }
+        applyQuestionFields(question, request, lesson);
+        initializeQuestionView(question);
+        return questions.save(question);
+    }
+
+    @Transactional
+    public void deleteQuestion(Long questionId, UserSummary actor) {
+        Question question = questions.findById(questionId)
+                .orElseThrow(() -> notFound("Không tìm thấy câu hỏi."));
+        requireCanManageQuestion(question, actor);
+        if (!question.isActive()) throw notFound("Câu hỏi không còn trong ngân hàng.");
+        question.setActive(false);
+        questions.save(question);
+    }
+
+    private boolean isQuestionInUse(Long questionId) {
+        return assessments.existsByQuestions_Id(questionId) || attempts.existsByAnswers_Question_Id(questionId);
+    }
+
+    private Question newQuestion(String kind) {
+        return switch (kind) {
+            case "MULTIPLE_CHOICE" -> new MultipleChoiceQuestion();
+            case "FILL_BLANK" -> new FillBlankQuestion();
+            case "SHORT_ANSWER" -> new ShortAnswerQuestion();
+            default -> throw badRequest("Dạng câu hỏi không được hỗ trợ.");
+        };
+    }
+
+    private String questionKind(Question question) {
+        return question instanceof MultipleChoiceQuestion ? "MULTIPLE_CHOICE"
+                : question instanceof FillBlankQuestion ? "FILL_BLANK" : "SHORT_ANSWER";
+    }
+
+    private void requireCanManageQuestion(Question question, UserSummary actor) {
+        requireCanManageQuestion(question.getLesson(), actor);
+    }
+
+    private void requireCanManageQuestion(Lesson lesson, UserSummary actor) {
+        requireSignedIn(actor);
+        User owner = lesson.getTopic().getSubject().getOwner();
+        boolean allowed = actor.role() == Role.ADMIN ? owner == null
+                : actor.role() == Role.TEACHER && owner != null && owner.getId().equals(actor.id());
+        if (!allowed) throw forbidden();
+    }
+
+    private void applyQuestionFields(Question q, QuestionRequest request, Lesson lesson) {
+        String kind = request.kind().toUpperCase(Locale.ROOT);
+        switch (kind) {
+            case "MULTIPLE_CHOICE" -> {
+                if (request.options() == null || request.options().size() < 2
+                        || request.options().stream().filter(QuestionRequest.OptionInput::correct).count() == 0)
+                    throw badRequest("Câu trắc nghiệm cần ít nhất hai lựa chọn và một đáp án đúng.");
+                boolean multi = Boolean.TRUE.equals(request.allowMultiple());
+                if (!multi && request.options().stream().filter(QuestionRequest.OptionInput::correct).count() != 1)
+                    throw badRequest("Câu hỏi một đáp án chỉ được có một lựa chọn đúng.");
+                MultipleChoiceQuestion value = (MultipleChoiceQuestion) q;
+                value.setAllowMultiple(multi);
+                value.setOptions(request.options().stream().map(input -> {
+                    Option option = new Option();
+                    option.setName(input.name().strip());
+                    option.setCorrect(input.correct());
+                    option.setDisplayOrder(input.displayOrder());
+                    return option;
+                }).toList());
+            }
+            case "FILL_BLANK" -> {
+                if (request.blanks() == null || request.blanks().isEmpty())
+                    throw badRequest("Cần ít nhất một ô trống và đáp án.");
+                FillBlankQuestion value = (FillBlankQuestion) q;
+                value.setCaseSensitive(Boolean.TRUE.equals(request.caseSensitive()));
+                value.setBlanks(request.blanks().stream().map(input -> {
+                    Blank blank = new Blank();
+                    blank.setCorrectAnswer(input.correctAnswer().strip());
+                    blank.setPosition(input.position());
+                    return blank;
+                }).toList());
+            }
+            case "SHORT_ANSWER" -> {
+                if (request.correctAnswer() == null || request.correctAnswer().isBlank())
+                    throw badRequest("Cần nhập đáp án chuẩn.");
+                ShortAnswerQuestion value = (ShortAnswerQuestion) q;
+                value.setCaseSensitive(Boolean.TRUE.equals(request.caseSensitive()));
+                value.setCorrectAnswer(request.correctAnswer().strip());
+            }
+            default -> throw badRequest("Dạng câu hỏi không được hỗ trợ.");
+        }
+        q.setContent(request.content().strip());
+        q.setDifficulty(request.difficulty());
+        q.setScore(request.score());
+        q.setLesson(lesson);
+        q.setExplanation(request.explanation());
     }
 
     @Transactional(readOnly = true)

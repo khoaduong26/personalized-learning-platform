@@ -37,8 +37,8 @@ export default function HomePage() {
             <Link className="home-button" to={isAdmin ? '/admin' : isTeacher ? '/classrooms' : '/my-learning-path'}>
               {isAdmin ? 'Mở dashboard' : isTeacher ? 'Mở lớp học' : 'Lộ trình của em'} <span aria-hidden="true">→</span>
             </Link>
-            {user ? <Link className="home-text-link" to={isAdmin ? '/academic' : '/assessments'}>
-              {isAdmin ? 'Chương trình học' : isTeacher ? 'Mở bài kiểm tra' : 'Bài kiểm tra của em'}
+            {user ? <Link className="home-text-link" to="/assessments">
+              {isAdmin ? 'Ngân hàng câu hỏi' : isTeacher ? 'Mở bài kiểm tra' : 'Bài kiểm tra của em'}
             </Link> : <Link className="home-text-link" to="/#thu-suc">Thử bài Toán</Link>}
           </div>
           {!user && <p className="home-reassurance">Em có thể thử bài Toán mà không cần đăng nhập.</p>}
@@ -56,7 +56,7 @@ export default function HomePage() {
         <PracticePreview key={topic.id} topic={topic} />
       </div></section>
 
-      {!isStudent && <section id="giao-vien" className="home-container home-teachers" aria-labelledby="teacher-title" tabIndex={-1}>
+      {isTeacher && <section id="giao-vien" className="home-container home-teachers" aria-labelledby="teacher-title" tabIndex={-1}>
         <div className="home-section-heading"><h2 id="teacher-title">Dành cho thầy cô</h2></div>
         <div className="teacher-steps">
           <Link to="/classrooms" className="teacher-step-link"><h3>Quản lý lớp học</h3><p>Thêm học sinh và xem kết quả học của từng em.</p></Link>

@@ -2,7 +2,9 @@ package com.tlcn.backend.academic.service.impl;
 
 import com.tlcn.backend.academic.dto.LessonRequest;
 import com.tlcn.backend.academic.dto.LessonResponse;
+import com.tlcn.backend.academic.dto.LessonImageRequest;
 import com.tlcn.backend.academic.entity.Lesson;
+import com.tlcn.backend.academic.entity.LessonImage;
 import com.tlcn.backend.academic.entity.Subject;
 import com.tlcn.backend.academic.entity.Topic;
 import com.tlcn.backend.academic.repository.LessonRepository;
@@ -16,11 +18,15 @@ import com.tlcn.backend.academic.service.AcademicBadRequestException;
 import com.tlcn.backend.academic.service.AcademicConflictException;
 import com.tlcn.backend.academic.service.AcademicNotFoundException;
 import com.tlcn.backend.academic.service.LessonService;
+import com.tlcn.backend.academic.service.LessonImageStorage;
+import com.tlcn.backend.academic.util.LessonImageFile;
 import com.tlcn.backend.user.dto.UserSummary;
 import com.tlcn.backend.user.entity.Role;
 import java.util.List;
+import java.net.URI;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class LessonServiceImpl implements LessonService {
@@ -31,11 +37,12 @@ public class LessonServiceImpl implements LessonService {
     private final KnowledgeMasteryRepository mastery;
     private final KnowledgeGapRepository gaps;
     private final StudentErrorRepository studentErrors;
+    private final LessonImageStorage imageStorage;
 
     public LessonServiceImpl(LessonRepository repository, TopicRepository topics,
             QuestionRepository questions, LearningStepRepository learningSteps,
             KnowledgeMasteryRepository mastery, KnowledgeGapRepository gaps,
-            StudentErrorRepository studentErrors) {
+            StudentErrorRepository studentErrors, LessonImageStorage imageStorage) {
         this.repository = repository;
         this.topics = topics;
         this.questions = questions;
@@ -43,6 +50,7 @@ public class LessonServiceImpl implements LessonService {
         this.mastery = mastery;
         this.gaps = gaps;
         this.studentErrors = studentErrors;
+        this.imageStorage = imageStorage;
     }
 
     @Override
@@ -60,11 +68,22 @@ public class LessonServiceImpl implements LessonService {
 
     @Override
     @Transactional
+    public String uploadImage(Long id, MultipartFile file, UserSummary actor) {
+        requireEditableLesson(id, actor);
+        LessonImageFile image = LessonImageFile.read(file);
+        return imageStorage.uploadLessonImage(actor.id(), image.bytes(), image.contentType());
+    }
+
+    @Override
+    @Transactional
     public LessonResponse create(LessonRequest request, UserSummary actor) {
         Topic topic = requireEditableTopic(request.topicId(), actor);
         String name = normalizeName(request.name());
         ensureUnique(topic.getId(), name, null);
-        return response(repository.save(new Lesson(name, trimDescription(request.description()), topic)));
+        Lesson lesson = new Lesson(name, trimDescription(request.description()),
+                trimLearningContent(request.learningContent()), topic);
+        if (request.images() != null) lesson.setImages(toImages(request.images()));
+        return response(repository.save(lesson));
     }
 
     @Override
@@ -77,6 +96,8 @@ public class LessonServiceImpl implements LessonService {
         ensureUnique(topic.getId(), name, id);
         lesson.setName(name);
         lesson.setDescription(trimDescription(request.description()));
+        lesson.setLearningContent(trimLearningContent(request.learningContent()));
+        if (request.images() != null) lesson.setImages(toImages(request.images()));
         lesson.setTopic(topic);
         return response(repository.save(lesson));
     }
@@ -103,8 +124,41 @@ public class LessonServiceImpl implements LessonService {
     private LessonResponse response(Lesson lesson) {
         Topic topic = lesson.getTopic();
         return new LessonResponse(lesson.getId(), lesson.getName(), lesson.getDescription(),
-                topic.getId(), topic.getName(), topic.getSubject().getId());
+                lesson.getLearningContent(), lesson.getImages().stream().map(image -> new LessonImageRequest(
+                        image.getUrl(), image.getAltText(), image.getCaption(), image.getPlacement(),
+                        image.getAlignment(), image.getDisplaySize())).toList(),
+                topic.getId(), topic.getName(),
+                topic.getSubject().getId(), topic.getSubject().getName());
     }
+
+    private List<LessonImage> toImages(List<LessonImageRequest> images) {
+        if (images == null) return List.of();
+        if (images.size() > 8) throw new AcademicBadRequestException("Mỗi bài học tối đa 8 ảnh.");
+        return images.stream().map(image -> {
+            String url = image.url().strip();
+            try {
+                URI uri = URI.create(url);
+                if (!"https".equals(uri.getScheme()) || !"res.cloudinary.com".equals(uri.getHost())
+                        || uri.getUserInfo() != null) {
+                    throw new AcademicBadRequestException("Ảnh bài học cần được tải lên từ trình quản lý ảnh.");
+                }
+            } catch (IllegalArgumentException ex) {
+                throw new AcademicBadRequestException("Đường dẫn ảnh bài học không hợp lệ.");
+            }
+            String placement = normalizeImageValue(image.placement(), "BEFORE_CONTENT", "AFTER_CONTENT");
+            String alignment = normalizeImageValue(image.alignment(), "LEFT", "CENTER", "RIGHT");
+            String displaySize = normalizeImageValue(image.displaySize(), "SMALL", "MEDIUM", "LARGE");
+            return new LessonImage(url, trim(image.altText()), trim(image.caption()), placement, alignment, displaySize);
+        }).toList();
+    }
+
+    private String normalizeImageValue(String value, String... allowed) {
+        String normalized = value == null ? "" : value.strip().toUpperCase();
+        for (String option : allowed) if (option.equals(normalized)) return normalized;
+        throw new AcademicBadRequestException("Vị trí hoặc kích thước ảnh không hợp lệ.");
+    }
+
+    private String trim(String value) { return value == null || value.isBlank() ? null : value.strip(); }
 
     private Topic requireTopic(Long id, UserSummary actor) {
         Topic topic = topics.findById(id).orElseThrow(() -> new AcademicNotFoundException("Không tìm thấy chủ đề."));
@@ -155,6 +209,10 @@ public class LessonServiceImpl implements LessonService {
     }
 
     private String trimDescription(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
+    }
+
+    private String trimLearningContent(String value) {
         return value == null || value.isBlank() ? null : value.strip();
     }
 }

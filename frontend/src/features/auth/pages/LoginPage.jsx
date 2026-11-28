@@ -22,7 +22,7 @@ const destinationRoles = {
   '/my-learning-path': ['STUDENT'],
   '/classrooms': ['TEACHER', 'ADMIN'],
   '/academic': ['TEACHER', 'ADMIN'],
-  '/exercises/review': ['TEACHER', 'ADMIN'],
+  '/exercises/review': ['TEACHER'],
   '/admin/accounts': ['ADMIN'],
 }
 

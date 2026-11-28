@@ -16,6 +16,8 @@ public interface AssessmentRepository extends JpaRepository<Assessment, Long> {
 
     Optional<Assessment> findByIdAndTeacherId(Long id, Long teacherId);
 
+    boolean existsByQuestions_Id(Long questionId);
+
     @Query("select distinct a from Assessment a join a.classrooms c join c.students s where a.published = true and s.id = :studentId order by a.createdAt desc")
     List<Assessment> findPublishedForStudent(@Param("studentId") Long studentId);
 }

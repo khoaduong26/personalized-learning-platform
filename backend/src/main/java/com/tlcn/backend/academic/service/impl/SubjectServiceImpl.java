@@ -105,21 +105,40 @@ public class SubjectServiceImpl implements SubjectService {
             throw new AcademicConflictException("Chỉ có thể lưu bản sao từ chương trình chung.");
         }
         User owner = requireUser(actor.id());
-        if (repository.existsByNameIgnoreCaseAndOwner_Id(source.getName(), owner.getId())) {
+        String copyName = copyName(source.getName());
+        if (repository.existsByNameIgnoreCaseAndOwner_Id(copyName, owner.getId())) {
             throw new AcademicConflictException("Bạn đã có bản riêng của môn học này.");
         }
 
-        Subject copy = repository.save(new Subject(source.getName(), owner));
+        Subject copy = repository.save(new Subject(copyName, owner));
         for (Topic sourceTopic : topics.findBySubjectIdOrderByNameAsc(source.getId())) {
             Topic topicCopy = topics.save(new Topic(sourceTopic.getName(), copy));
             for (Lesson sourceLesson : lessons.findByTopicIdOrderByNameAsc(sourceTopic.getId())) {
-                Lesson lessonCopy = lessons.save(new Lesson(sourceLesson.getName(), sourceLesson.getDescription(), topicCopy));
+                Lesson lessonCopy = lessons.save(new Lesson(sourceLesson.getName(), sourceLesson.getDescription(),
+                        sourceLesson.getLearningContent(), topicCopy));
+                lessonCopy.setImages(sourceLesson.getImages().stream().map(image -> new com.tlcn.backend.academic.entity.LessonImage(
+                        image.getUrl(), image.getAltText(), image.getCaption(), image.getPlacement(),
+                        image.getAlignment(), image.getDisplaySize())).toList());
+                lessons.save(lessonCopy);
                 for (Question sourceQuestion : questions.findByLessonId(sourceLesson.getId())) {
                     questions.save(copyQuestion(sourceQuestion, lessonCopy));
                 }
             }
         }
         return response(copy);
+    }
+
+    private String copyName(String sourceName) {
+        String suffix = " - copy";
+        return appendSuffix(sourceName, suffix);
+    }
+
+    private String appendSuffix(String sourceName, String suffix) {
+        int maxBaseCodePoints = 120 - suffix.codePointCount(0, suffix.length());
+        int sourceCodePoints = sourceName.codePointCount(0, sourceName.length());
+        int retainedCodePoints = Math.min(sourceCodePoints, maxBaseCodePoints);
+        int end = sourceName.offsetByCodePoints(0, retainedCodePoints);
+        return sourceName.substring(0, end).stripTrailing() + suffix;
     }
 
     private Question copyQuestion(Question source, Lesson targetLesson) {

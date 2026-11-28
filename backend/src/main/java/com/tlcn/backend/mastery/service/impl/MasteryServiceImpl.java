@@ -244,6 +244,7 @@ public class MasteryServiceImpl implements MasteryService {
 
     private void updatePathProgress(LearningStep step, double score) {
         LearningPath path = step.getPath();
+        if (path.getStatus() == LearningPathStatus.DELETED) return;
         List<LearningStep> orderedSteps = learningSteps.findByPathIdOrderByStepOrderAsc(path.getId());
         boolean changed = false;
         if (score >= (step.getTargetScore() == null ? 70.0 : step.getTargetScore())) {
